@@ -1,8 +1,8 @@
 FROM python:3.7.4-slim-buster
 
-# Install cron for scheduled jobs
+# Install cron for scheduled jobs and procps for "ps" tool to check running procs
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install cron nano
+    apt-get -y --no-install-recommends install cron nano procps
 
 COPY requirements.txt /
 RUN pip3 install --upgrade pip && \
@@ -17,5 +17,6 @@ COPY cron.d cron.d
 COPY .bashrc /root/
 # The main Docker entrypoint when the container starts
 COPY .env entrypoint.sh /
+RUN chmod +x /entrypoint.sh
 
 CMD ["/bin/bash", "/entrypoint.sh"]

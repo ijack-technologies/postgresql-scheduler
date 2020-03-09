@@ -1,9 +1,9 @@
 
 FROM python:3.7.4-slim-buster
 
-# Install cron for scheduled jobs, and git for VS Code
+# Install cron for scheduled jobs, git for VS Code, and procps for "ps" tool to check running procs
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install cron nano git
+    apt-get -y --no-install-recommends install cron nano git procps
 
 COPY requirements.txt requirements-dev.txt /
 RUN pip3 install --upgrade pip && \
