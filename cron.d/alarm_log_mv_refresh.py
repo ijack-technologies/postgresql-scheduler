@@ -157,6 +157,7 @@ def main():
             # sql = "REFRESH MATERIALIZED VIEW CONCURRENTLY public.alarm_log_mv;"
             sql = "select refresh_alarm_log_mv();"
             logger.info("Refreshing alarm log materialized view...")
+            cursor.execute(sql)
 
 
     return None
