@@ -20,7 +20,7 @@ def configure_logging(logfile_name, path_to_log_directory='/var/log/'):
     logger.setLevel(logging.DEBUG) 
     formatter = logging.Formatter('%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s')
 
-    date_for_log_filename = datetime.now().strftime('%Y-%m-%d') + '_'
+    date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
     log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filepath = os.path.join(path_to_log_directory, log_filename)
 
@@ -123,6 +123,26 @@ def configure_logging(logfile_name, path_to_log_directory='/var/log/'):
 
 #     return None
 
+def run_query(sql):
+    """Run and time the SQL query"""
+
+    with psycopg2.connect(
+            host=os.getenv("HOST_IJ"), 
+            port=os.getenv("PORT_IJ"), 
+            dbname=os.getenv('DB_IJ'),
+            user=os.getenv("USER_IJ"), 
+            password=os.getenv("PASS_IJ"), 
+            connect_timeout=5
+        ) as conn:
+        with conn.cursor() as cursor:
+            logger.info("Refreshing alarm log materialized view...")
+            time_start = time.time()
+            cursor.execute(sql)
+            time_finish = time.time()
+            logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
+
+    return None
+
 
 def main():
     """Main entrypoint function"""
@@ -145,20 +165,9 @@ def main():
     #         # Keep going regardless
     #         continue # continue: go back to the top
 
-    with psycopg2.connect(
-            host=os.getenv("HOST_IJ"), 
-            port=os.getenv("PORT_IJ"), 
-            dbname=os.getenv('DB_IJ'),
-            user=os.getenv("USER_IJ"), 
-            password=os.getenv("PASS_IJ"), 
-            connect_timeout=5
-        ) as conn:
-        with conn.cursor() as cursor:
-            # sql = "REFRESH MATERIALIZED VIEW CONCURRENTLY public.alarm_log_mv;"
-            sql = "select refresh_alarm_log_mv();"
-            logger.info("Refreshing alarm log materialized view...")
-            cursor.execute(sql)
-
+    # sql = "REFRESH MATERIALIZED VIEW CONCURRENTLY public.alarm_log_mv;"
+    sql = "select refresh_alarm_log_mv();"
+    run_query(sql)
 
     return None
 
