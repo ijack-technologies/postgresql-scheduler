@@ -11,17 +11,17 @@ LOG_LEVEL = logging.INFO
 # ALARM_LOG_REFRESH_EVERY_X_MINUTES = 5
 
 
-def configure_logging(name, path_to_log_directory='/var/log/'):
+def configure_logging(logfile_name, path_to_log_directory='/var/log/'):
     """Configure logger"""
     global LOG_LEVEL
 
-    logger = logging.getLogger(name)
+    logger = logging.getLogger(__name__)
     # Override the default logging.WARNING level so all messages can get through to the handlers
     logger.setLevel(logging.DEBUG) 
     formatter = logging.Formatter('%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s')
 
     date_for_log_filename = datetime.now().strftime('%Y-%m-%d') + '_'
-    log_filename = f"{date_for_log_filename}_db_refresh.log"
+    log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filepath = os.path.join(path_to_log_directory, log_filename)
 
     if platform.system() == 'Linux':
@@ -164,5 +164,8 @@ def main():
 
 
 if __name__ == '__main__':
-    logger = configure_logging(__name__)
+    logger = configure_logging(
+        logfile_name = 'alarm_log_mv_refresh', 
+        path_to_log_directory='/var/log/'
+    )
     main()
