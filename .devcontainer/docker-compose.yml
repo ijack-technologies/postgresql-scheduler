@@ -1,0 +1,40 @@
+version: '3.7'
+services:
+  container1:
+    # image: ubuntu:bionic
+    volumes:
+      # Mount the root folder that contains .git
+      - ..:/workspace
+      # Windows home folder:
+      - C:\Users\seanm\:/c_users_sean
+      # [Optional] For reusing Git SSH keys.
+      # - ~/.ssh:/root/.ssh-local:ro
+    build:
+      # context: where should docker-compose look for the Dockerfile?
+      # i.e. either a path to a directory containing a Dockerfile, or a url to a git repository
+      context: ..
+      dockerfile: Dockerfile-dev
+    env_file: 
+      - ../.env
+    # environment:
+    #   - FLASK_CONFIG=development
+    #   - FLASK_ENV=development
+    # Forwards port 5001 from the Docker host (e.g. Windows desktop) to the dev environment container's port 5000
+    # ports:
+    #   - 0.0.0.0:5000:5000
+      # - 0.0.0.0:5005:5005
+      # - 0.0.0.0:85:85
+      # # npm start
+      # - 0.0.0.0:3001:3000
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity 
+    # command: /bin/sh -c "while sleep 1000; do :; done"
+    # links:
+    #   - container-2
+    networks:
+      - myijack-network
+networks:
+  myijack-network:
+    # driver: bridge
+    external:
+      name: myijack-network

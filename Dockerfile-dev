@@ -1,0 +1,14 @@
+
+FROM python:3.7.4-slim-buster
+
+# Install cron for scheduled jobs, and git for VS Code
+RUN apt-get update && \
+    apt-get -y --no-install-recommends install cron nano git
+
+COPY requirements.txt requirements-dev.txt /
+RUN pip3 install --upgrade pip && \
+    pip3 install -r requirements-dev.txt
+
+# Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
+COPY .bashrc /root/
+

@@ -1,0 +1,34 @@
+version: '3.7'
+services:
+  postgresql_scheduler:
+    # Name of the container this service creates. Otherwise it's prefixed with the git repo name
+    container_name: postgresql_scheduler
+    # Name and tag of image the Dockerfile creates
+    image: postgresql_scheduler:latest
+    restart: always
+    env_file: .env
+    build: .
+    # ports:
+    #   - 5005:5005
+    # environment:
+    #   - FLASK_CONFIG=testing
+    #   - FLASK_ENV=testing
+    #   # - REDIS_URL=redis://redis:6379 # This is in the .env file
+    # depends_on: 
+    #   - redis
+    networks:
+      # - timescale-network
+      - myijack-network
+    # # The following is only for development
+    # volumes:
+    #   - type: bind
+    #     source: C:\Users\seanm\git\postgresql-scheduler\app
+    #     target: /app
+    #     # Can Docker write to the directory, or just read from it?
+    #     # The code coverage writes a report to this mount
+    #     read_only: false
+networks:
+  myijack-network:
+    # driver: bridge
+    external:
+      name: myijack-network
