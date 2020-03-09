@@ -10,6 +10,7 @@ echo "Setting up the cron scheduler..."
 declare -p | grep -Ev 'BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID' > /container.env
 
 # Send the following crontab to crontab.txt
+touch /crontab.txt
 echo "SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 BASH_ENV=/container.env
