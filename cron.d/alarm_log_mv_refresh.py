@@ -1,49 +1,27 @@
 import logging
 import os
 import platform
-# import boto3
 import time
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# local imports
+from utils import (
+    Config, configure_logging, run_query, error_wrapper
+)
+
 LOG_LEVEL = logging.INFO
-# ALARM_LOG_REFRESH_EVERY_X_MINUTES = 5
+LOGFILE_NAME = 'alarm_log_mv_refresh'
 
+# SQL = "select refresh_alarm_log_mv();"
 
-def configure_logging(logfile_name, path_to_log_directory='/var/log/'):
-    """Configure logger"""
-    global LOG_LEVEL
-
-    logger = logging.getLogger(__name__)
-    # Override the default logging.WARNING level so all messages can get through to the handlers
-    logger.setLevel(logging.DEBUG) 
-    formatter = logging.Formatter('%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s')
-
-    date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
-    log_filename = f"{date_for_log_filename}_{logfile_name}.log"
-    log_filepath = os.path.join(path_to_log_directory, log_filename)
-
-    if platform.system() == 'Linux':
-        fh = logging.FileHandler(filename=log_filepath)
-        fh.setLevel(LOG_LEVEL)
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-
-    # sh = logging.StreamHandler(sys.stdout)
-    sh = logging.StreamHandler()
-    sh.setLevel(LOG_LEVEL)
-    sh.setFormatter(formatter)
-    # print(f"logger.handlers before adding streamHandler: {logger.handlers}")
-    logger.addHandler(sh) 
-    # print(f"logger.handlers after adding streamHandler: {logger.handlers}")
-
-    # Test logger
-    sh.setLevel(logging.DEBUG)
-    logger.debug(f"Testing the logger: platform.system() = {platform.system()}")
-    sh.setLevel(LOG_LEVEL)
-    
-    return logger
+# Requires owner privileges (must be run by "master" user, not "app_user")
+SQL = """
+    REFRESH MATERIALIZED VIEW CONCURRENTLY 
+    public.alarm_log_mv
+    WITH DATA
+"""
 
 
 # class ConfigDB:
@@ -111,41 +89,9 @@ def configure_logging(logfile_name, path_to_log_directory='/var/log/'):
 #     return None
 
 
-# def error_wrapper(func, *args, **kwargs):
-#     """So the loop can continue even if a function fails"""
-
-#     try:
-#         func(*args, **kwargs)
-#     except Exception:
-#         logger.exception(f"Problem running function: {func}")
-#         # Keep going regardless
-#         pass 
-
-#     return None
-
-def run_query(sql):
-    """Run and time the SQL query"""
-
-    with psycopg2.connect(
-            host=os.getenv("HOST_IJ"), 
-            port=os.getenv("PORT_IJ"), 
-            dbname=os.getenv('DB_IJ'),
-            user=os.getenv("USER_IJ"), 
-            password=os.getenv("PASS_IJ"), 
-            connect_timeout=5
-        ) as conn:
-        with conn.cursor() as cursor:
-            logger.info("Refreshing alarm log materialized view...")
-            time_start = time.time()
-            cursor.execute(sql)
-            time_finish = time.time()
-            logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
-
-    return None
-
-
-def main():
+def main(c):
     """Main entrypoint function"""
+    global SQL
 
     # while True:
     #     try:
@@ -166,15 +112,16 @@ def main():
     #         continue # continue: go back to the top
 
     # sql = "REFRESH MATERIALIZED VIEW CONCURRENTLY public.alarm_log_mv;"
-    sql = "select refresh_alarm_log_mv();"
-    run_query(sql)
+    run_query(c, SQL)
 
     return None
 
 
 if __name__ == '__main__':
-    logger = configure_logging(
-        logfile_name = 'alarm_log_mv_refresh', 
+    c = Config()
+    c.logger = configure_logging(
+        __name__,
+        logfile_name = LOGFILE_NAME, 
         path_to_log_directory='/var/log/'
     )
-    main()
+    main(c)
