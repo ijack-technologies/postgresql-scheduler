@@ -67,7 +67,14 @@ def run_query(c, sql, db='ijack'):
         user = os.getenv("USER_TS")
         password = os.getenv("PASS_TS")
 
-    with psycopg2.connect(host, port, dbname, user, password, connect_timeout=5) as conn:
+    with psycopg2.connect(
+        host=host, 
+        port=port, 
+        dbname=dbname, 
+        user=user, 
+        password=password, 
+        connect_timeout=5
+    ) as conn:
         with conn.cursor() as cursor:
             c.logger.info("Refreshing alarm log materialized view...")
             time_start = time.time()
