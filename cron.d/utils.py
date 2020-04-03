@@ -51,17 +51,23 @@ def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
     return logger
 
 
-def run_query(c, sql):
+def run_query(c, sql, db='ijack'):
     """Run and time the SQL query"""
 
-    with psycopg2.connect(
-            host=os.getenv("HOST_IJ"), 
-            port=os.getenv("PORT_IJ"), 
-            dbname=os.getenv('DB_IJ'),
-            user=os.getenv("USER_IJ"), 
-            password=os.getenv("PASS_IJ"), 
-            connect_timeout=5
-        ) as conn:
+    if db == 'ijack':
+        host = os.getenv("HOST_IJ") 
+        port = os.getenv("PORT_IJ") 
+        dbname = os.getenv('DB_IJ')
+        user = os.getenv("USER_IJ")
+        password = os.getenv("PASS_IJ")
+    elif db == 'timescale':
+        host = os.getenv("HOST_TS") 
+        port = os.getenv("PORT_TS") 
+        dbname = os.getenv('DB_TS')
+        user = os.getenv("USER_TS")
+        password = os.getenv("PASS_TS")
+
+    with psycopg2.connect(host, port, dbname, user, password, connect_timeout=5) as conn:
         with conn.cursor() as cursor:
             c.logger.info("Refreshing alarm log materialized view...")
             time_start = time.time()

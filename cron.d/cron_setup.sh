@@ -20,6 +20,7 @@ BASH_ENV=/container.env
 1 1 * * * python3 /cron.d/alarm_log_delete_duplicates.py >> /var/log/cron.log 2>&1
 */5 * * * * python3 /cron.d/alarm_log_mv_refresh.py >> /var/log/cron.log 2>&1
 */14 * * * * python3 /cron.d/alarm_log_mv_refresh_old_non_surface.py >> /var/log/cron.log 2>&1
+*/2 * * * * python3 /cron.d/time_series_mv_refresh.py >> /var/log/cron.log 2>&1
 # Leave the last line blank for a valid cron file" > /crontab.txt
 
 # Make the shell scripts executable
