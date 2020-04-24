@@ -76,7 +76,7 @@ def run_query(c, sql, db='ijack'):
         connect_timeout=5
     ) as conn:
         with conn.cursor() as cursor:
-            c.logger.info("Refreshing alarm log materialized view...")
+            c.logger.info(f"Running query now... SQL to run: \n{sql}")
             time_start = time.time()
             cursor.execute(sql)
             time_finish = time.time()
