@@ -6,6 +6,8 @@ import time
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import requests
+from twilio.rest import Client
 
 LOG_LEVEL = logging.INFO
 # logger = logging.getLogger(__name__)
@@ -13,7 +15,13 @@ LOG_LEVEL = logging.INFO
 
 class Config():
     """Main config class"""
-    pass
+    TEST_FUNC = False
+    TEST_ERROR = False
+    DEV_TEST_PRD = 'production'
+    PHONE_LIST_DEV = ['+14036897250']
+    EMAIL_LIST_DEV = ['smccarthy@ijack.ca']
+    # For returning values in the "c" config object
+    TEST_DICT = {}
 
 
 def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
@@ -96,4 +104,87 @@ def error_wrapper(c, func, *args, **kwargs):
         pass 
 
     return None
+
+
+def send_twilio_sms(c, sms_phone_list, body):
+    """Send SMS messages with Twilio from +13067003245"""
+    message = ''
+    if c.TEST_FUNC:
+        return message
+
+    # The Twilio character limit for SMS is 1,600
+    twilio_character_limit_sms = 1600
+    if len(body) > twilio_character_limit_sms:
+        body = body[:(twilio_character_limit_sms - 3)] + '...'
+        
+    twilio_client = Client(os.environ['TWILIO_ACCOUNT_SID'], os.environ['TWILIO_AUTH_TOKEN'])
+    for phone_num in sms_phone_list:
+        message = twilio_client.messages.create(
+            to=phone_num, 
+            from_="+13067003245",
+            body=body
+        )
+        c.logger.info(f"SMS sent to {phone_num}")
+
+    return message
+
+
+def send_twilio_phone(c, phone_list, body):
+    """Send phone call with Twilio from +13067003245"""
+    call = ''
+    if c.TEST_FUNC:
+        return call
+
+    twilio_client = Client(os.environ['TWILIO_ACCOUNT_SID'], os.environ['TWILIO_AUTH_TOKEN'])
+    for phone_num in phone_list:
+        call = twilio_client.calls.create(
+            to=phone_num, 
+            from_="+13067003245",
+            twiml=f"<Response><Say>Hello. The {body}</Say></Response>"
+            # url=twiml_instructions_url
+        )
+        c.logger.info(f"Phone call sent to {phone_num}")
+
+    return call
+
+
+def send_mailgun_email(c, text='', html='', emailees_list=['smccarthy@ijack.ca'], subject='IJACK Alert', images=None):
+    """Send email using Mailgun"""
+    # Initialize the return code
+    rc = ''
+    if c.TEST_FUNC:
+        return rc
+
+    # If html is included, use that. Otherwise use text
+    if html == '':
+        key = 'text'
+        value = text
+    else:
+        key = 'html'
+        value = html
+    
+    # Add inline attachments, if any
+    images2 = images
+    if images is not None:
+        images2 = []
+        for item in images:
+            images2.append(('inline', open(item, 'rb')))
+
+    # if c.DEV_TEST_PRD in ['testing', 'production']:
+    # c.logger.debug(f"c.DEV_TEST_PRD: {c.DEV_TEST_PRD}")
+    if len(emailees_list) > 0:
+        rc = requests.post(
+            "https://api.mailgun.net/v3/mg.ijack.ca/messages",
+            auth=("api", os.environ['MAILGUN_API_KEY']),
+            files=images2,
+            data={
+                "from": "IJACK <smccarthy@ijack.ca>",
+                "to": emailees_list,
+                "subject": subject,
+                key: value
+            }
+        )
+        c.logger.info(f"Email sent to emailees_list: '{str(emailees_list)}'. \nSubject: {subject}. \nrc.status_code: {rc.status_code}")
+    
+    return rc
 
