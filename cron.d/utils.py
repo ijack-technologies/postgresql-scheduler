@@ -35,7 +35,8 @@ def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
     formatter = logging.Formatter('%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s')
 
     date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
-    log_filename = f"{date_for_log_filename}_{logfile_name}.log"
+    # log_filename = f"{date_for_log_filename}_{logfile_name}.log"
+    log_filename = f"{logfile_name}.log"
     log_filepath = os.path.join(path_to_log_directory, log_filename)
 
     if platform.system() == 'Linux':
