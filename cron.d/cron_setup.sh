@@ -17,11 +17,12 @@ BASH_ENV=/container.env
 
 # min hour dom month dow   command
 # Delete duplicate alarm log records once daily
-1 1 * * * python3 /cron.d/alarm_log_delete_duplicates.py >> /var/log/cron.log 2>&1
-*/3 * * * * python3 /cron.d/alarm_log_mv_refresh.py >> /var/log/cron.log 2>&1
-*/14 * * * * python3 /cron.d/alarm_log_mv_refresh_old_non_surface.py >> /var/log/cron.log 2>&1
-*/2 * * * * python3 /cron.d/time_series_mv_refresh.py >> /var/log/cron.log 2>&1
-*/9 * * * * python3 /cron.d/gateways_mv_refresh.py >> /var/log/cron.log 2>&1
+1 1 * * * python3 /cron.d/alarm_log_delete_duplicates.py
+*/1 * * * * python3 /cron.d/alarm_log_mv_refresh.py
+*/14 * * * * python3 /cron.d/alarm_log_mv_refresh_old_non_surface.py
+*/2 * * * * python3 /cron.d/time_series_mv_refresh.py
+*/9 * * * * python3 /cron.d/gateways_mv_refresh.py
+* */1 * * * python3 /cron.d/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
 # Leave the last line blank for a valid cron file" > /crontab.txt
 
 # Make the shell scripts executable

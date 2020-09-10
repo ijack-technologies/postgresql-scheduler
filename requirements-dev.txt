@@ -3,3 +3,4 @@
 pylint
 bandit
 black
+flake8

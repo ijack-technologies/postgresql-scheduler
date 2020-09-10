@@ -1,5 +1,6 @@
 
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import os
 import platform
 import time
@@ -38,7 +39,9 @@ def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
     log_filepath = os.path.join(path_to_log_directory, log_filename)
 
     if platform.system() == 'Linux':
-        fh = logging.FileHandler(filename=log_filepath)
+        # fh = logging.FileHandler(filename=log_filepath)
+        fh = TimedRotatingFileHandler(filename=log_filepath, 
+            when='H', interval=1, backupCount=48, encoding=None, delay=False, utc=False, atTime=None)
         fh.setLevel(LOG_LEVEL)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
@@ -59,8 +62,9 @@ def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
     return logger
 
 
-def run_query(c, sql, db='ijack'):
-    """Run and time the SQL query"""
+def get_conn(c, sql, db='ijack'):
+    """
+    """
 
     if db == 'ijack':
         host = os.getenv("HOST_IJ") 
@@ -75,22 +79,42 @@ def run_query(c, sql, db='ijack'):
         user = os.getenv("USER_TS")
         password = os.getenv("PASS_TS")
 
-    with psycopg2.connect(
+    conn = psycopg2.connect(
         host=host, 
         port=port, 
         dbname=dbname, 
         user=user, 
         password=password, 
-        connect_timeout=5
-    ) as conn:
-        with conn.cursor() as cursor:
-            c.logger.info(f"Running query now... SQL to run: \n{sql}")
-            time_start = time.time()
-            cursor.execute(sql)
-            time_finish = time.time()
-            c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
+        connect_timeout=5, 
+        # cursor_factory=psycopg2.extras.DictCursor
+    ) 
 
-    return None
+    return conn
+
+
+
+def run_query(c, sql, db='ijack', fetchall=False):
+    """Run and time the SQL query"""
+    conn = get_conn(c, sql, db='ijack')
+    columns = None
+    rows = None
+    # with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+        c.logger.info(f"Running query now... SQL to run: \n{sql}")
+        time_start = time.time()
+        cursor.execute(sql)
+        if fetchall:
+            columns = [str.lower(x[0]) for x in cursor.description]
+            rows = cursor.fetchall()
+
+        time_finish = time.time()
+        c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
+        
+    conn.close()
+    if conn:
+        del conn
+
+    return columns, rows
 
 
 def error_wrapper(c, func, *args, **kwargs):
