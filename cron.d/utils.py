@@ -96,7 +96,7 @@ def get_conn(c, sql, db='ijack'):
 
 def run_query(c, sql, db='ijack', fetchall=False):
     """Run and time the SQL query"""
-    conn = get_conn(c, sql, db='ijack')
+    conn = get_conn(c, sql, db)
     columns = None
     rows = None
     # with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
