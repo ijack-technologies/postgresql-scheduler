@@ -100,31 +100,22 @@ def run_query(c, sql, db='ijack', fetchall=False, commit=False):
     columns = None
     rows = None
 
-    if fetchall:
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    else:
-        cursor = conn.cursor()
     # with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-    # with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
-    c.logger.info(f"Running query now... SQL to run: \n{sql}")
-    time_start = time.time()
-    cursor.execute(sql)
-    if commit:
-        conn.commit()
-    if fetchall:
-        columns = [str.lower(x[0]) for x in cursor.description]
-        rows = cursor.fetchall()
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+        c.logger.info(f"Running query now... SQL to run: \n{sql}")
+        time_start = time.time()
+        cursor.execute(sql)
+        if commit:
+            conn.commit()
+        if fetchall:
+            columns = [str.lower(x[0]) for x in cursor.description]
+            rows = cursor.fetchall()
 
     time_finish = time.time()
     c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
-        
-    cursor.close()
-    if cursor:
-        del cursor
 
     conn.close()
-    if conn:
-        del conn
+    del conn
 
     return columns, rows
 

@@ -33,7 +33,7 @@ def main(c):
         if c.TEST_ERROR:
             raise ValueError
 
-        run_query(c, SQL)
+        run_query(c, SQL, commit=True)
 
     except Exception as err:
         c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
