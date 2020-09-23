@@ -1,6 +1,0 @@
--r requirements.txt
-
-pylint
-bandit
-black
-flake8

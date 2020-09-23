@@ -69,13 +69,13 @@ def get_conn(c, sql, db='ijack'):
 
     if db == 'ijack':
         host = os.getenv("HOST_IJ") 
-        port = os.getenv("PORT_IJ") 
+        port = int(os.getenv("PORT_IJ"))
         dbname = os.getenv('DB_IJ')
         user = os.getenv("USER_IJ")
         password = os.getenv("PASS_IJ")
     elif db == 'timescale':
         host = os.getenv("HOST_TS") 
-        port = os.getenv("PORT_TS") 
+        port = int(os.getenv("PORT_TS"))
         dbname = os.getenv('DB_TS')
         user = os.getenv("USER_TS")
         password = os.getenv("PASS_TS")
@@ -94,23 +94,34 @@ def get_conn(c, sql, db='ijack'):
 
 
 
-def run_query(c, sql, db='ijack', fetchall=False):
+def run_query(c, sql, db='ijack', fetchall=False, commit=False):
     """Run and time the SQL query"""
     conn = get_conn(c, sql, db)
     columns = None
     rows = None
-    # with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
-        c.logger.info(f"Running query now... SQL to run: \n{sql}")
-        time_start = time.time()
-        cursor.execute(sql)
-        if fetchall:
-            columns = [str.lower(x[0]) for x in cursor.description]
-            rows = cursor.fetchall()
 
-        time_finish = time.time()
-        c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
+    if fetchall:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    else:
+        cursor = conn.cursor()
+    # with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+    # with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+    c.logger.info(f"Running query now... SQL to run: \n{sql}")
+    time_start = time.time()
+    cursor.execute(sql)
+    if commit:
+        conn.commit()
+    if fetchall:
+        columns = [str.lower(x[0]) for x in cursor.description]
+        rows = cursor.fetchall()
+
+    time_finish = time.time()
+    c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
         
+    cursor.close()
+    if cursor:
+        del cursor
+
     conn.close()
     if conn:
         del conn

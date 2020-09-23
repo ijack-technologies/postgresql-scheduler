@@ -5,9 +5,9 @@ FROM python:3.7.4-slim-buster
 RUN apt-get update && \
     apt-get -y --no-install-recommends install cron nano git procps
 
-COPY requirements.txt requirements-dev.txt /
+COPY requirements.txt /
 RUN pip3 install --upgrade pip && \
-    pip3 install -r requirements-dev.txt
+    pip3 install -r requirements.txt
 
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /root/

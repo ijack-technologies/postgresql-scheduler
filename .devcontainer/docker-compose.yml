@@ -13,7 +13,7 @@ services:
       # context: where should docker-compose look for the Dockerfile?
       # i.e. either a path to a directory containing a Dockerfile, or a url to a git repository
       context: ..
-      dockerfile: Dockerfile-dev
+      dockerfile: Dockerfile.dev
     env_file: 
       - ../.env
     # environment:

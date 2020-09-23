@@ -14,14 +14,14 @@ from utils import (
 LOG_LEVEL = logging.INFO
 LOGFILE_NAME = 'time_series_mv_refresh'
 
-# SQL = "select refresh_alarm_log_mv_old_non_surface();"
-
-# Requires owner privileges (must be run by "master" user, not "app_user")
+# # Requires owner privileges (must be run by "master" user, not "app_user")
 SQL = """
     REFRESH MATERIALIZED VIEW CONCURRENTLY 
     public.time_series_mv
     WITH DATA
 """
+
+# SQL = "select refresh_time_series_mv();"
 
 
 def main(c):
@@ -33,7 +33,7 @@ def main(c):
         if c.TEST_ERROR:
             raise ValueError
 
-        run_query(c, SQL, db='timescale')
+        run_query(c, SQL, db='timescale', commit=True)
 
     except Exception as err:
         c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
