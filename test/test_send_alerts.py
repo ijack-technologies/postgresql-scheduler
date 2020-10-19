@@ -78,11 +78,10 @@ class TestAll(unittest.TestCase):
         global c
         c.TEST_FUNC = False
         html = f"""<html><body><p>
-                Customer: IJACK<br>
-                Model: XFER 1245<br>
-                Location: Calgary<br><br>
-                Power unit: 200000<br>
-                Gateway: some mac ID<br><br></p>
+                Customer: Whitecap Resources<br>
+                Model: XFER 2270<br>
+                Location: Gull Lake<br><br>
+                Power unit: 200000<br><br></p>
                 </body></html>"""
         rc = send_mailgun_email(c, text='', html=html, emailees_list=c.EMAIL_LIST_DEV, subject='TEST - IJACK Alert - HTML')
         c.logger.info(f"Mailgun 'rc' for html email: {rc}")

@@ -9,6 +9,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import requests
 from twilio.rest import Client
+import boto3
+import json
 
 LOG_LEVEL = logging.INFO
 # logger = logging.getLogger(__name__)
@@ -20,7 +22,7 @@ class Config():
     TEST_ERROR = False
     DEV_TEST_PRD = 'production'
     PHONE_LIST_DEV = ['+14036897250']
-    EMAIL_LIST_DEV = ['smccarthy@ijack.ca']
+    EMAIL_LIST_DEV = ['smccarthy@myijack.com']
     # For returning values in the "c" config object
     TEST_DICT = {}
 
@@ -175,12 +177,15 @@ def send_twilio_phone(c, phone_list, body):
     return call
 
 
-def send_mailgun_email(c, text='', html='', emailees_list=['smccarthy@ijack.ca'], subject='IJACK Alert', images=None):
+def send_mailgun_email(c, text='', html='', emailees_list=None, subject='IJACK Alert', images=None):
     """Send email using Mailgun"""
     # Initialize the return code
     rc = ''
     if c.TEST_FUNC:
         return rc
+    
+    if emailees_list is None:
+        emailees_list = ['smccarthy@myijack.com']
 
     # If html is included, use that. Otherwise use text
     if html == '':
@@ -201,17 +206,49 @@ def send_mailgun_email(c, text='', html='', emailees_list=['smccarthy@ijack.ca']
     # c.logger.debug(f"c.DEV_TEST_PRD: {c.DEV_TEST_PRD}")
     if len(emailees_list) > 0:
         rc = requests.post(
-            "https://api.mailgun.net/v3/mg.ijack.ca/messages",
+            "https://api.mailgun.net/v3/myijack.com/messages",
             auth=("api", os.environ['MAILGUN_API_KEY']),
             files=images2,
             data={
-                "from": "IJACK <smccarthy@ijack.ca>",
+                "h:sender": "alerts@myijack.com",
+                "from": "alerts@myijack.com",
                 "to": emailees_list,
                 "subject": subject,
                 key: value
             }
         )
-        c.logger.info(f"Email sent to emailees_list: '{str(emailees_list)}'. \nSubject: {subject}. \nrc.status_code: {rc.status_code}")
+        c.logger.info(f"Email sent to emailees_list: '{str(emailees_list)}' \nSubject: {subject} \nrc.status_code: {rc.status_code}")
+        assert rc.status_code == 200
     
     return rc
 
+
+def get_client_iot():
+    """"""
+    client_iot = boto3.client(
+        "iot-data",
+        region_name="us-west-2",
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", None),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", None),
+    )
+    # Change the botocore logger from logging.DEBUG to INFO,
+    # since DEBUG produces too many messages
+    logging.getLogger("botocore").setLevel(logging.INFO)
+    logging.getLogger("urllib3").setLevel(logging.INFO)
+
+    return client_iot
+
+
+def get_iot_device_shadow(c, client_iot, aws_thing):
+    """This function gets the current thing state"""
+    
+    response_payload = {}
+    try:
+        response = client_iot.get_thing_shadow(thingName=aws_thing)
+        streamingBody = response["payload"]
+        response_payload = json.loads(streamingBody.read())
+    except Exception:
+        c.logger.exception(f"ERROR! Probably no shadow exists...")
+
+    return response_payload
+    

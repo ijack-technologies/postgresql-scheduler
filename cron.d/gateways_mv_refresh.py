@@ -38,7 +38,7 @@ def main(c):
 
     except Exception as err:
         c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
-        alertees_email = ['smccarthy@ijack.ca']
+        alertees_email = ['smccarthy@myijack.com']
         alertees_sms = ['+14036897250']
         subject = f"IJACK {LOGFILE_NAME} ERROR!!!"
         msg_sms = f"Sean, check '{LOGFILE_NAME}.py' now! There has been an error!"

@@ -14,26 +14,11 @@ from utils import (
     send_mailgun_email,
     send_twilio_phone,
     send_twilio_sms,
+    get_client_iot,
 )
 
 LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "synch_aws_iot_shadow_with_aws_rds_postgres_config"
-
-
-def get_client_iot():
-    """"""
-    client_iot = boto3.client(
-        "iot-data",
-        region_name="us-west-2",
-        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", None),
-        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", None),
-    )
-    # Change the botocore logger from logging.DEBUG to INFO,
-    # since DEBUG produces too many messages
-    logging.getLogger("botocore").setLevel(logging.INFO)
-    logging.getLogger("urllib3").setLevel(logging.INFO)
-
-    return client_iot
 
 
 def main(c):
