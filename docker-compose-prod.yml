@@ -2,7 +2,7 @@ version: '3.7'
 services:
   postgresql_scheduler:
     # Name and tag of image the Dockerfile creates
-    image: postgresql_scheduler:latest
+    image: mccarthysean/ijack:postgresql_scheduler
     env_file: .env
     networks:
       - traefik-public
@@ -11,7 +11,6 @@ services:
         condition: on-failure
 
 networks:
-  # Use the previously created public network "traefik-public", shared with other
-  # services that need to be publicly available via this Traefik
+  # Use the previously created public network "traefik-public", shared with other services
   traefik-public:
     external: true
