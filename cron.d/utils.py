@@ -66,8 +66,7 @@ def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
 
 
 def get_conn(c, sql, db='ijack'):
-    """
-    """
+    """Get connection to IJACK database"""
 
     if db == 'ijack':
         host = os.getenv("HOST_IJ") 

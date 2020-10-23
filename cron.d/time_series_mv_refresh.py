@@ -15,10 +15,15 @@ LOG_LEVEL = logging.INFO
 LOGFILE_NAME = 'time_series_mv_refresh'
 
 # # Requires owner privileges (must be run by "master" user, not "app_user")
-SQL = """
+SQL1 = """
+    REFRESH MATERIALIZED VIEW CONCURRENTLY 
+    public.time_series_view
+    WITH DATA;
+"""
+SQL2 = """
     REFRESH MATERIALIZED VIEW CONCURRENTLY 
     public.time_series_mv
-    WITH DATA
+    WITH DATA;
 """
 
 # SQL = "select refresh_time_series_mv();"
@@ -33,7 +38,8 @@ def main(c):
         if c.TEST_ERROR:
             raise ValueError
 
-        run_query(c, SQL, db='timescale', commit=True)
+        run_query(c, SQL1, db='timescale', commit=True)
+        run_query(c, SQL2, db='timescale', commit=True)
 
     except Exception as err:
         c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
