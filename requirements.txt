@@ -14,6 +14,7 @@ idna==2.9
 isort==4.3.21
 jmespath==0.10.0
 lazy-object-proxy==1.4.3
+# loguru==0.5.3
 mccabe==0.6.1
 mypy-extensions==0.4.3
 pathspec==0.8.0

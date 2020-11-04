@@ -27,6 +27,8 @@ import gateways_mv_refresh
 import alarm_log_mv_refresh_old_non_surface
 import alarm_log_mv_refresh
 import alarm_log_delete_duplicates
+import update_gw_power_unit_id_from_shadow
+import synch_aws_iot_shadow_with_aws_rds_postgres_config
 
 LOGFILE_NAME = 'test_main_programs'
 
@@ -79,7 +81,18 @@ class TestAll(unittest.TestCase):
         """Test the main program"""
         global c
         alarm_log_delete_duplicates.main(c)
+        
 
+    def test_update_gw_power_unit_id_from_shadow(self):
+        """Test the main program"""
+        global c
+        update_gw_power_unit_id_from_shadow.main(c)
+
+
+    def test_synch_aws_iot_shadow_with_aws_rds_postgres_config(self):
+        """Test the main program"""
+        global c
+        synch_aws_iot_shadow_with_aws_rds_postgres_config.main(c)
 
 
 if __name__ == '__main__':

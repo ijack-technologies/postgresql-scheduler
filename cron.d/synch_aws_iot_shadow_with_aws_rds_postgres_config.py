@@ -4,6 +4,7 @@ import os
 # import pandas as pd
 import json
 import time
+import pathlib
 
 # local imports
 from utils import (
@@ -15,12 +16,18 @@ from utils import (
     send_twilio_phone,
     send_twilio_sms,
     get_client_iot,
+    error_wrapper,
+    exit_if_already_running,
 )
 
 LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "synch_aws_iot_shadow_with_aws_rds_postgres_config"
+c = Config()
+c.logger = configure_logging(
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+)
 
-
+@error_wrapper()
 def main(c):
     """
     Query unit data from AWS RDS "IJACK" PostgreSQL database, 
@@ -29,6 +36,9 @@ def main(c):
     to connect to a PostgreSQL database over the internet (too many connections cause errors).
     The AWS IoT thing shadow is more robust, and AWS IoT can accept almost infinite connections at once. 
     """
+    
+    exit_if_already_running(c, pathlib.Path(__file__).name)
+
     SQL = """
         select aws_thing, gateway, customer, mqtt_topic, unit_type, apn, 
             location, power_unit, model, 
@@ -74,8 +84,4 @@ def main(c):
 
 
 if __name__ == "__main__":
-    c = Config()
-    c.logger = configure_logging(
-        __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
-    )
     main(c)

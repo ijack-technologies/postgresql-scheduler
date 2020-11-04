@@ -5,10 +5,12 @@ import time
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import pathlib
 
 # local imports
 from utils import (
-    Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms
+    Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms, 
+    error_wrapper, exit_if_already_running,
 )
 
 LOG_LEVEL = logging.INFO
@@ -28,35 +30,14 @@ SQL2 = """
 
 # SQL = "select refresh_time_series_mv();"
 
-
+@error_wrapper()
 def main(c):
     """Main entrypoint function"""
-    global SQL
     
-    try:
-        # If we're testing the alerting (when an error happens), raise an exception
-        if c.TEST_ERROR:
-            raise ValueError
-
-        run_query(c, SQL1, db='timescale', commit=True)
-        run_query(c, SQL2, db='timescale', commit=True)
-
-    except Exception as err:
-        c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
-        alertees_email = ['smccarthy@myijack.com']
-        alertees_sms = ['+14036897250']
-        subject = f"IJACK {LOGFILE_NAME} ERROR!!!"
-        msg_sms = f"Sean, check '{LOGFILE_NAME}.py' now! There has been an error!"
-        msg_email = msg_sms + f"\nError message: {err}"
-
-        message = send_twilio_sms(c, alertees_sms, msg_sms)
-        rc = send_mailgun_email(c, text=msg_email, html='', emailees_list=alertees_email, subject=subject)
-
-        c.TEST_DICT['message'] = message
-        c.TEST_DICT['rc'] = rc
-        c.TEST_DICT['msg_sms'] = msg_sms
-
-        raise
+    exit_if_already_running(c, pathlib.Path(__file__).name)
+    
+    run_query(c, SQL1, db='timescale', commit=True)
+    run_query(c, SQL2, db='timescale', commit=True)
 
     return True
 

@@ -1,9 +1,9 @@
 import boto3
 import logging
 import os
-# import pandas as pd
 import json
 import time
+import pathlib
 
 # local imports
 from utils import (
@@ -16,6 +16,8 @@ from utils import (
     send_twilio_sms,
     get_client_iot,
     get_iot_device_shadow,
+    exit_if_already_running,
+    error_wrapper,
 )
 
 LOG_LEVEL = logging.INFO
@@ -50,6 +52,7 @@ def compare_shadow_and_db(shadow_value, db_value, db_column, power_unit_id, stru
         update_structures_table(c, power_unit_id, db_column, shadow_value, structure, db_value)
 
 
+@error_wrapper()
 def main(c):
     """
     Query unit data from AWS RDS "IJACK" PostgreSQL database, 
@@ -58,6 +61,8 @@ def main(c):
     to connect to a PostgreSQL database over the internet (too many connections cause errors).
     The AWS IoT thing shadow is more robust, and AWS IoT can accept almost infinite connections at once. 
     """
+    
+    exit_if_already_running(c, pathlib.Path(__file__).name)
 
     # Get gateway records
     sql_gw = """
@@ -96,16 +101,6 @@ def main(c):
         where power_unit_id is not null
     """
     _, structure_rows = run_query(c, sql_structures, db="ijack", fetchall=True)
-    # structures_dict = {
-    #     row['power_unit']: {
-    #         row['structure_id']
-    #         row['power_unit_id'], 
-    #     }
-
-    #     for row in structure_rows
-    # }
-
-    # df = pd.DataFrame(gw_rows, columns=columns)
 
     # Get the Boto3 AWS IoT client for updating the "thing shadow"
     client_iot = get_client_iot()

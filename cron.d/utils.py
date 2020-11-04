@@ -1,4 +1,4 @@
-
+import sys
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
@@ -11,6 +11,12 @@ import requests
 from twilio.rest import Client
 import boto3
 import json
+import subprocess
+from subprocess import PIPE, STDOUT
+import signal
+import functools
+import pathlib
+
 
 LOG_LEVEL = logging.INFO
 # logger = logging.getLogger(__name__)
@@ -36,7 +42,7 @@ def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
     logger.setLevel(logging.DEBUG) 
     formatter = logging.Formatter('%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s')
 
-    date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
+    # date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
     # log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filename = f"{logfile_name}.log"
     log_filepath = os.path.join(path_to_log_directory, log_filename)
@@ -121,7 +127,7 @@ def run_query(c, sql, db='ijack', fetchall=False, commit=False):
     return columns, rows
 
 
-def error_wrapper(c, func, *args, **kwargs):
+def error_wrapper_old(c, func, *args, **kwargs):
     """So the loop can continue even if a function fails"""
 
     try:
@@ -250,4 +256,146 @@ def get_iot_device_shadow(c, client_iot, aws_thing):
         c.logger.exception(f"ERROR! Probably no shadow exists...")
 
     return response_payload
+
+
+def subprocess_run(c, command_list, method='run', shell=False, sleep=0, log_results=False):
+    """
+    Run the subprocess.run() command and print the output to the log
+    Return the return code (rc) and standard output (stdout)
+    """
     
+    rc = 1
+    stdout = ''
+    try:
+        if method == 'run':
+            cp = subprocess.run(command_list, shell=shell, stdout=PIPE, stderr=STDOUT, universal_newlines=True)
+            rc = cp.returncode
+            stdout = cp.stdout
+
+        elif method == 'Popen':
+            _ = subprocess.Popen(command_list)
+            rc = 0
+            stdout = ''
+
+        elif method == 'check_output':
+            cp = subprocess.check_output(command_list, shell=shell, universal_newlines=True)
+            rc = 'N/A'
+            stdout = cp
+    except Exception:
+        c.logger.exception(f"ERROR running command with subprocess_run(): '{command_list}'")
+        pass
+
+    else:
+        log_msg = f"rc: '{rc}' from command: \n'{command_list}'. \nstdout/stderr: \n{stdout}\n\n"
+        if log_results:
+            c.logger.info(log_msg)
+        else:
+            c.logger.debug(log_msg)
+
+        # Sleep for 'sleep' seconds, if desired, after completing the process
+        time.sleep(sleep)
+
+    return rc, stdout
+
+
+def find_pids(c, search_string):
+    """Find the PID of the running process based on the search string, and return a list of PIDs"""
+    rc, stdout = subprocess_run(c, ['/usr/bin/pgrep', '-f', search_string])
+    list_of_pids = []
+    if rc == 0:
+        for line in stdout.splitlines():
+            stripped = line.rstrip("\r\n")
+            list_of_pids.append(stripped)
+
+    return list_of_pids
+
+
+def exit_if_already_running(c, filename):
+    """If this program is already running, exit"""
+    list_of_pids = find_pids(c, filename)
+    if len(list_of_pids) > 1:
+        c.logger.warning(f"This scheduled process is already running with PID(s) of '{list_of_pids}'. Exiting now to avoid overloading the system.")
+        if not c.TEST_FUNC:
+            sys.exit(0)
+
+
+def kill_pids(c, list_of_pids):
+    """Kill all process IDs (PIDs) in the list_of_pids"""
+    assert isinstance(list_of_pids, list) 
+
+    list_of_pids_killed = []
+    for pid in list_of_pids:
+        try: 
+            int_pid = int(pid)
+        except Exception:
+            c.logger.exception(f"PID {pid} cannot be cast to an integer for os.kill(), which requires an integer")
+
+        os.kill(int_pid, signal.SIGTERM)
+        c.logger.info(f"PID {pid} killed")
+        list_of_pids_killed.append(pid)
+
+    return list_of_pids_killed
+
+
+# def error_wrapper(func):
+
+# 	@functools.wraps(func)
+# 	def wrapper_decorator(*args, **kwargs):
+# 		# Do something before
+# 		value = func(*args, **kwargs)
+# 		# Do something after
+# 		return value
+		
+#     return wrapper_decorator 
+
+
+def check_if_c_in_args(args):
+    c = None
+    for arg in args:
+        if "utils.Config object" in str(arg):
+            c = arg
+            break
+    if c is None:
+        c = Config()
+        c.logger = configure_logging(
+            __name__, logfile_name=pathlib.Path(__file__).stem, path_to_log_directory="/var/log/"
+        )
+    return c
+
+
+def error_wrapper():
+    def wrapper_outer(func):
+        @functools.wraps(func)
+        def wrapper_inner(*args, **kwargs):
+            # Do something before
+            c = check_if_c_in_args(args)
+            try:
+                # If we're testing the alerting (when an error happens), raise an exception
+                if c.TEST_ERROR:
+                    raise ValueError
+
+                # Run the actual function
+                value = func(*args, **kwargs)
+
+            # Do something after
+            except Exception as err:
+                filename = pathlib.Path(__file__).name
+                c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
+                alertees_email = ['smccarthy@myijack.com']
+                alertees_sms = ['+14036897250']
+                subject = f"IJACK {filename} ERROR!!!"
+                msg_sms = f"Sean, check '{filename}' now! There has been an error!"
+                msg_email = msg_sms + f"\nError message: {err}"
+
+                message = send_twilio_sms(c, alertees_sms, msg_sms)
+                rc = send_mailgun_email(c, text=msg_email, html='', emailees_list=alertees_email, subject=subject)
+
+                c.TEST_DICT['message'] = message
+                c.TEST_DICT['rc'] = rc
+                c.TEST_DICT['msg_sms'] = msg_sms
+
+                raise
+
+            return value
+        return wrapper_inner
+    return wrapper_outer

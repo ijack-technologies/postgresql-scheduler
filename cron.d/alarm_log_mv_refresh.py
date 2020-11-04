@@ -5,10 +5,12 @@ import time
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import pathlib
 
 # local imports
 from utils import (
-    Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms
+    Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms,
+    exit_if_already_running,
 )
 
 LOG_LEVEL = logging.INFO
@@ -89,53 +91,14 @@ SQL = """
 #     return None
 
 
+@error_wrapper()
 def main(c):
     """Main entrypoint function"""
     global SQL
-
-    # while True:
-    #     try:
-    #         # Start the database connections
-    #         db = ConfigDB()
-    #         minute_counter = 0
-    #         while True:
-    #             # Refresh the alarm log materialized view
-    #             error_wrapper(alarm_log_refresh, db, minute_counter)
-
-    #             time.sleep(60) # Sleep 60 seconds
-    #             minute_counter += 1
-
-
-    #     except Exception:
-    #         logger.exception("There's been a problem...")
-    #         # Keep going regardless
-    #         continue # continue: go back to the top
-
-    # sql = "REFRESH MATERIALIZED VIEW CONCURRENTLY public.alarm_log_mv;"
-
-    try:
-        # If we're testing the alerting (when an error happens), raise an exception
-        if c.TEST_ERROR:
-            raise ValueError
-
-        run_query(c, SQL, commit=True)
-
-    except Exception as err:
-        c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
-        alertees_email = ['smccarthy@myijack.com']
-        alertees_sms = ['+14036897250']
-        subject = f"IJACK {LOGFILE_NAME} ERROR!!!"
-        msg_sms = f"Sean, check '{LOGFILE_NAME}.py' now! There has been an error!"
-        msg_email = msg_sms + f"\nError message: {err}"
-
-        message = send_twilio_sms(c, alertees_sms, msg_sms)
-        rc = send_mailgun_email(c, text=msg_email, html='', emailees_list=alertees_email, subject=subject)
-
-        c.TEST_DICT['message'] = message
-        c.TEST_DICT['rc'] = rc
-        c.TEST_DICT['msg_sms'] = msg_sms
-
-        raise
+    
+    exit_if_already_running(c, pathlib.Path(__file__).name)
+    
+    run_query(c, SQL, commit=True)
 
     return None
 
