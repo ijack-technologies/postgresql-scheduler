@@ -24,7 +24,7 @@ LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "update_gw_power_unit_id_from_shadow"
 
 
-def convert_to_float(string):
+def convert_to_float(c, string):
     try:
         return float(string)
     except Exception:
@@ -46,8 +46,8 @@ def update_structures_table(c, power_unit_id, column, new_value, structure, db_v
 
 
 def compare_shadow_and_db(shadow_value, db_value, db_column, power_unit_id, structure):
-    shadow_value2 = round(convert_to_float(shadow_value), 2)
-    db_value2 = round(convert_to_float(db_value), 2)
+    shadow_value2 = round(convert_to_float(c, shadow_value), 2)
+    db_value2 = round(convert_to_float(c, db_value), 2)
     if shadow_value2 != 0 and shadow_value2 != db_value2:
         update_structures_table(c, power_unit_id, db_column, shadow_value, structure, db_value)
 
