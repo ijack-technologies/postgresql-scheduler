@@ -45,7 +45,9 @@ def update_structures_table(c, power_unit_id, column, new_value, structure, db_v
     send_mailgun_email(c, text=sql_update, html='', emailees_list=c.EMAIL_LIST_DEV, subject=subject)
 
 
-def compare_shadow_and_db(shadow_value, db_value, db_column, power_unit_id, structure):
+def compare_shadow_and_db(c, shadow_value, db_value, db_column, power_unit_id, structure):
+    if shadow_value is None:
+        return None
     shadow_value2 = round(convert_to_float(c, shadow_value), 2)
     db_value2 = round(convert_to_float(c, db_value), 2)
     if shadow_value2 != 0 and shadow_value2 != db_value2:
@@ -74,9 +76,9 @@ def main(c):
         from public.gw t1
         left join public.power_units t2 
             on t2.id = t1.power_unit_id
-        where aws_thing <> 'test'
-            and aws_thing is not null
-            and power_unit_id is not null
+        --where aws_thing <> 'test'
+        --    and aws_thing is not null
+        --    and power_unit_id is not null
     """
     _, gw_rows = run_query(c, sql_gw, db="ijack", fetchall=True)
 
@@ -117,6 +119,10 @@ def main(c):
             continue
 
         shadow = get_iot_device_shadow(c, client_iot, aws_thing)
+        if shadow == {}:
+            c.logger.warning(f'No shadow exists for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...')
+            continue
+
         reported = shadow.get('state', {}).get('reported', {})
         power_unit_shadow = reported.get('SERIAL_NUMBER', None)
         latitude_shadow = reported.get('LATITUDE', None)
@@ -129,13 +135,13 @@ def main(c):
         try:
             power_unit_shadow = int(power_unit_shadow)
         except Exception:
-            c.logger.exception(f"Can't convert the device shadow's power_unit of {power_unit_shadow} to an integer. \
+            c.logger.exception(f"Can't convert the '{aws_thing}' device shadow's power_unit of '{power_unit_shadow}' to an integer. \
 Continuing with next AWS_THING in public.gw table...")
             continue
 
         power_unit_id_shadow = pu_dict.get(power_unit_shadow, None)
         if power_unit_id_shadow is None:
-            c.logger.warning(f"Can't find the power unit ID for the shadow's reported power unit of {power_unit_shadow}. \
+            c.logger.warning(f"Can't find the power unit ID for the shadow's reported power unit of '{power_unit_shadow}'. \
 Continuing with next AWS_THING in public.gw table...")
             continue
 
@@ -146,8 +152,8 @@ Continuing with next AWS_THING in public.gw table...")
         structure_rows_relevant = [row for row in structure_rows if row['power_unit_id'] == power_unit_id_gw]
         for row in structure_rows_relevant:
             structure = row['structure']
-            compare_shadow_and_db(latitude_shadow, row['gps_lat'], 'gps_lat', power_unit_id_gw, structure)
-            compare_shadow_and_db(longitude_shadow, row['gps_lon'], 'gps_lon', power_unit_id_gw, structure)
+            compare_shadow_and_db(c, latitude_shadow, row['gps_lat'], 'gps_lat', power_unit_id_gw, structure)
+            compare_shadow_and_db(c, longitude_shadow, row['gps_lon'], 'gps_lon', power_unit_id_gw, structure)
 
         if power_unit_id_shadow == power_unit_id_gw:
             c.logger.info(f"Power unit '{power_unit_shadow}' in the public.gw table matches the one reported in the device shadow. Continuing with next...")
