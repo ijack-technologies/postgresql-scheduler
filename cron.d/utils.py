@@ -71,7 +71,7 @@ def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
     return logger
 
 
-def get_conn(c, sql, db='ijack'):
+def get_conn(c, db='ijack'):
     """Get connection to IJACK database"""
 
     if db == 'ijack':
@@ -101,9 +101,14 @@ def get_conn(c, sql, db='ijack'):
 
 
 
-def run_query(c, sql, db='ijack', fetchall=False, commit=False):
+def run_query(c, sql, db='ijack', fetchall=False, commit=False, conn=None):
     """Run and time the SQL query"""
-    conn = get_conn(c, sql, db)
+
+    is_close_conn = False
+    if conn is None:
+        conn = get_conn(c, db)
+        is_close_conn = True
+
     columns = None
     rows = None
 
@@ -121,8 +126,9 @@ def run_query(c, sql, db='ijack', fetchall=False, commit=False):
     time_finish = time.time()
     c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
 
-    conn.close()
-    del conn
+    if is_close_conn:
+        conn.close()
+        del conn
 
     return columns, rows
 

@@ -9,6 +9,7 @@ import pathlib
 from utils import (
     Config,
     configure_logging,
+    get_conn,
     run_query,
     error_wrapper,
     send_mailgun_email,
@@ -66,6 +67,9 @@ def main(c):
     
     exit_if_already_running(c, pathlib.Path(__file__).name)
 
+    # Get DB connection since we're running several queries (might as well have just one connection)
+    conn = get_conn(c, db="ijack")
+
     # Get gateway records
     sql_gw = """
         select 
@@ -80,7 +84,7 @@ def main(c):
         --    and aws_thing is not null
         --    and power_unit_id is not null
     """
-    _, gw_rows = run_query(c, sql_gw, db="ijack", fetchall=True)
+    _, gw_rows = run_query(c, sql_gw, db="ijack", fetchall=True, conn=conn)
 
     # Get power_unit records
     sql_pu = """
@@ -89,7 +93,7 @@ def main(c):
             power_unit
         from public.power_units
     """
-    _, pu_rows = run_query(c, sql_pu, db="ijack", fetchall=True)
+    _, pu_rows = run_query(c, sql_pu, db="ijack", fetchall=True, conn=conn)
     pu_dict = {row['power_unit']: row['power_unit_id'] for row in pu_rows}
 
     # Get structure records for comparing GPS lat/lon by power unit
@@ -102,7 +106,11 @@ def main(c):
         from public.structures
         where power_unit_id is not null
     """
-    _, structure_rows = run_query(c, sql_structures, db="ijack", fetchall=True)
+    _, structure_rows = run_query(c, sql_structures, db="ijack", fetchall=True, conn=conn)
+
+    # Close the DB connection now
+    conn.close()
+    del conn
 
     # Get the Boto3 AWS IoT client for updating the "thing shadow"
     client_iot = get_client_iot()
@@ -170,6 +178,8 @@ power unit: {power_unit_shadow} ({power_unit_id_shadow}) instead of: {power_unit
 
     time_finish = time.time()
     c.logger.info(f"Time to update all gateways to their reported power units: {round(time_finish - time_start)} seconds")
+
+    del client_iot
 
     return None
 
