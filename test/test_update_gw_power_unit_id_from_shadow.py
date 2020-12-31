@@ -57,7 +57,7 @@ class TestAll(unittest.TestCase):
     def test_update_gw_power_unit_id_from_shadow(self):
         """Test the main program"""
         global c
-        with patch('update_gw_power_unit_id_from_shadow.exit_if_already_running') as exit_:
+        with patch('update_gw_power_unit_id_from_shadow.exit_if_already_running') as _:
             update_gw_power_unit_id_from_shadow.main(c)
 
 

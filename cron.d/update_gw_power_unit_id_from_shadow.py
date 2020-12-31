@@ -169,8 +169,8 @@ Continuing with next AWS_THING in public.gw table...")
 
         power_unit_gw = dict_.get('power_unit', None)
         
-        msg = f"{i+1} of {n_gw_rows}: Updating public.gw AWS_THING: {aws_thing} to \
-power unit: {power_unit_shadow} ({power_unit_id_shadow}) instead of: {power_unit_gw}"
+        msg = f"{i+1} of {n_gw_rows}: Updating public.gw AWS_THING: {aws_thing} to " + \
+            f"power unit: {power_unit_shadow} ({power_unit_id_shadow}) instead of: {power_unit_gw}"
         c.logger.info(msg)
 
         subject = "Changing power unit in public.gw table!"
