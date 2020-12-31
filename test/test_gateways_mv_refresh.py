@@ -10,6 +10,7 @@ import logging
 import pickle
 import requests
 from twilio.rest import Client
+import psycopg2
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = '/workspace/cron.d'
@@ -53,42 +54,14 @@ class TestAll(unittest.TestCase):
         c.TEST_FUNC = True
         
 
-    def test_time_series(self):
+    def test_gateways_mv_refresh(self):
         """Test the main program"""
         global c
-        time_series_mv_refresh.main(c)
-        
 
-    def test_alarm_log_refresh_old(self):
-        """Test the main program"""
-        global c
-        alarm_log_mv_refresh_old_non_surface.main(c)
-        
-
-    def test_alarm_log_refresh_new(self):
-        """Test the main program"""
-        global c
-        alarm_log_mv_refresh.main(c)
-        
-
-    def test_alarm_log_delete_duplicates(self):
-        """Test the main program"""
-        global c
-        alarm_log_delete_duplicates.main(c)
-        
-
-    def test_update_gw_power_unit_id_from_shadow(self):
-        """Test the main program"""
-        global c
-        update_gw_power_unit_id_from_shadow.main(c)
-
-
-    def test_synch_aws_iot_shadow_with_aws_rds_postgres_config(self):
-        """Test the main program"""
-        global c
-        synch_aws_iot_shadow_with_aws_rds_postgres_config.main(c)
+        # This is no longer a materialized view--just a regular view
+        with self.assertRaises(psycopg2.errors.WrongObjectType):
+            gateways_mv_refresh.main(c)
 
 
 if __name__ == '__main__':
     unittest.main()
-    
