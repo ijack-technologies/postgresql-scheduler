@@ -22,15 +22,9 @@ except ValueError:
 from utils import (
     Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms
 )
-import time_series_mv_refresh
-import gateways_mv_refresh
-import alarm_log_mv_refresh_old_non_surface
-import alarm_log_mv_refresh
-import alarm_log_delete_duplicates
-import update_gw_power_unit_id_from_shadow
 import synch_aws_iot_shadow_with_aws_rds_postgres_config
 
-LOGFILE_NAME = 'test_main_programs'
+LOGFILE_NAME = 'test_synch_aws_iot_shadow_with_aws_rds_postgres_config'
 
 c = Config()
 c.DEV_TEST_PRD = 'development'
@@ -51,36 +45,6 @@ class TestAll(unittest.TestCase):
         global c
         c.DEV_TEST_PRD = 'development'
         c.TEST_FUNC = True
-        
-
-    def test_time_series(self):
-        """Test the main program"""
-        global c
-        time_series_mv_refresh.main(c)
-        
-
-    def test_alarm_log_refresh_old(self):
-        """Test the main program"""
-        global c
-        alarm_log_mv_refresh_old_non_surface.main(c)
-        
-
-    def test_alarm_log_refresh_new(self):
-        """Test the main program"""
-        global c
-        alarm_log_mv_refresh.main(c)
-        
-
-    def test_alarm_log_delete_duplicates(self):
-        """Test the main program"""
-        global c
-        alarm_log_delete_duplicates.main(c)
-        
-
-    def test_update_gw_power_unit_id_from_shadow(self):
-        """Test the main program"""
-        global c
-        update_gw_power_unit_id_from_shadow.main(c)
 
 
     def test_synch_aws_iot_shadow_with_aws_rds_postgres_config(self):

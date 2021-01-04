@@ -70,9 +70,16 @@ def main(c):
                 d['state']['reported'][f"C__{key.upper()}"] = value
 
         # Logger info
-        mqtt_topic = dict_['mqtt_topic'].title()
+        customer = None
+        try:
+            # Get a slightly shorter customer name, if available
+            customer = dict_['mqtt_topic'].title()
+        except Exception:
+            c.logger.exception("Trouble finding the MQTT topic. Is this the SHOP gateway? Continuing with the customer name instead...")
+            customer = dict_['customer']
+
         aws_thing = dict_['aws_thing'].upper()
-        c.logger.info(f"{i+1} of {n_rows}: Updating {mqtt_topic} AWS_THING: {aws_thing}")
+        c.logger.info(f"{i+1} of {n_rows}: Updating {customer} AWS_THING: {aws_thing}")
 
         # Update the thing shadow for this gateway/AWS_THING
         client_iot.update_thing_shadow(thingName=dict_['aws_thing'], payload=json.dumps(d))
