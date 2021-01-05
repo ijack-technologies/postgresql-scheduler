@@ -107,8 +107,13 @@ def main(c):
             structure,
             power_unit_id,
             gps_lat,
-            gps_lon
-        from public.structures
+            gps_lon,
+            t3.customer
+        from public.structures t1
+        left join myijack.structure_customer_rel t2
+            on t2.structure_id = t1.id
+        left join myijack.customers t3
+            on t3.id = t2.customer_id
         where power_unit_id is not null
     """
     _, structure_rows = run_query(c, sql_structures, db="ijack", fetchall=True, conn=conn)
@@ -162,9 +167,12 @@ Continuing with next AWS_THING in public.gw table...")
         power_unit_id_gw = dict_.get('power_unit_id', None)
 
         # Compare the GPS first
+        structure = None
+        customer = None
         structure_rows_relevant = [row for row in structure_rows if row['power_unit_id'] == power_unit_id_gw]
         for row in structure_rows_relevant:
             structure = row['structure']
+            customer = row['customer']
             compare_shadow_and_db(c, latitude_shadow, row['gps_lat'], 'gps_lat', power_unit_id_gw, power_unit_shadow, structure, aws_thing)
             compare_shadow_and_db(c, longitude_shadow, row['gps_lon'], 'gps_lon', power_unit_id_gw, power_unit_shadow, structure, aws_thing)
 
@@ -175,7 +183,10 @@ Continuing with next AWS_THING in public.gw table...")
         power_unit_gw = dict_.get('power_unit', None)
         
         msg = f"{i+1} of {n_gw_rows}: Updating public.gw AWS_THING: {aws_thing} to " + \
-            f"power unit: {power_unit_shadow} ({power_unit_id_shadow}) instead of: {power_unit_gw}"
+            f"the power unit reported in the shadow: '{power_unit_shadow}' ({power_unit_id_shadow}) " + \
+            f"instead of '{power_unit_gw}' ({power_unit_id_gw}) in the public.gw table. " + \
+            f"The structure for the current power unit ID of '{power_unit_id_gw}' is '{structure}'. " + \
+            f"The customer for structure '{structure}' is '{customer}'. "
         c.logger.info(msg)
 
         subject = "Changing power unit in public.gw table!"

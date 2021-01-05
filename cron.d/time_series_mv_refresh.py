@@ -16,7 +16,7 @@ from utils import (
 LOG_LEVEL = logging.INFO
 LOGFILE_NAME = 'time_series_mv_refresh'
 
-# # Requires owner privileges (must be run by "master" user, not "app_user")
+# Requires owner privileges (must be run by "master" user, not "app_user")
 SQL1 = """
     REFRESH MATERIALIZED VIEW CONCURRENTLY 
     public.time_series_view
