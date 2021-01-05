@@ -182,14 +182,14 @@ Continuing with next AWS_THING in public.gw table...")
 
         power_unit_gw = dict_.get('power_unit', None)
         
-        msg = f"{i+1} of {n_gw_rows}: Updating public.gw AWS_THING: {aws_thing} to " + \
+        msg = f"{i+1} of {n_gw_rows}: Please update public.gw AWS_THING: {aws_thing} record to " + \
             f"the power unit reported in the shadow: '{power_unit_shadow}' ({power_unit_id_shadow}) " + \
             f"instead of '{power_unit_gw}' ({power_unit_id_gw}) in the public.gw table. " + \
             f"The structure for the current power unit ID of '{power_unit_id_gw}' is '{structure}'. " + \
             f"The customer for structure '{structure}' is '{customer}'. "
         c.logger.info(msg)
 
-        subject = "Changing power unit in public.gw table!"
+        subject = "Need new/different power unit in public.gw table!"
         send_mailgun_email(c, text=msg, html='', emailees_list=c.EMAIL_LIST_DEV, subject=subject)
 
     time_finish = time.time()
