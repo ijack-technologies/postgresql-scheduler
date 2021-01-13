@@ -39,8 +39,10 @@ def main(c):
     
     exit_if_already_running(c, pathlib.Path(__file__).name)
 
+    # These are all the metrics that will be put in the AWS IoT device shadow as "C__{METRIC}"
     SQL = """
-        select aws_thing, gateway, customer, mqtt_topic, unit_type, apn, 
+        select aws_thing, gateway, customer, mqtt_topic, cust_sub_group_abbrev,
+            unit_type, apn, 
             location, power_unit, model, 
             wait_time_mins_spm, 
             time_zone,
