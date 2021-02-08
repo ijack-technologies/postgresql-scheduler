@@ -24,7 +24,7 @@ from utils import (
 )
 import time_series_mv_refresh
 import gateways_mv_refresh
-import alarm_log_mv_refresh_old_non_surface
+# import alarm_log_mv_refresh_old_non_surface
 import alarm_log_mv_refresh
 import alarm_log_delete_duplicates
 import update_gw_power_unit_id_from_shadow
@@ -59,10 +59,10 @@ class TestAll(unittest.TestCase):
         time_series_mv_refresh.main(c)
         
 
-    def test_alarm_log_refresh_old(self):
-        """Test the main program"""
-        global c
-        alarm_log_mv_refresh_old_non_surface.main(c)
+    # def test_alarm_log_refresh_old(self):
+    #     """Test the main program"""
+    #     global c
+    #     alarm_log_mv_refresh_old_non_surface.main(c)
         
 
     def test_alarm_log_refresh_new(self):

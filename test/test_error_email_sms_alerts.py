@@ -24,7 +24,7 @@ from utils import (
 )
 import time_series_mv_refresh
 import gateways_mv_refresh
-import alarm_log_mv_refresh_old_non_surface
+# import alarm_log_mv_refresh_old_non_surface
 import alarm_log_mv_refresh
 import alarm_log_delete_duplicates
 
@@ -90,17 +90,17 @@ class TestAll(unittest.TestCase):
         self.assertEqual(c.TEST_DICT['message'], '')
     
 
-    def test_raise_error_email_mv_refresh_old(self):
-        """Should send me an email and SMS if there's an error in the program"""
-        global c
-        c.TEST_FUNC = True
-        c.TEST_ERROR = True
-        with self.assertRaises(ValueError):
-            alarm_log_mv_refresh_old_non_surface.main(c)
-        self.assertIn('Sean, check ', c.TEST_DICT['msg_sms'])
-        self.assertIn('There has been an error!', c.TEST_DICT['msg_sms'])
-        self.assertEqual(c.TEST_DICT['rc'], '')
-        self.assertEqual(c.TEST_DICT['message'], '')
+    # def test_raise_error_email_mv_refresh_old(self):
+    #     """Should send me an email and SMS if there's an error in the program"""
+    #     global c
+    #     c.TEST_FUNC = True
+    #     c.TEST_ERROR = True
+    #     with self.assertRaises(ValueError):
+    #         alarm_log_mv_refresh_old_non_surface.main(c)
+    #     self.assertIn('Sean, check ', c.TEST_DICT['msg_sms'])
+    #     self.assertIn('There has been an error!', c.TEST_DICT['msg_sms'])
+    #     self.assertEqual(c.TEST_DICT['rc'], '')
+    #     self.assertEqual(c.TEST_DICT['message'], '')
     
 
     def test_raise_error_email_gateways_mv_refresh(self):

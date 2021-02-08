@@ -25,7 +25,7 @@ from utils import (
 )
 import time_series_mv_refresh
 import gateways_mv_refresh
-import alarm_log_mv_refresh_old_non_surface
+# import alarm_log_mv_refresh_old_non_surface
 import alarm_log_mv_refresh
 import alarm_log_delete_duplicates
 import update_gw_power_unit_id_from_shadow
