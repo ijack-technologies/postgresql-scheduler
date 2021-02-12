@@ -390,7 +390,7 @@ def error_wrapper():
                 alertees_email = ['smccarthy@myijack.com']
                 alertees_sms = ['+14036897250']
                 subject = f"IJACK {filename} ERROR!!!"
-                msg_sms = f"Sean, check '{filename}' now! There has been an error!"
+                msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error!"
                 msg_email = msg_sms + f"\nError message: {err}"
 
                 message = send_twilio_sms(c, alertees_sms, msg_sms)
