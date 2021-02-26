@@ -1,56 +1,65 @@
-import sys
+import functools
+import json
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
+import pathlib
 import platform
+import signal
+import subprocess
+import sys
 import time
-from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
+from subprocess import PIPE, STDOUT
+
+import boto3
 import psycopg2
-from psycopg2.extras import RealDictCursor
 import requests
 from twilio.rest import Client
-import boto3
-import json
-import subprocess
-from subprocess import PIPE, STDOUT
-import signal
-import functools
-import pathlib
-
 
 LOG_LEVEL = logging.INFO
 # logger = logging.getLogger(__name__)
 
 
-class Config():
+class Config:
     """Main config class"""
+
     TEST_FUNC = False
     TEST_ERROR = False
-    DEV_TEST_PRD = 'production'
-    PHONE_LIST_DEV = ['+14036897250']
-    EMAIL_LIST_DEV = ['smccarthy@myijack.com']
+    DEV_TEST_PRD = "production"
+    PHONE_LIST_DEV = ["+14036897250"]
+    EMAIL_LIST_DEV = ["smccarthy@myijack.com"]
     # For returning values in the "c" config object
     TEST_DICT = {}
 
 
-def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
+def configure_logging(name, logfile_name, path_to_log_directory="/var/log/"):
     """Configure logger"""
     global LOG_LEVEL
 
     logger = logging.getLogger(name)
     # Override the default logging.WARNING level so all messages can get through to the handlers
-    logger.setLevel(logging.DEBUG) 
-    formatter = logging.Formatter('%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s')
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s"
+    )
 
     # date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
     # log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filename = f"{logfile_name}.log"
     log_filepath = os.path.join(path_to_log_directory, log_filename)
 
-    if platform.system() == 'Linux':
+    if platform.system() == "Linux":
         # fh = logging.FileHandler(filename=log_filepath)
-        fh = TimedRotatingFileHandler(filename=log_filepath, 
-            when='H', interval=1, backupCount=48, encoding=None, delay=False, utc=False, atTime=None)
+        fh = TimedRotatingFileHandler(
+            filename=log_filepath,
+            when="H",
+            interval=1,
+            backupCount=48,
+            encoding=None,
+            delay=False,
+            utc=False,
+            atTime=None,
+        )
         fh.setLevel(LOG_LEVEL)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
@@ -60,48 +69,47 @@ def configure_logging(name, logfile_name, path_to_log_directory='/var/log/'):
     sh.setLevel(LOG_LEVEL)
     sh.setFormatter(formatter)
     # print(f"logger.handlers before adding streamHandler: {logger.handlers}")
-    logger.addHandler(sh) 
+    logger.addHandler(sh)
     # print(f"logger.handlers after adding streamHandler: {logger.handlers}")
 
     # Test logger
     sh.setLevel(logging.DEBUG)
     logger.debug(f"Testing the logger: platform.system() = {platform.system()}")
     sh.setLevel(LOG_LEVEL)
-    
+
     return logger
 
 
-def get_conn(c, db='ijack'):
+def get_conn(c, db="ijack"):
     """Get connection to IJACK database"""
 
-    if db == 'ijack':
-        host = os.getenv("HOST_IJ") 
+    if db == "ijack":
+        host = os.getenv("HOST_IJ")
         port = int(os.getenv("PORT_IJ"))
-        dbname = os.getenv('DB_IJ')
+        dbname = os.getenv("DB_IJ")
         user = os.getenv("USER_IJ")
         password = os.getenv("PASS_IJ")
-    elif db == 'timescale':
-        host = os.getenv("HOST_TS") 
+    elif db == "timescale":
+        host = os.getenv("HOST_TS")
         port = int(os.getenv("PORT_TS"))
-        dbname = os.getenv('DB_TS')
+        dbname = os.getenv("DB_TS")
         user = os.getenv("USER_TS")
         password = os.getenv("PASS_TS")
 
     conn = psycopg2.connect(
-        host=host, 
-        port=port, 
-        dbname=dbname, 
-        user=user, 
-        password=password, 
-        connect_timeout=5, 
+        host=host,
+        port=port,
+        dbname=dbname,
+        user=user,
+        password=password,
+        connect_timeout=5,
         # cursor_factory=psycopg2.extras.DictCursor
-    ) 
+    )
 
     return conn
 
 
-
-def run_query(c, sql, db='ijack', fetchall=False, commit=False, conn=None):
+def run_query(c, sql, db="ijack", fetchall=False, commit=False, conn=None):
     """Run and time the SQL query"""
 
     is_close_conn = False
@@ -141,28 +149,27 @@ def error_wrapper_old(c, func, *args, **kwargs):
     except Exception:
         c.logger.exception(f"Problem running function: {func}")
         # Keep going regardless
-        pass 
 
     return None
 
 
 def send_twilio_sms(c, sms_phone_list, body):
     """Send SMS messages with Twilio from +13067003245"""
-    message = ''
+    message = ""
     if c.TEST_FUNC:
         return message
 
     # The Twilio character limit for SMS is 1,600
     twilio_character_limit_sms = 1600
     if len(body) > twilio_character_limit_sms:
-        body = body[:(twilio_character_limit_sms - 3)] + '...'
-        
-    twilio_client = Client(os.environ['TWILIO_ACCOUNT_SID'], os.environ['TWILIO_AUTH_TOKEN'])
+        body = body[: (twilio_character_limit_sms - 3)] + "..."
+
+    twilio_client = Client(
+        os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
+    )
     for phone_num in sms_phone_list:
         message = twilio_client.messages.create(
-            to=phone_num, 
-            from_="+13067003245",
-            body=body
+            to=phone_num, from_="+13067003245", body=body
         )
         c.logger.info(f"SMS sent to {phone_num}")
 
@@ -171,14 +178,16 @@ def send_twilio_sms(c, sms_phone_list, body):
 
 def send_twilio_phone(c, phone_list, body):
     """Send phone call with Twilio from +13067003245"""
-    call = ''
+    call = ""
     if c.TEST_FUNC:
         return call
 
-    twilio_client = Client(os.environ['TWILIO_ACCOUNT_SID'], os.environ['TWILIO_AUTH_TOKEN'])
+    twilio_client = Client(
+        os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
+    )
     for phone_num in phone_list:
         call = twilio_client.calls.create(
-            to=phone_num, 
+            to=phone_num,
             from_="+13067003245",
             twiml=f"<Response><Say>Hello. The {body}</Say></Response>"
             # url=twiml_instructions_url
@@ -188,49 +197,53 @@ def send_twilio_phone(c, phone_list, body):
     return call
 
 
-def send_mailgun_email(c, text='', html='', emailees_list=None, subject='IJACK Alert', images=None):
+def send_mailgun_email(
+    c, text="", html="", emailees_list=None, subject="IJACK Alert", images=None
+):
     """Send email using Mailgun"""
     # Initialize the return code
-    rc = ''
+    rc = ""
     if c.TEST_FUNC:
         return rc
-    
+
     if emailees_list is None:
-        emailees_list = ['smccarthy@myijack.com']
+        emailees_list = ["smccarthy@myijack.com"]
 
     # If html is included, use that. Otherwise use text
-    if html == '':
-        key = 'text'
+    if html == "":
+        key = "text"
         value = text
     else:
-        key = 'html'
+        key = "html"
         value = html
-    
+
     # Add inline attachments, if any
     images2 = images
     if images is not None:
         images2 = []
         for item in images:
-            images2.append(('inline', open(item, 'rb')))
+            images2.append(("inline", open(item, "rb")))
 
     # if c.DEV_TEST_PRD in ['testing', 'production']:
     # c.logger.debug(f"c.DEV_TEST_PRD: {c.DEV_TEST_PRD}")
     if len(emailees_list) > 0:
         rc = requests.post(
             "https://api.mailgun.net/v3/myijack.com/messages",
-            auth=("api", os.environ['MAILGUN_API_KEY']),
+            auth=("api", os.environ["MAILGUN_API_KEY"]),
             files=images2,
             data={
                 "h:sender": "alerts@myijack.com",
                 "from": "alerts@myijack.com",
                 "to": emailees_list,
                 "subject": subject,
-                key: value
-            }
+                key: value,
+            },
         )
-        c.logger.info(f"Email sent to emailees_list: '{str(emailees_list)}' \nSubject: {subject} \nrc.status_code: {rc.status_code}")
+        c.logger.info(
+            f"Email sent to emailees_list: '{str(emailees_list)}' \nSubject: {subject} \nrc.status_code: {rc.status_code}"
+        )
         assert rc.status_code == 200
-    
+
     return rc
 
 
@@ -252,7 +265,7 @@ def get_client_iot():
 
 def get_iot_device_shadow(c, client_iot, aws_thing):
     """This function gets the current thing state"""
-    
+
     response_payload = {}
     try:
         response = client_iot.get_thing_shadow(thingName=aws_thing)
@@ -264,32 +277,43 @@ def get_iot_device_shadow(c, client_iot, aws_thing):
     return response_payload
 
 
-def subprocess_run(c, command_list, method='run', shell=False, sleep=0, log_results=False):
+def subprocess_run(
+    c, command_list, method="run", shell=False, sleep=0, log_results=False
+):
     """
     Run the subprocess.run() command and print the output to the log
     Return the return code (rc) and standard output (stdout)
     """
-    
+
     rc = 1
-    stdout = ''
+    stdout = ""
     try:
-        if method == 'run':
-            cp = subprocess.run(command_list, shell=shell, stdout=PIPE, stderr=STDOUT, universal_newlines=True)
+        if method == "run":
+            cp = subprocess.run(
+                command_list,
+                shell=shell,
+                stdout=PIPE,
+                stderr=STDOUT,
+                universal_newlines=True,
+            )
             rc = cp.returncode
             stdout = cp.stdout
 
-        elif method == 'Popen':
+        elif method == "Popen":
             _ = subprocess.Popen(command_list)
             rc = 0
-            stdout = ''
+            stdout = ""
 
-        elif method == 'check_output':
-            cp = subprocess.check_output(command_list, shell=shell, universal_newlines=True)
-            rc = 'N/A'
+        elif method == "check_output":
+            cp = subprocess.check_output(
+                command_list, shell=shell, universal_newlines=True
+            )
+            rc = "N/A"
             stdout = cp
     except Exception:
-        c.logger.exception(f"ERROR running command with subprocess_run(): '{command_list}'")
-        pass
+        c.logger.exception(
+            f"ERROR running command with subprocess_run(): '{command_list}'"
+        )
 
     else:
         log_msg = f"rc: '{rc}' from command: \n'{command_list}'. \nstdout/stderr: \n{stdout}\n\n"
@@ -306,7 +330,7 @@ def subprocess_run(c, command_list, method='run', shell=False, sleep=0, log_resu
 
 def find_pids(c, search_string):
     """Find the PID of the running process based on the search string, and return a list of PIDs"""
-    rc, stdout = subprocess_run(c, ['/usr/bin/pgrep', '-f', search_string])
+    rc, stdout = subprocess_run(c, ["/usr/bin/pgrep", "-f", search_string])
     list_of_pids = []
     if rc == 0:
         for line in stdout.splitlines():
@@ -320,21 +344,25 @@ def exit_if_already_running(c, filename):
     """If this program is already running, exit"""
     list_of_pids = find_pids(c, filename)
     if len(list_of_pids) > 1:
-        c.logger.warning(f"This scheduled process is already running with PID(s) of '{list_of_pids}'. Exiting now to avoid overloading the system.")
+        c.logger.warning(
+            f"This scheduled process is already running with PID(s) of '{list_of_pids}'. Exiting now to avoid overloading the system."
+        )
         if not c.TEST_FUNC:
             sys.exit(0)
 
 
 def kill_pids(c, list_of_pids):
     """Kill all process IDs (PIDs) in the list_of_pids"""
-    assert isinstance(list_of_pids, list) 
+    assert isinstance(list_of_pids, list)
 
     list_of_pids_killed = []
     for pid in list_of_pids:
-        try: 
+        try:
             int_pid = int(pid)
         except Exception:
-            c.logger.exception(f"PID {pid} cannot be cast to an integer for os.kill(), which requires an integer")
+            c.logger.exception(
+                f"PID {pid} cannot be cast to an integer for os.kill(), which requires an integer"
+            )
 
         os.kill(int_pid, signal.SIGTERM)
         c.logger.info(f"PID {pid} killed")
@@ -351,8 +379,8 @@ def kill_pids(c, list_of_pids):
 # 		value = func(*args, **kwargs)
 # 		# Do something after
 # 		return value
-		
-#     return wrapper_decorator 
+
+#     return wrapper_decorator
 
 
 def check_if_c_in_args(args):
@@ -364,7 +392,9 @@ def check_if_c_in_args(args):
     if c is None:
         c = Config()
         c.logger = configure_logging(
-            __name__, logfile_name=pathlib.Path(__file__).stem, path_to_log_directory="/var/log/"
+            __name__,
+            logfile_name=pathlib.Path(__file__).stem,
+            path_to_log_directory="/var/log/",
         )
     return c
 
@@ -386,22 +416,32 @@ def error_wrapper():
             # Do something after
             except Exception as err:
                 filename = pathlib.Path(__file__).name
-                c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
-                alertees_email = ['smccarthy@myijack.com']
-                alertees_sms = ['+14036897250']
+                c.logger.exception(
+                    f"ERROR running program! Closing now... \nError msg: {err}"
+                )
+                alertees_email = ["smccarthy@myijack.com"]
+                alertees_sms = ["+14036897250"]
                 subject = f"IJACK {filename} ERROR!!!"
                 msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error!"
                 msg_email = msg_sms + f"\nError message: {err}"
 
                 message = send_twilio_sms(c, alertees_sms, msg_sms)
-                rc = send_mailgun_email(c, text=msg_email, html='', emailees_list=alertees_email, subject=subject)
+                rc = send_mailgun_email(
+                    c,
+                    text=msg_email,
+                    html="",
+                    emailees_list=alertees_email,
+                    subject=subject,
+                )
 
-                c.TEST_DICT['message'] = message
-                c.TEST_DICT['rc'] = rc
-                c.TEST_DICT['msg_sms'] = msg_sms
+                c.TEST_DICT["message"] = message
+                c.TEST_DICT["rc"] = rc
+                c.TEST_DICT["msg_sms"] = msg_sms
 
                 raise
 
             return value
+
         return wrapper_inner
+
     return wrapper_outer

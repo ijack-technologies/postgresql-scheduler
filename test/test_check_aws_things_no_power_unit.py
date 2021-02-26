@@ -15,9 +15,7 @@ except ValueError:
 
 # local imports
 from utils import Config, configure_logging
-
-# import alarm_log_mv_refresh_old_non_surface
-import update_gw_power_unit_id_from_shadow
+import check_aws_things_w_no_power_unit
 
 LOGFILE_NAME = "test_main_programs"
 
@@ -43,8 +41,8 @@ class TestAll(unittest.TestCase):
     def test_update_gw_power_unit_id_from_shadow(self):
         """Test the main program"""
         global c
-        with patch("update_gw_power_unit_id_from_shadow.exit_if_already_running") as _:
-            update_gw_power_unit_id_from_shadow.main(c)
+        with patch("check_aws_things_w_no_power_unit.exit_if_already_running") as _:
+            check_aws_things_w_no_power_unit.main(c)
 
 
 if __name__ == "__main__":

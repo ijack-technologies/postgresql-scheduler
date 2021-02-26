@@ -1,20 +1,17 @@
 import logging
-import os
-import platform
-import time
-from datetime import datetime
-import psycopg2
-from psycopg2.extras import RealDictCursor
 import pathlib
 
 # local imports
 from utils import (
-    Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms, 
-    error_wrapper, exit_if_already_running,
+    Config,
+    configure_logging,
+    error_wrapper,
+    exit_if_already_running,
+    run_query,
 )
 
 LOG_LEVEL = logging.INFO
-LOGFILE_NAME = 'time_series_mv_refresh'
+LOGFILE_NAME = "time_series_mv_refresh"
 
 # Requires owner privileges (must be run by "master" user, not "app_user")
 SQL1 = """
@@ -30,23 +27,22 @@ SQL2 = """
 
 # SQL = "select refresh_time_series_mv();"
 
+
 @error_wrapper()
 def main(c):
     """Main entrypoint function"""
-    
+
     exit_if_already_running(c, pathlib.Path(__file__).name)
-    
-    run_query(c, SQL1, db='timescale', commit=True)
-    run_query(c, SQL2, db='timescale', commit=True)
+
+    run_query(c, SQL1, db="timescale", commit=True)
+    run_query(c, SQL2, db="timescale", commit=True)
 
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = Config()
     c.logger = configure_logging(
-        __name__,
-        logfile_name = LOGFILE_NAME, 
-        path_to_log_directory='/var/log/'
+        __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
     )
     main(c)

@@ -2,37 +2,28 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import os
-import platform
 import sys
 import unittest
-import logging
-import pickle
-import requests
-from twilio.rest import Client
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = '/workspace/cron.d'
+pythonpath = "/workspace/cron.d"
 try:
-    sys.path.index(pythonpath) 
+    sys.path.index(pythonpath)
 except ValueError:
-    sys.path.insert(0, pythonpath) 
+    sys.path.insert(0, pythonpath)
 
 # local imports
-from utils import (
-    Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms
-)
+from utils import Config, configure_logging
 import synch_aws_iot_shadow_with_aws_rds_postgres_config
 
-LOGFILE_NAME = 'test_synch_aws_iot_shadow_with_aws_rds_postgres_config'
+LOGFILE_NAME = "test_synch_aws_iot_shadow_with_aws_rds_postgres_config"
 
 c = Config()
-c.DEV_TEST_PRD = 'development'
+c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__,
-    logfile_name = LOGFILE_NAME, 
-    path_to_log_directory='/var/log/'
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
 )
+
 
 class TestAll(unittest.TestCase):
 
@@ -43,9 +34,8 @@ class TestAll(unittest.TestCase):
     # executed prior to each test below, not just when the class is initialized
     def setUp(self):
         global c
-        c.DEV_TEST_PRD = 'development'
+        c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
-
 
     def test_synch_aws_iot_shadow_with_aws_rds_postgres_config(self):
         """Test the main program"""
@@ -53,6 +43,5 @@ class TestAll(unittest.TestCase):
         synch_aws_iot_shadow_with_aws_rds_postgres_config.main(c)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-    

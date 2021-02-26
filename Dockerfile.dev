@@ -1,9 +1,9 @@
 
-FROM python:3.7.4-slim-buster
+FROM python:3.9-slim-buster
 
-# Install cron for scheduled jobs, git for VS Code, and procps for "ps" tool to check running procs
+# Install cron for scheduled jobs and procps for "ps" tool to check running procs
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install cron nano git procps
+    apt-get -y --no-install-recommends install git cron nano procps wget
 
 COPY requirements.txt /
 RUN pip3 install --upgrade pip && \
@@ -11,4 +11,3 @@ RUN pip3 install --upgrade pip && \
 
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /root/
-

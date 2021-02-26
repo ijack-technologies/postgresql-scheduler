@@ -1,20 +1,17 @@
 import logging
-import os
-import platform
-import time
-from datetime import datetime
-import psycopg2
-from psycopg2.extras import RealDictCursor
 import pathlib
 
 # local imports
 from utils import (
-    Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms,
+    Config,
+    configure_logging,
+    error_wrapper,
     exit_if_already_running,
+    run_query,
 )
 
 LOG_LEVEL = logging.INFO
-LOGFILE_NAME = 'alarm_log_mv_refresh'
+LOGFILE_NAME = "alarm_log_mv_refresh"
 
 # SQL = "select refresh_alarm_log_mv();"
 
@@ -28,15 +25,15 @@ SQL = """
 
 # class ConfigDB:
 #     """Make database connections and close them if something goes wrong"""
-    
+
 #     def __init__(self):
-#         # Database connection 
+#         # Database connection
 #         self._db_connection_ij = psycopg2.connect(
-#             host=os.getenv("HOST_IJ"), 
-#             port=os.getenv("PORT_IJ"), 
+#             host=os.getenv("HOST_IJ"),
+#             port=os.getenv("PORT_IJ"),
 #             dbname=os.getenv('DB_IJ'),
-#             user=os.getenv("USER_IJ"), 
-#             password=os.getenv("PASS_IJ"), 
+#             user=os.getenv("USER_IJ"),
+#             password=os.getenv("PASS_IJ"),
 #             connect_timeout=5
 #         )
 #         self._db_cursor_normal = self._db_connection_ij.cursor()
@@ -80,7 +77,7 @@ SQL = """
 
 #     global ALARM_LOG_REFRESH_EVERY_X_MINUTES
 
-#     # If the remainder == 0, do the query 
+#     # If the remainder == 0, do the query
 #     # e.g. 0 % 5 == 0; 5 % 5 == 0; 10 % 5 == 0
 #     if minute_counter % ALARM_LOG_REFRESH_EVERY_X_MINUTES == 0:
 #         # sql = "REFRESH MATERIALIZED VIEW CONCURRENTLY public.alarm_log_mv;"
@@ -95,19 +92,17 @@ SQL = """
 def main(c):
     """Main entrypoint function"""
     global SQL
-    
+
     exit_if_already_running(c, pathlib.Path(__file__).name)
-    
+
     run_query(c, SQL, commit=True)
 
     return None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = Config()
     c.logger = configure_logging(
-        __name__,
-        logfile_name = LOGFILE_NAME, 
-        path_to_log_directory='/var/log/'
+        __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
     )
     main(c)

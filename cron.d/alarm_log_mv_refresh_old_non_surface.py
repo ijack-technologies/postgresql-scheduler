@@ -20,7 +20,7 @@
 
 # # Requires owner privileges (must be run by "master" user, not "app_user")
 # SQL = """
-#     REFRESH MATERIALIZED VIEW CONCURRENTLY 
+#     REFRESH MATERIALIZED VIEW CONCURRENTLY
 #     public.alarm_log_mv_old_non_surface
 #     WITH DATA
 # """
@@ -30,7 +30,7 @@
 # def main(c):
 #     """Main entrypoint function"""
 #     global SQL
-    
+
 #     exit_if_already_running(c, pathlib.Path(__file__).name)
 
 #     run_query(c, SQL, commit=True)
@@ -42,7 +42,7 @@
 #     c = Config()
 #     c.logger = configure_logging(
 #         __name__,
-#         logfile_name = LOGFILE_NAME, 
+#         logfile_name = LOGFILE_NAME,
 #         path_to_log_directory='/var/log/'
 #     )
 #     main(c)
