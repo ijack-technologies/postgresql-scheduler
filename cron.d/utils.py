@@ -13,6 +13,7 @@ from subprocess import PIPE, STDOUT
 
 import boto3
 import psycopg2
+from psycopg2.extras import RealDictCursor
 import requests
 from twilio.rest import Client
 
@@ -120,8 +121,8 @@ def run_query(c, sql, db="ijack", fetchall=False, commit=False, conn=None):
     columns = None
     rows = None
 
-    # with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+    # with conn.cursor(cursor_factory=DictCursor) as cursor:
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
         c.logger.info(f"Running query now... SQL to run: \n{sql}")
         time_start = time.time()
         cursor.execute(sql)
