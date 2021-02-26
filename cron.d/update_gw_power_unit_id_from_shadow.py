@@ -49,11 +49,13 @@ def update_structures_table(
             -- structure = {structure}
             -- aws_thing = {aws_thing}
     """
-    run_query(c, sql_update, db="ijack", fetchall=False, commit=True)
-    subject = "Changing GPS in public.structures table!"
+    subject = "Please change GPS in public.structures table!"
     send_mailgun_email(
         c, text=sql_update, html="", emailees_list=c.EMAIL_LIST_DEV, subject=subject
     )
+    # Don't run this automatically since it undoes my manual updates with the 
+    # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
+    # run_query(c, sql_update, db="ijack", fetchall=False, commit=True)
 
 
 def compare_shadow_and_db(
@@ -71,6 +73,8 @@ def compare_shadow_and_db(
     shadow_value2 = round(convert_to_float(c, shadow_value), 2)
     db_value2 = round(convert_to_float(c, db_value), 2)
     if shadow_value2 != 0 and shadow_value2 != db_value2:
+        # The following program could potentially change the database,
+        # but it just emails me a warning instead
         update_structures_table(
             c,
             power_unit_id,
