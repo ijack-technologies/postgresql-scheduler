@@ -93,8 +93,11 @@ def main(c):
             # Extract components from surface land location
             surface_upper = surface.upper()
 
+            # Remove anything before the first "/" (e.g. "06-30/08-30-012-26w1")
+            split_f_slash = surface_upper.split("/")[-1]
+
             # Split off the meridian (e.g. W1 into "1")
-            split_on_W = surface_upper.split("W")
+            split_on_W = split_f_slash.split("W")
             if len(split_on_W) != 2:
                 c.logger.warning(
                     f"{unit_info} can't be split on the W meridian (e.g. W1). Continuing with next..."
@@ -103,6 +106,8 @@ def main(c):
             loc, meridian = split_on_W
 
             w_meridian = f"W{meridian}"
+            # Remove anything after the "W1" (e.g. "W1 East Unit")
+            w_meridian_part_0 = w_meridian.split(" ")[0]
             # Only keep digits and dashes
             digits = re.sub("[^0-9,-]", "", loc)
             split_ = digits.split("-")
@@ -138,7 +143,7 @@ def main(c):
                 # range e.g. 1-34 going west in the meridian (e.g. farm is 32 of 34 so almost in W2)
                 range=range_,
                 # meridian e.g. 1 MB, 2 SK, 3 AB (roughly)
-                meridian=w_meridian,
+                meridian=w_meridian_part_0,
                 cmd=type_,
             )
 
@@ -152,13 +157,19 @@ def main(c):
 
             new_latitude = None
             new_longitude = None
-            for line in r.text.splitlines():
+            text = r.text
+            for line in text.splitlines():
                 line_upper = line.upper()
 
                 if "LATITUDE" in line_upper:
                     new_latitude = line_upper.split(": ")[1]
                 elif "LONGITUDE" in line_upper:
                     new_longitude = line_upper.split(": ")[1]
+                elif "CREDITS: 0" in line_upper:
+                    c.logger.critical("No more credits in account!")
+                elif "HAVECONVERSION: 0" in line_upper:
+                    c.logger.critical(f"Problem with conversion of {unit_info}! Raising exception now!")
+                    # raise Exception
                 else:
                     continue
 
@@ -201,6 +212,11 @@ def main(c):
                 run_query(
                     c, sql_update, db="ijack", fetchall=False, conn=conn, commit=True
                 )
+            else:
+                c.logger.warning(
+                    f"{i+1} of {n_rows}: Can't update {unit_info}!\nnew latitude: {new_latitude}; new longitude: {new_longitude}\ntext: {text}"
+                )
+
 
     except Exception:
         c.logger.exception("Error updating GPS!")
