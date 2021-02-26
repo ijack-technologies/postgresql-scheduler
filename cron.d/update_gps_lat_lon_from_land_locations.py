@@ -87,39 +87,55 @@ def main(c):
             surface = dict_["surface"]
             customer = dict_["customer"]
             power_unit = dict_["power_unit"]
-            unit_info = f"{customer} structure '{structure}' (power unit '{power_unit}') with surface '{surface}'"
-            c.logger.info(f"{i+1} of {n_rows}: Getting GPS for {unit_info}")
 
             # Extract components from surface land location
             surface_upper = surface.upper()
 
+            if "VIRDEN WAREHOUSE" in surface_upper or "IJACK YARD" in surface_upper:
+                continue
+
+            unit_info = f"{customer} structure '{structure}' (power unit '{power_unit}') with surface '{surface}'"
+            c.logger.info(f"{i+1} of {n_rows}: Getting GPS for {unit_info}")
+
             # Remove anything before the first "/" (e.g. "06-30/08-30-012-26w1")
             split_f_slash = surface_upper.split("/")[-1]
 
+            # Remove anything after the "W1" (e.g. "W1 East Unit")
+            split_f_slash_part_0 = split_f_slash.split(" ")[0]
+
             # Split off the meridian (e.g. W1 into "1")
-            split_on_W = split_f_slash.split("W")
+            split_on_W = split_f_slash_part_0.split("W")
             if len(split_on_W) != 2:
                 c.logger.warning(
                     f"{unit_info} can't be split on the W meridian (e.g. W1). Continuing with next..."
                 )
                 continue
             loc, meridian = split_on_W
-
             w_meridian = f"W{meridian}"
-            # Remove anything after the "W1" (e.g. "W1 East Unit")
-            w_meridian_part_0 = w_meridian.split(" ")[0]
-            # Only keep digits and dashes
-            digits = re.sub("[^0-9,-]", "", loc)
-            split_ = digits.split("-")
 
-            if len(split_) != 4:
+            # Only keep digits and dashes (we'll deal with this later...)
+            # digits = re.sub("[^0-9,-]", "", loc)
+
+            split_dash = loc.split("-")
+
+            # Convert to integers to remove leading zeros
+            # nums = [int(x) for x in split_dash]
+            nums = []
+            for x in split_dash:
+                try:
+                    int_ = int(x)
+                except ValueError:
+                    c.logger.warning(f"Can't convert {x} from {split_dash} to integer!")
+                    # c.logger.warning(f"Error: {err}")
+                    continue
+                else:
+                    nums.append(int_)
+
+            if len(nums) != 4:
                 c.logger.warning(
                     f"{unit_info} can't be split into four parts. Continuing with next..."
                 )
                 continue
-
-            # Convert to integers to remove leading zeros
-            nums = [int(x) for x in split_]
 
             quarter, section, township, range_ = nums
 
@@ -143,7 +159,7 @@ def main(c):
                 # range e.g. 1-34 going west in the meridian (e.g. farm is 32 of 34 so almost in W2)
                 range=range_,
                 # meridian e.g. 1 MB, 2 SK, 3 AB (roughly)
-                meridian=w_meridian_part_0,
+                meridian=w_meridian,
                 cmd=type_,
             )
 
