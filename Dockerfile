@@ -1,4 +1,4 @@
-FROM python:3.9-slim-buster
+FROM python:3.8-slim-buster
 
 # Install cron for scheduled jobs and procps for "ps" tool to check running procs
 RUN apt-get update && \
