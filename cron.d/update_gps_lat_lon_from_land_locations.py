@@ -2,8 +2,10 @@
 # This module is meant to be run from development only, not from the production server/Docker container
 # It updates the gps_lat and gps_lon fields in the public.structures table, using the API from legallandconverter.com
 # API instructions here: https://legallandconverter.com/p51.html#OVERVIEW
+# It costs USD $0.10 per lookup, so don't be wasteful since there are 500+ lookups ($50)
 #######################################################################################################
 
+import sys
 import logging
 import os
 import pathlib
@@ -30,6 +32,15 @@ c = Config()
 c.logger = configure_logging(
     __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
 )
+
+# Warning for the user, in case she started this program by accident. This is a chance to cancel.
+yes_or_no = input("Are you sure you want to pay legallandconverter.com USD $0.10/lookup to update all the latitudes and longitudes based on the surface location of each structure? \n(y)es or (n)o: ")
+y_or_n_lower = str(yes_or_no).lower()[0]
+if y_or_n_lower == "y":
+    c.logger.info("Continuing...")
+elif y_or_n_lower == "n":
+    c.logger.warning("Exiting now!")
+    sys.exit()
 
 
 @error_wrapper()
