@@ -56,7 +56,7 @@ def main(c):
 
     exit_if_already_running(c, pathlib.Path(__file__).name)
 
-    # Run this for both main databases
+    # Run this for the main IJACK AWS RDS database to clean up unused connections
     run_query(c, SQL, db="ijack", commit=True)
 
     # If we run the following for TimescaleDB, it causes errors,
