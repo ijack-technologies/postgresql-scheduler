@@ -58,7 +58,30 @@ def main(c):
 
     # Run this for both main databases
     run_query(c, SQL, db="ijack", commit=True)
-    run_query(c, SQL, db="timescale", commit=True)
+
+    # If we run the following for TimescaleDB, it causes errors,
+    # and connection buildup doesn't seem to be a problem with TimescaleDB:
+    """
+        Here's the error information:
+    Traceback (most recent call last):
+    File "/inserter/inserter.py", line 338, in execute_sql
+        cursor.execute(sql, values)
+    psycopg2.errors.AdminShutdown: terminating connection due to administrator command
+    SSL connection has been closed unexpectedly
+
+
+    During handling of the above exception, another exception occurred:
+
+    Traceback (most recent call last):
+    File "/inserter/inserter.py", line 853, in main
+        insert_alarm_log_rds(
+    File "/inserter/inserter.py", line 599, in insert_alarm_log_rds
+        rc = execute_sql(
+    File "/inserter/inserter.py", line 345, in execute_sql
+        conn.rollback()
+    psycopg2.InterfaceError: connection already closed
+    """
+    # run_query(c, SQL, db="timescale", commit=True)
 
     return None
 
