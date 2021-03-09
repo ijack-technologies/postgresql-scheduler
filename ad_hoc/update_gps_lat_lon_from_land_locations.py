@@ -47,7 +47,7 @@ elif y_or_n_lower == "n":
 def main(c):
     """"""
 
-    exit_if_already_running(c, pathlib.Path(__file__).name)
+    # exit_if_already_running(c, pathlib.Path(__file__).name)
 
     # Keep a connection open for efficiency
     conn = get_conn(c, "ijack")

@@ -7,11 +7,14 @@ import unittest
 from unittest.mock import patch
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
+def insert_path(pythonpath):
+    try:
+        sys.path.index(pythonpath)
+    except ValueError:
+        sys.path.insert(0, pythonpath)
+
+insert_path("/workspace/ad_hoc")
+insert_path("/workspace/cron.d")
 
 # local imports
 from utils import Config, configure_logging
