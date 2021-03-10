@@ -49,16 +49,16 @@ from utils import (
 
 load_dotenv()
 
-# Warning for the user, in case she started this program by accident. This is a chance to cancel.
-yes_or_no = input(
-    "Are you sure you want to backfill all time series data? \n(y)es or (n)o: "
-)
-y_or_n_lower = str(yes_or_no).lower()[0]
-if y_or_n_lower == "y":
-    print("Continuing...")
-elif y_or_n_lower == "n":
-    print("Exiting now!")
-    sys.exit()
+# # Warning for the user, in case she started this program by accident. This is a chance to cancel.
+# yes_or_no = input(
+#     "Are you sure you want to backfill all time series data? \n(y)es or (n)o: "
+# )
+# y_or_n_lower = str(yes_or_no).lower()[0]
+# if y_or_n_lower == "y":
+#     print("Continuing...")
+# elif y_or_n_lower == "n":
+#     print("Exiting now!")
+#     sys.exit()
 
 
 # Create SQS client
