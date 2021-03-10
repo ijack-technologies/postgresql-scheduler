@@ -53,7 +53,7 @@ def update_structures_table(
     send_mailgun_email(
         c, text=sql_update, html="", emailees_list=c.EMAIL_LIST_DEV, subject=subject
     )
-    # Don't run this automatically since it undoes my manual updates with the 
+    # Don't run this automatically since it undoes my manual updates with the
     # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
     # run_query(c, sql_update, db="ijack", fetchall=False, commit=True)
 

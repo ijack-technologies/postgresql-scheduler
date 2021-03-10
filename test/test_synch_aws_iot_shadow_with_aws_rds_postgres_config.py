@@ -5,6 +5,11 @@
 import sys
 import unittest
 
+import synch_aws_iot_shadow_with_aws_rds_postgres_config
+
+# local imports
+from utils import Config, configure_logging
+
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace/cron.d"
 try:
@@ -12,9 +17,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-# local imports
-from utils import Config, configure_logging
-import synch_aws_iot_shadow_with_aws_rds_postgres_config
 
 LOGFILE_NAME = "test_synch_aws_iot_shadow_with_aws_rds_postgres_config"
 

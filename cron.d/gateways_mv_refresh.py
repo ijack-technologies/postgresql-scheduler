@@ -18,7 +18,7 @@
 # # Note this one does NOT run concurrently because it doesn't have a unique index.
 # # Some gateways serve two structures (e.g. dual XFERs), so they're duplicates re: power_unit field
 # SQL = """
-#     REFRESH MATERIALIZED VIEW 
+#     REFRESH MATERIALIZED VIEW
 #     public.gateways
 #     WITH DATA
 # """

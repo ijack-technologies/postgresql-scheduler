@@ -6,6 +6,12 @@ import sys
 import unittest
 from unittest.mock import patch
 
+# import alarm_log_mv_refresh_old_non_surface
+import update_gw_power_unit_id_from_shadow
+
+# local imports
+from utils import Config, configure_logging
+
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace/cron.d"
 try:
@@ -13,11 +19,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-# local imports
-from utils import Config, configure_logging
-
-# import alarm_log_mv_refresh_old_non_surface
-import update_gw_power_unit_id_from_shadow
 
 LOGFILE_NAME = "test_main_programs"
 

@@ -17,6 +17,8 @@ jmespath==0.10.0
 lazy-object-proxy==1.4.3
 mccabe==0.6.1
 mypy-extensions==0.4.3
+numpy==1.20.1
+pandas==1.2.3
 pathspec==0.8.0
 pbr==5.4.4
 psycopg2-binary==2.8.6

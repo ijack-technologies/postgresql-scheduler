@@ -13,8 +13,8 @@ from subprocess import PIPE, STDOUT
 
 import boto3
 import psycopg2
-from psycopg2.extras import RealDictCursor
 import requests
+from psycopg2.extras import RealDictCursor
 from twilio.rest import Client
 
 LOG_LEVEL = logging.INFO

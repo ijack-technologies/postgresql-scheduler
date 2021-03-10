@@ -5,6 +5,9 @@
 import sys
 import unittest
 
+# local imports
+from utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
+
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace/cron.d"
 try:
@@ -12,8 +15,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-# local imports
-from utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
 
 LOGFILE_NAME = "test_send_alerts"
 

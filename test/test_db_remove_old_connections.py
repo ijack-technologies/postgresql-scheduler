@@ -5,7 +5,11 @@
 import sys
 import unittest
 from unittest.mock import patch
-import psycopg2
+
+import db_remove_old_connections
+
+# local imports
+from utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace/cron.d"
@@ -14,9 +18,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-# local imports
-from utils import Config, configure_logging
-import db_remove_old_connections
 
 LOGFILE_NAME = "test_db_remove_old_connections"
 

@@ -1,11 +1,7 @@
-import json
 import logging
-import os
 import pathlib
 import time
 from datetime import datetime
-
-import boto3
 
 # local imports
 from utils import (
@@ -18,8 +14,6 @@ from utils import (
     get_iot_device_shadow,
     run_query,
     send_mailgun_email,
-    send_twilio_phone,
-    send_twilio_sms,
 )
 
 LOG_LEVEL = logging.INFO

@@ -5,25 +5,32 @@
 # It costs USD $0.10 per lookup, so don't be wasteful since there are 500+ lookups ($50)
 #######################################################################################################
 
-import sys
 import logging
 import os
 import pathlib
-import re
+import sys
 import time
 
 import requests
-from dotenv import load_dotenv
+from dotenv import load_dotenv   
 
-# local imports
-from utils import (
-    Config,
-    configure_logging,
-    error_wrapper,
-    exit_if_already_running,
-    get_conn,
-    run_query,
-)
+
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+def insert_path(pythonpath):
+    try:
+        sys.path.index(pythonpath)
+    except ValueError:
+        sys.path.insert(0, pythonpath)
+
+
+# For running in development only
+project_folder = pathlib.Path(__file__).absolute().parent.parent
+ad_hoc_folder = project_folder.joinpath("ad_hoc")
+cron_d_folder = project_folder.joinpath("cron.d")
+insert_path(cron_d_folder)  # second in path
+insert_path(ad_hoc_folder)  # first in path
+
+from utils import Config, configure_logging, error_wrapper, get_conn, run_query
 
 load_dotenv()
 LOG_LEVEL = logging.INFO
@@ -34,7 +41,9 @@ c.logger = configure_logging(
 )
 
 # Warning for the user, in case she started this program by accident. This is a chance to cancel.
-yes_or_no = input("Are you sure you want to pay legallandconverter.com USD $0.10/lookup to update all the latitudes and longitudes based on the surface location of each structure? \n(y)es or (n)o: ")
+yes_or_no = input(
+    "Are you sure you want to pay legallandconverter.com USD $0.10/lookup to update all the latitudes and longitudes based on the surface location of each structure? \n(y)es or (n)o: "
+)
 y_or_n_lower = str(yes_or_no).lower()[0]
 if y_or_n_lower == "y":
     c.logger.info("Continuing...")
@@ -195,7 +204,9 @@ def main(c):
                 elif "CREDITS: 0" in line_upper:
                     c.logger.critical("No more credits in account!")
                 elif "HAVECONVERSION: 0" in line_upper:
-                    c.logger.critical(f"Problem with conversion of {unit_info}! Raising exception now!")
+                    c.logger.critical(
+                        f"Problem with conversion of {unit_info}! Raising exception now!"
+                    )
                     # raise Exception
                 else:
                     continue
@@ -243,7 +254,6 @@ def main(c):
                 c.logger.warning(
                     f"{i+1} of {n_rows}: Can't update {unit_info}!\nnew latitude: {new_latitude}; new longitude: {new_longitude}\ntext: {text}"
                 )
-
 
     except Exception:
         c.logger.exception("Error updating GPS!")

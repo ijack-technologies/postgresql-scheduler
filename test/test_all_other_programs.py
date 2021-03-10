@@ -5,6 +5,15 @@
 import sys
 import unittest
 
+import alarm_log_delete_duplicates
+
+# import alarm_log_mv_refresh_old_non_surface
+import alarm_log_mv_refresh
+import time_series_mv_refresh
+
+# local imports
+from utils import Config, configure_logging
+
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace/cron.d"
 try:
@@ -12,13 +21,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-# local imports
-from utils import Config, configure_logging
-import time_series_mv_refresh
-
-# import alarm_log_mv_refresh_old_non_surface
-import alarm_log_mv_refresh
-import alarm_log_delete_duplicates
 
 LOGFILE_NAME = "test_main_programs"
 

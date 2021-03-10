@@ -4,7 +4,13 @@
 
 import sys
 import unittest
+
 import psycopg2
+
+import gateways_mv_refresh
+
+# local imports
+from utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace/cron.d"
@@ -13,9 +19,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-# local imports
-from utils import Config, configure_logging
-import gateways_mv_refresh
 
 # import alarm_log_mv_refresh_old_non_surface
 
