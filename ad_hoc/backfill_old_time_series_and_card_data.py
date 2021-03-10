@@ -808,9 +808,9 @@ def main(c):
                 time2 = time.time()
 
             print(
-                f"Non-surface threaded operations took {(time2-time1)/60:.2f} minutes"
+                f"Non-surface threaded operations took {(time2-time1)/60:.2f} minutes to post {n_non_surface_rows} rows!"
             )
-            print(pd.Series(out).value_counts())
+            # print(pd.Series(out).value_counts())
 
             # conn_ts.close()
             # conn_rds.close()
@@ -952,8 +952,8 @@ def main(c):
 
                 time2 = time.time()
 
-            print(f"Card data threaded operations took {(time2-time1)/60:.2f} minutes")
-            print(pd.Series(out2).value_counts())
+            print(f"Card data threaded operations took {(time2-time1)/60:.2f} minutes to post {n_card_data_rows} rows!")
+            # print(pd.Series(out2).value_counts())
 
             # Update the public.gw table once it's complete, so we don't do it again ########################
             sql_gw = f"""
