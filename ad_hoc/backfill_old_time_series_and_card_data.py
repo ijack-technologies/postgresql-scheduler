@@ -803,14 +803,15 @@ def main(c):
                         data = str(type(exc))
                     finally:
                         out.append(data)
-                        print(str(len(out)), end="\r")
+                        # print(str(len(out)), end="\r")
 
                 time2 = time.time()
 
-            print(
+            # print(pd.Series(out).value_counts())
+            c.logger.info(f"Number of records processed in non_surface 'out' list: {len(out)}")
+            c.logger.info(
                 f"Non-surface threaded operations took {(time2-time1)/60:.2f} minutes to post {n_non_surface_rows} rows!"
             )
-            # print(pd.Series(out).value_counts())
 
             # conn_ts.close()
             # conn_rds.close()
@@ -948,12 +949,13 @@ def main(c):
                         data = str(type(exc))
                     finally:
                         out2.append(data)
-                        print(str(len(out2)), end="\r")
+                        # print(str(len(out2)), end="\r")
 
                 time2 = time.time()
-
-            print(f"Card data threaded operations took {(time2-time1)/60:.2f} minutes to post {n_card_data_rows} rows!")
-            # print(pd.Series(out2).value_counts())
+                
+            # c.logger.info(pd.Series(out2).value_counts())
+            c.logger.info(f"Number of records processed in card data 'out2' list: {len(out2)}")
+            c.logger.info(f"Card data threaded operations took {(time2-time1)/60:.2f} minutes to post {n_card_data_rows} rows!")
 
             # Update the public.gw table once it's complete, so we don't do it again ########################
             sql_gw = f"""
