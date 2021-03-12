@@ -635,6 +635,11 @@ def main(c):
             c.logger.info(
                 f"min_timescaledb_timestamp_utc: {min_timescaledb_timestamp_utc}"
             )
+            if min_timescaledb_timestamp_utc is None:
+                c.logger.warning(
+                    f"min_timescaledb_timestamp_utc '{min_timescaledb_timestamp_utc}' is None. Skipping this gateway!"
+                )
+                continue
 
             # Start with the non_surface table for regular non-card time series data #########################
             c.logger.info(f"Querying for non-surface data for {unit_info_str}...")
