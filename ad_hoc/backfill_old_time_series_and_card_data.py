@@ -63,7 +63,6 @@ load_dotenv()
 
 # Create SQS client
 sqs = boto3.client("sqs", region_name="us-west-2")
-
 # sqs_queue_url = 'https://sqs.us-west-2.amazonaws.com/960752594355/test_sqs'
 sqs_queue_url = "https://sqs.us-west-2.amazonaws.com/960752594355/timescale_all"
 
@@ -255,10 +254,26 @@ class Config:
             log_level_sh=log_level_sh,
         )
 
+def get_num_messages_in_sqs_queue(sqs_queue_url):
+    response = sqs.get_queue_attributes(
+        QueueUrl=sqs_queue_url,
+        AttributeNames=[
+            'ApproximateNumberOfMessages',
+            # 'ApproximateNumberOfMessagesNotVisible',
+            # 'ApproximateNumberOfMessagesDelayed',
+            # 'DelaySeconds'
+        ]
+    )
+    return float(response.get("Attributes", {}).get("ApproximateNumberOfMessages", 0))
+
 
 def send_to_sqs(QueueUrl, MessageBody):
     # # Create SQS client
     # sqs = boto3.client('sqs', region_name='us-west-2')
+
+    while get_num_messages_in_sqs_queue(QueueUrl) > 5000:
+        time.sleep(1)
+
     response = sqs.send_message(
         QueueUrl=QueueUrl,
         MessageBody=MessageBody,
