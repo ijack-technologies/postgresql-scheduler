@@ -1,8 +1,6 @@
 #######################################################################################################
 # This module is meant to be run from development only, not from the production server/Docker container
-# It updates the gps_lat and gps_lon fields in the public.structures table, using the API from legallandconverter.com
-# API instructions here: https://legallandconverter.com/p51.html#OVERVIEW
-# It costs USD $0.10 per lookup, so don't be wasteful since there are 500+ lookups ($50)
+# It backfills old time series data from the AWS RDS Postgres database to the TimescaleDB database.
 #######################################################################################################
 
 import concurrent.futures

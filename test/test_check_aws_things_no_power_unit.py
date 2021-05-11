@@ -6,17 +6,15 @@ import sys
 import unittest
 from unittest.mock import patch
 
-import check_aws_things_w_no_power_unit
-
-# local imports
-from utils import Config, configure_logging
-
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace/cron.d"
 try:
     sys.path.index(pythonpath)
 except ValueError:
     sys.path.insert(0, pythonpath)
+
+import check_aws_things_w_no_power_unit
+from utils import Config, configure_logging
 
 
 LOGFILE_NAME = "test_main_programs"

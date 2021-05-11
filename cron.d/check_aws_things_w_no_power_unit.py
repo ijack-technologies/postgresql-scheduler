@@ -42,7 +42,7 @@ def convert_to_float(c, string):
 #             -- aws_thing = {aws_thing}
 #     """
 #     run_query(c, sql_update, db="ijack", fetchall=False, commit=True)
-#     subject = "Changing GPS in public.structures table!"
+#     subject = "Changing public.structures table!"
 #     send_mailgun_email(c, text=sql_update, html='', emailees_list=c.EMAIL_LIST_DEV, subject=subject)
 
 
@@ -63,8 +63,17 @@ def seconds_since_last_any_msg(shadow):
     # Find the last time any message was received
     time_received_latest = 0
     for _, value in metadata.items():
-        # if not key.starts_with('0x'):
-        time_received = value["timestamp"]
+        try:
+            if "timestamp" in value.keys():
+                time_received = value["timestamp"]
+            else:
+                # Must be a dictionary like the AGFT schedule
+                for _, value2 in value.items():
+                    time_received = value2["timestamp"]
+        except Exception:
+            print(f"Not sure where to find the timestamp in value '{value}'")
+            time_received = 0
+
         # print(type(time_received))
         # if isinstance(time_received, int):
         if time_received > time_received_latest:
@@ -125,13 +134,11 @@ def main(c):
     _, pu_rows = run_query(c, sql_pu, db="ijack", fetchall=True, conn=conn)
     pu_dict = {row["power_unit"]: row["power_unit_id"] for row in pu_rows}
 
-    # # Get structure records for comparing GPS lat/lon by power unit
+    # # Get structure records
     # sql_structures = """
     #     select
     #         structure,
     #         power_unit_id,
-    #         gps_lat,
-    #         gps_lon,
     #         t3.customer
     #     from public.structures t1
     #     left join myijack.structure_customer_rel t2
@@ -208,16 +215,6 @@ Continuing with next AWS_THING in public.gw table..."
 
         # Get the power_unit_id already in the public.gw table
         power_unit_id_gw = dict_.get("power_unit_id", None)
-
-        # # Compare the GPS first
-        # structure = None
-        # customer = None
-        # structure_rows_relevant = [row for row in structure_rows if row['power_unit_id'] == power_unit_id_gw]
-        # for row in structure_rows_relevant:
-        #     structure = row['structure']
-        #     customer = row['customer']
-        #     compare_shadow_and_db(c, latitude_shadow, row['gps_lat'], 'gps_lat', power_unit_id_gw, power_unit_shadow, structure, aws_thing)
-        #     compare_shadow_and_db(c, longitude_shadow, row['gps_lon'], 'gps_lon', power_unit_id_gw, power_unit_shadow, structure, aws_thing)
 
         if power_unit_id_shadow == power_unit_id_gw:
             c.logger.info(
