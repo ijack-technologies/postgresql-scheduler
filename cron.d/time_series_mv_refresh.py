@@ -62,7 +62,7 @@ def get_and_insert_latest_values():
     --Get latest timestamp_utc and use it in the next query
     with latest_ts_utc as (
         select timestamp_utc
-        from public.time_series_locf
+        from public.time_series_locf_copy
         order by timestamp_utc DESC
         limit 1
     )
