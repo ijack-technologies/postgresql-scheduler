@@ -67,7 +67,7 @@ def get_and_insert_latest_values():
         limit 1
     )
 
-    --Use the "latest_ts_utc" variable from above as a filter
+    --Use the "latest_ts_utc" table from above as a filter
     insert into public.time_series_locf_copy (
         timestamp_utc, gateway,
 		spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
@@ -88,8 +88,8 @@ def get_and_insert_latest_values():
         -- booleans below
 		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf
 	FROM public.time_series_locf
-    --Use the "latest_ts_utc" variable from above as a filter
-    where timestamp_utc > latest_ts_utc
+    --Use the "latest_ts_utc" table from above as a filter
+    where timestamp_utc > (select timestamp_utc from latest_ts_utc)
     """
     run_query(c, sql_get_insert_latest, db="timescale", commit=True)
 
