@@ -25,8 +25,7 @@ def refresh_locf_materialized_view():
     # Requires owner privileges (must be run by "master" user, not "app_user")
     sql_refresh_locf_mv = """
         REFRESH MATERIALIZED VIEW CONCURRENTLY 
-        --the following will change to public.time_series_locf at some point when I update it
-        public.time_series_view
+        public.time_series_locf
         WITH DATA;
     """
     run_query(c, sql_refresh_locf_mv, db="timescale", commit=True)
@@ -63,8 +62,7 @@ def get_and_insert_latest_values():
     --Get latest timestamp_utc and use it in the next query
     with latest_ts_utc as (
         select timestamp_utc
-        --the following will change to public.time_series_locf at some point when I update it
-        from public.time_series_view
+        from public.time_series_locf
         order by timestamp_utc DESC
         limit 1
     )
@@ -89,8 +87,7 @@ def get_and_insert_latest_values():
         fluid_rate_vpd, agf_dis_temp, agf_dis_temp_max, end_stop_avg_pveh, end_stop_counts, end_tap_avg_time, end_tap_counts,
         -- booleans below
 		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf
-    --the following will change to public.time_series_locf at some point when I update it
-	FROM public.time_series_view
+	FROM public.time_series_locf
     --Use the "latest_ts_utc" variable from above as a filter
     where timestamp_utc > latest_ts_utc
     """
