@@ -69,7 +69,7 @@ def get_and_insert_latest_values():
 
     --Use the "latest_ts_utc" variable from above as a filter
     insert into public.time_series_locf_copy (
-        timestamp_utc_inserted, timestamp_utc, gateway,
+        timestamp_utc, gateway,
 		spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
         e3m3_d, m3pd, hp_limit, msp, mprl_max, mprl_avg, mprl_min, pprl_max, pprl_avg, pprl_min,
         area_max, area_avg, area_min, pf_max, pf_avg, pf_min, hpt, hp_raising_avg, hp_lowering_avg,
@@ -79,7 +79,7 @@ def get_and_insert_latest_values():
 		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf
     )
     select
-        timestamp_utc_inserted, timestamp_utc, gateway,
+        timestamp_utc, gateway,
 		spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
         e3m3_d, m3pd, hp_limit, msp, mprl_max, mprl_avg, mprl_min, pprl_max, pprl_avg, pprl_min,
         area_max, area_avg, area_min, pf_max, pf_avg, pf_min, hpt, hp_raising_avg, hp_lowering_avg,
