@@ -105,8 +105,8 @@ def main(c):
     # First refresh the main "last one carried forward" MV
     refresh_locf_materialized_view()
 
-    # Refresh the hybrid MV with different granularities by date
-    refresh_hybrid_time_series_materialized_view()
+    # # Refresh the hybrid MV with different granularities by date
+    # refresh_hybrid_time_series_materialized_view()
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
