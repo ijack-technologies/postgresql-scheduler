@@ -77,6 +77,7 @@ def get_and_insert_latest_values():
         fluid_rate_vpd, agf_dis_temp, agf_dis_temp_max, end_stop_avg_pveh, end_stop_counts, end_tap_avg_time, end_tap_counts,
         END_STOP_TIME,
         DER_OK_COUNTS,
+        stroke_up_time, stroke_down_time,
         -- booleans below
 		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf
     )
@@ -89,6 +90,7 @@ def get_and_insert_latest_values():
         fluid_rate_vpd, agf_dis_temp, agf_dis_temp_max, end_stop_avg_pveh, end_stop_counts, end_tap_avg_time, end_tap_counts,
         END_STOP_TIME,
         DER_OK_COUNTS,
+        stroke_up_time, stroke_down_time,
         -- booleans below
 		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf
 	FROM public.time_series_locf
