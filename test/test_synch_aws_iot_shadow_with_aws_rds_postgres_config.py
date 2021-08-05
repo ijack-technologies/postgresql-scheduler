@@ -5,6 +5,13 @@
 import sys
 import unittest
 
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+pythonpath = "/workspace/cron.d"
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
+
 import synch_aws_iot_shadow_with_aws_rds_postgres_config
 
 # local imports

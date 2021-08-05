@@ -60,7 +60,16 @@ def main(c):
         # Initialize a new thing shadow for the data we're going to update in AWS IoT
         d = {"state": {"reported": {}}}
 
+        # if dict_["gateway"] == "1000046":
+        #     # Just for debugging. Comment out if you don't need this
+        #     print("cool")
+
         for key, value in dict_.items():
+            if value is None:
+                # This way old values in the gateway's c.config dict, saved on the hard drive,
+                # get overwritten if they used to have a value like "Calgary" and now they're null.
+                # Otherwise they're just deleted from the device shadow and the gateway never sees them.
+                value = ""
             if key in ("gateway", "unit_type", "aws_thing"):
                 d["state"]["reported"][f"C__{key.upper()}"] = value.upper()
             else:
