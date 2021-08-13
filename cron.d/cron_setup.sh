@@ -34,4 +34,13 @@ crontab /crontab.txt
 
 # Run the cron process, so its logs will be visible to docker logs
 # cron -f 
-nohup cron && tail -F /var/log/cron.log 2>&1 &
+
+FILE=/var/log/cron.log
+if [ -f "$FILE" ]; then
+    echo "$FILE exists."
+else 
+    echo "$FILE does not exist. Creating it now..."
+    touch /var/log/cron.log
+fi
+
+nohup cron && tail -F $FILE 2>&1 &
