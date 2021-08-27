@@ -5,6 +5,14 @@
 import sys
 import unittest
 
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+pythonpath = "/workspace/cron.d"
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
+
+
 # local imports
 from utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
 
@@ -50,7 +58,8 @@ class TestAll(unittest.TestCase):
         self.assertNotEqual(message, "")
         self.assertNotEqual(message.error_code, "None")
         self.assertNotEqual(message.error_message, "None")
-        self.assertIn(message.body, warning)
+        self.assertIn(warning, message.body)
+        self.assertIn("Reply STOP to unsubscribe from ALL IJACK SMS alerts", message.body)
         self.assertEqual(message.status, "queued")
 
     def test_mailgun_text_only(self):

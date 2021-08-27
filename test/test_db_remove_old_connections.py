@@ -6,6 +6,14 @@ import sys
 import unittest
 from unittest.mock import patch
 
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+pythonpath = "/workspace/cron.d"
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
+
+
 import db_remove_old_connections
 
 # local imports

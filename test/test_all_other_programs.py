@@ -5,6 +5,13 @@
 import sys
 import unittest
 
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+pythonpath = "/workspace/cron.d"
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
+
 import alarm_log_delete_duplicates
 
 # import alarm_log_mv_refresh_old_non_surface

@@ -1,4 +1,12 @@
 import unittest
+import sys
+
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+pythonpath = "/workspace/cron.d"
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
 
 # Run all tests in the /test folder, not just one test_*.py file
 loader = unittest.TestLoader()

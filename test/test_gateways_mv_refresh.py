@@ -5,6 +5,14 @@
 import sys
 import unittest
 
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+pythonpath = "/workspace/cron.d"
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
+
+
 import psycopg2
 
 import gateways_mv_refresh
@@ -43,13 +51,13 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
 
-    def test_gateways_mv_refresh(self):
-        """Test the main program"""
-        global c
+    # def test_gateways_mv_refresh(self):
+    #     """Test the main program"""
+    #     global c
 
-        # This is no longer a materialized view--just a regular view
-        with self.assertRaises(psycopg2.errors.WrongObjectType):
-            gateways_mv_refresh.main(c)
+    #     # This is no longer a materialized view--just a regular view
+    #     with self.assertRaises(psycopg2.errors.WrongObjectType):
+    #         gateways_mv_refresh.main(c)
 
 
 if __name__ == "__main__":

@@ -155,22 +155,29 @@ def error_wrapper_old(c, func, *args, **kwargs):
 
 
 def send_twilio_sms(c, sms_phone_list, body):
-    """Send SMS messages with Twilio from +13067003245"""
+    """Send SMS messages with Twilio from +13067003245 or +13069884140"""
     message = ""
     if c.TEST_FUNC:
         return message
 
     # The Twilio character limit for SMS is 1,600
-    twilio_character_limit_sms = 1600
+    unsubscribe_text = "\n\nReply STOP to unsubscribe from ALL IJACK SMS alerts."
+    twilio_character_limit_sms = 1600 - len(unsubscribe_text)
     if len(body) > twilio_character_limit_sms:
         body = body[: (twilio_character_limit_sms - 3)] + "..."
+
+    # Add this to every SMS alert, for compliance
+    body += unsubscribe_text
 
     twilio_client = Client(
         os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
     )
     for phone_num in sms_phone_list:
         message = twilio_client.messages.create(
-            to=phone_num, from_="+13067003245", body=body
+            to=phone_num, 
+            # from_="+13067003245",
+            from_="+13069884140", # new number Apr 20, 2021
+            body=body
         )
         c.logger.info(f"SMS sent to {phone_num}")
 
@@ -178,10 +185,14 @@ def send_twilio_sms(c, sms_phone_list, body):
 
 
 def send_twilio_phone(c, phone_list, body):
-    """Send phone call with Twilio from +13067003245"""
+    """Send phone call with Twilio from +13067003245 or +13069884140"""
     call = ""
     if c.TEST_FUNC:
         return call
+
+    # Add this to every SMS alert, for compliance
+    unsubscribe_text = "\n\nReply STOP to unsubscribe from ALL IJACK phone call alerts."
+    body += unsubscribe_text
 
     twilio_client = Client(
         os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
@@ -189,7 +200,8 @@ def send_twilio_phone(c, phone_list, body):
     for phone_num in phone_list:
         call = twilio_client.calls.create(
             to=phone_num,
-            from_="+13067003245",
+            # from_="+13067003245",
+            from_="+13069884140", # new number Apr 20, 2021
             twiml=f"<Response><Say>Hello. The {body}</Say></Response>"
             # url=twiml_instructions_url
         )
