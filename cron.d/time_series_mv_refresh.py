@@ -33,22 +33,22 @@ def refresh_locf_materialized_view():
     return True
 
 
-def refresh_hybrid_time_series_materialized_view():
-    """
-    Refresh the hybrid time series materialized view,
-    which contains more granular data for dates closer
-    to the present time.
-    """
-    # Requires owner privileges (must be run by "master" user, not "app_user")
+# def refresh_hybrid_time_series_materialized_view():
+#     """
+#     Refresh the hybrid time series materialized view,
+#     which contains more granular data for dates closer
+#     to the present time.
+#     """
+#     # Requires owner privileges (must be run by "master" user, not "app_user")
     
-    sql_refresh_hybrid_mv = """
-        REFRESH MATERIALIZED VIEW CONCURRENTLY 
-        public.time_series_mv
-        WITH DATA;
-    """
-    run_query(c, sql_refresh_hybrid_mv, db="timescale", commit=True)
+#     sql_refresh_hybrid_mv = """
+#         REFRESH MATERIALIZED VIEW CONCURRENTLY 
+#         public.time_series_mv
+#         WITH DATA;
+#     """
+#     run_query(c, sql_refresh_hybrid_mv, db="timescale", commit=True)
 
-    return True
+#     return True
 
 
 def get_and_insert_latest_values():
