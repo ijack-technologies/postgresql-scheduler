@@ -9,8 +9,8 @@ echo "Setting up the cron scheduler..."
 # Without this step, the environment variables will not be available in cron!
 declare -p | grep -Ev 'BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID' > /container.env
 
-# Send the following crontab to crontab.txt
-touch /crontab.txt
+# Send the following crontab to /cron_d/crontab.txt
+touch /cron_d/crontab.txt
 echo "SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 BASH_ENV=/container.env
@@ -24,13 +24,13 @@ BASH_ENV=/container.env
 # */3 * * * * python3 /cron_d/gateways_mv_refresh.py
 3 * * * * python3 /cron_d/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
 15 * * * * python3 /cron_d/update_gw_power_unit_id_from_shadow.py
-# Leave the last line blank for a valid cron file" > /crontab.txt
+# Leave the last line blank for a valid cron file" > /cron_d/crontab.txt
 
 # Make the shell scripts executable
 # chmod +x /project/cron/truncate_logs.sh
 
-# Set the default crontab as the crontab.txt file
-crontab /crontab.txt
+# Set the default crontab as the /cron_d/crontab.txt file
+crontab /cron_d/crontab.txt
 
 # Run the cron process, so its logs will be visible to docker logs
 # cron -f 
