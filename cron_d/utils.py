@@ -451,15 +451,14 @@ def error_wrapper():
             except Exception as err:
                 # Every morning at 3:01 MDT I get an email that says "server closed the connection unexpectedly.
                 # This probably means the server terminated abnormally before or while processing the request."
+                check_dt = datetime.datetime.utcnow()
+                c.logger.info(f"The time of the error is {check_dt}")
                 try:
-                    check_dt = datetime.datetime.utcnow()
-                    c.logger.info(f"The time of the error is {check_dt}")
-                    check_time = check_dt.time()
                     if (
                         is_time_between(
                             begin_time=datetime.time(hour=8, minute=0),
                             end_time=datetime.time(hour=8, minute=3),
-                            check_time=check_time,
+                            check_time=check_dt.time(),
                         )
                         and "server closed the connection unexpectedly" in err.args
                     ):
@@ -477,7 +476,7 @@ def error_wrapper():
                 alertees_email = ["smccarthy@myijack.com"]
                 alertees_sms = ["+14036897250"]
                 subject = f"IJACK {filename} ERROR!!!"
-                msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error!"
+                msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error at {check_dt} UTC time!"
                 msg_email = (
                     msg_sms
                     + f"\n\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \nArgs: {err.args}. \nError message: {err}"
