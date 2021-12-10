@@ -6,7 +6,7 @@ import sys
 import unittest
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -15,13 +15,13 @@ except ValueError:
 
 import psycopg2
 
-import gateways_mv_refresh
+from cron_d import gateways_mv_refresh
 
 # local imports
-from utils import Config, configure_logging
+from cron_d.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:

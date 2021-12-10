@@ -14,10 +14,10 @@
 #         sys.path.insert(0, pythonpath)
 
 # insert_path("/workspace/ad_hoc")
-# insert_path("/workspace/cron.d")
+# insert_path("/workspace/cron_d")
 
 # # local imports
-# from utils import Config, configure_logging
+# from cron_d.utils import Config, configure_logging
 # import update_gps_lat_lon_from_land_locations
 
 # LOGFILE_NAME = "test_main_programs"

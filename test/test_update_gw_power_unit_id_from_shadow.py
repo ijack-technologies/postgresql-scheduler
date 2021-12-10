@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -15,13 +15,13 @@ except ValueError:
 
 
 # import alarm_log_mv_refresh_old_non_surface
-import update_gw_power_unit_id_from_shadow
+from cron_d import update_gw_power_unit_id_from_shadow
 
 # local imports
-from utils import Config, configure_logging
+from cron_d.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -52,7 +52,9 @@ class TestAll(unittest.TestCase):
     def test_update_gw_power_unit_id_from_shadow(self):
         """Test the main program"""
         global c
-        with patch("update_gw_power_unit_id_from_shadow.exit_if_already_running") as _:
+        with patch(
+            "cron_d.update_gw_power_unit_id_from_shadow.exit_if_already_running"
+        ) as _:
             update_gw_power_unit_id_from_shadow.main(c)
 
 

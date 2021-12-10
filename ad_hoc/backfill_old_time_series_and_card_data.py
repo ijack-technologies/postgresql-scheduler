@@ -21,7 +21,6 @@ import requests
 from dotenv import load_dotenv
 
 
-
 def insert_path(pythonpath):
     """Insert pythonpath into the front of the PATH environment
     variable, before importing anything from canpy"""
@@ -34,11 +33,11 @@ def insert_path(pythonpath):
 # For running in development only
 project_folder = pathlib.Path(__file__).absolute().parent.parent
 ad_hoc_folder = project_folder.joinpath("ad_hoc")
-cron_d_folder = project_folder.joinpath("cron.d")
+cron_d_folder = project_folder.joinpath("cron_d")
 insert_path(cron_d_folder)  # second in path
 insert_path(ad_hoc_folder)  # first in path
 
-from utils import (
+from cron_d.utils import (
     error_wrapper,  # Config,; configure_logging,
     exit_if_already_running,
     get_conn,
@@ -252,15 +251,16 @@ class Config:
             log_level_sh=log_level_sh,
         )
 
+
 def get_num_messages_in_sqs_queue(sqs_queue_url):
     response = sqs.get_queue_attributes(
         QueueUrl=sqs_queue_url,
         AttributeNames=[
-            'ApproximateNumberOfMessages',
+            "ApproximateNumberOfMessages",
             # 'ApproximateNumberOfMessagesNotVisible',
             # 'ApproximateNumberOfMessagesDelayed',
             # 'DelaySeconds'
-        ]
+        ],
     )
     return float(response.get("Attributes", {}).get("ApproximateNumberOfMessages", 0))
 
@@ -826,7 +826,9 @@ def main(c):
                 time2 = time.time()
 
             # print(pd.Series(out).value_counts())
-            c.logger.info(f"Number of records processed in non_surface 'out' list: {len(out)}")
+            c.logger.info(
+                f"Number of records processed in non_surface 'out' list: {len(out)}"
+            )
             c.logger.info(
                 f"Non-surface threaded operations took {(time2-time1)/60:.2f} minutes to post {n_non_surface_rows} rows!"
             )
@@ -970,10 +972,14 @@ def main(c):
                         # print(str(len(out2)), end="\r")
 
                 time2 = time.time()
-                
+
             # c.logger.info(pd.Series(out2).value_counts())
-            c.logger.info(f"Number of records processed in card data 'out2' list: {len(out2)}")
-            c.logger.info(f"Card data threaded operations took {(time2-time1)/60:.2f} minutes to post {n_card_data_rows} rows!")
+            c.logger.info(
+                f"Number of records processed in card data 'out2' list: {len(out2)}"
+            )
+            c.logger.info(
+                f"Card data threaded operations took {(time2-time1)/60:.2f} minutes to post {n_card_data_rows} rows!"
+            )
 
             # Update the public.gw table once it's complete, so we don't do it again ########################
             sql_gw = f"""

@@ -2,7 +2,7 @@ import logging
 import pathlib
 
 # local imports
-from utils import (
+from cron_d.utils import (
     Config,
     configure_logging,
     error_wrapper,
@@ -14,11 +14,11 @@ LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "time_series_mv_refresh"
 
 
-def refresh_locf_materialized_view():
+def refresh_locf_materialized_view(c):
     """
     Refresh the "last one carried forward" or "filled forward"
-    time series view. This is extremely important for the 
-    aggregated queries that come later, so the zeros are 
+    time series view. This is extremely important for the
+    aggregated queries that come later, so the zeros are
     properly carried forward.
     """
 
@@ -40,9 +40,9 @@ def refresh_locf_materialized_view():
 #     to the present time.
 #     """
 #     # Requires owner privileges (must be run by "master" user, not "app_user")
-    
+
 #     sql_refresh_hybrid_mv = """
-#         REFRESH MATERIALIZED VIEW CONCURRENTLY 
+#         REFRESH MATERIALIZED VIEW CONCURRENTLY
 #         public.time_series_mv
 #         WITH DATA;
 #     """
@@ -51,7 +51,7 @@ def refresh_locf_materialized_view():
 #     return True
 
 
-def get_and_insert_latest_values():
+def get_and_insert_latest_values(c):
     """
     Get the latest values from the "last one carried forward" materialized view,
     which are not already in the regular "copied" table, and insert them.
@@ -109,14 +109,14 @@ def main(c):
     exit_if_already_running(c, pathlib.Path(__file__).name)
 
     # First refresh the main "last one carried forward" MV
-    refresh_locf_materialized_view()
+    refresh_locf_materialized_view(c)
 
     # # Refresh the hybrid MV with different granularities by date
     # refresh_hybrid_time_series_materialized_view()
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
-    get_and_insert_latest_values()
+    get_and_insert_latest_values(c)
 
     return True
 

@@ -12,7 +12,7 @@ RUN pip3 install --upgrade pip && \
 # EXPOSE 5005
 
 # COPY app app 
-COPY cron.d cron.d
+COPY cron_d cron_d
 COPY ad_hoc ad_hoc
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /root/

@@ -8,8 +8,10 @@ import signal
 import subprocess
 import sys
 import time
+import datetime
 from logging.handlers import TimedRotatingFileHandler
 from subprocess import PIPE, STDOUT
+import traceback
 
 import boto3
 import psycopg2
@@ -44,7 +46,7 @@ def configure_logging(name, logfile_name, path_to_log_directory="/var/log/"):
         "%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s"
     )
 
-    # date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
+    # date_for_log_filename = datetime.datetime.now().strftime('%Y-%m-%d')
     # log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filename = f"{logfile_name}.log"
     log_filepath = os.path.join(path_to_log_directory, log_filename)
@@ -174,10 +176,10 @@ def send_twilio_sms(c, sms_phone_list, body):
     )
     for phone_num in sms_phone_list:
         message = twilio_client.messages.create(
-            to=phone_num, 
+            to=phone_num,
             # from_="+13067003245",
-            from_="+13069884140", # new number Apr 20, 2021
-            body=body
+            from_="+13069884140",  # new number Apr 20, 2021
+            body=body,
         )
         c.logger.info(f"SMS sent to {phone_num}")
 
@@ -201,7 +203,7 @@ def send_twilio_phone(c, phone_list, body):
         call = twilio_client.calls.create(
             to=phone_num,
             # from_="+13067003245",
-            from_="+13069884140", # new number Apr 20, 2021
+            from_="+13069884140",  # new number Apr 20, 2021
             twiml=f"<Response><Say>Hello. The {body}</Say></Response>"
             # url=twiml_instructions_url
         )
@@ -412,22 +414,62 @@ def check_if_c_in_args(args):
     return c
 
 
+def is_time_between(begin_time, end_time, check_time=None):
+    """Checks if the 'check_time' is between the begin_time and end_time"""
+    # If check time is not given, default to current UTC time
+    check_time = check_time or datetime.datetime.utcnow().time()
+    if begin_time < end_time:
+        return check_time >= begin_time and check_time <= end_time
+    else:  # crosses midnight
+        return check_time >= begin_time or check_time <= end_time
+
+
 def error_wrapper():
     def wrapper_outer(func):
         @functools.wraps(func)
         def wrapper_inner(*args, **kwargs):
-            # Do something before
-            c = check_if_c_in_args(args)
+            # Need to make this in the outer scope first and overwrite it if necessary...
+            c = Config()
+            c.logger = configure_logging(
+                __name__,
+                logfile_name=pathlib.Path(__file__).stem,
+                path_to_log_directory="/var/log/",
+            )
             try:
-                # If we're testing the alerting (when an error happens), raise an exception
-                if c.TEST_ERROR:
-                    raise ValueError
+                # Do something before
+                c = check_if_c_in_args(args)
+                value = None
+
+                # # If we're testing the alerting (when an error happens), raise an exception
+                # if c.TEST_ERROR:
+                #     raise ValueError
 
                 # Run the actual function
                 value = func(*args, **kwargs)
 
             # Do something after
             except Exception as err:
+                # Every morning at 3:01 MDT I get an email that says "server closed the connection unexpectedly.
+                # This probably means the server terminated abnormally before or while processing the request."
+                try:
+                    check_time = datetime.datetime.utcnow().time()
+                    if (
+                        is_time_between(
+                            begin_time=datetime.time(hour=8, minute=0),
+                            end_time=datetime.time(hour=8, minute=3),
+                            check_time=check_time,
+                        )
+                        and "server closed the connection unexpectedly" in err.args
+                    ):
+                        return None
+                except Exception as err_inner:
+                    pass
+                # # Original test case from OP
+                # print(is_time_between(datetime.time(10, 30), datetime.time(16, 30)))
+
+                # # Test case when range crosses midnight
+                # print(is_time_between(datetime.time(22, 0), datetime.time(4, 00)))
+
                 filename = pathlib.Path(__file__).name
                 c.logger.exception(
                     f"ERROR running program! Closing now... \nError msg: {err}"
@@ -436,7 +478,11 @@ def error_wrapper():
                 alertees_sms = ["+14036897250"]
                 subject = f"IJACK {filename} ERROR!!!"
                 msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error!"
-                msg_email = msg_sms + f"\nError message: {err}"
+                msg_email = (
+                    msg_sms
+                    + f"\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \nArgs: {err.args}. \nError message: {err}"
+                )
+                msg_email += f"Traceback: {traceback.format_exc()}"
 
                 message = send_twilio_sms(c, alertees_sms, msg_sms)
                 rc = send_mailgun_email(

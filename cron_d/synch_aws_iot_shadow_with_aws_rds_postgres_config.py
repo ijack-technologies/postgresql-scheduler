@@ -5,7 +5,7 @@ import pathlib
 import time
 
 # local imports
-from utils import (
+from cron_d.utils import (
     Config,
     configure_logging,
     error_wrapper,
@@ -39,10 +39,10 @@ def main(c):
         select aws_thing, gateway, customer, mqtt_topic, cust_sub_group_abbrev,
             unit_type, apn, 
             location, power_unit, model, 
-            wait_time_mins_spm, 
             time_zone,
-            heartbeat_enabled, online_hb_enabled, spm, suction, discharge, hyd_temp, 
-            wait_time_mins, wait_time_mins_ol, wait_time_mins_spm, wait_time_mins_suction, wait_time_mins_discharge, wait_time_mins_hyd_temp
+            heartbeat_enabled, online_hb_enabled, spm, stboxf, suction, discharge, hyd_temp, 
+            wait_time_mins, wait_time_mins_ol, wait_time_mins_spm, wait_time_mins_stboxf, 
+            wait_time_mins_suction, wait_time_mins_discharge, wait_time_mins_hyd_temp
         from public.gateways
         where aws_thing <> 'test'
             and aws_thing is not null

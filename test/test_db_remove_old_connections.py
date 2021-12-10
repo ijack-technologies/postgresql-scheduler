@@ -7,20 +7,20 @@ import unittest
 from unittest.mock import patch
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-import db_remove_old_connections
+from cron_d import db_remove_old_connections
 
 # local imports
-from utils import Config, configure_logging
+from cron_d.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -53,7 +53,7 @@ class TestAll(unittest.TestCase):
         global c
 
         # This is no longer a materialized view--just a regular view
-        with patch("db_remove_old_connections.exit_if_already_running") as _:
+        with patch("cron_d.db_remove_old_connections.exit_if_already_running") as _:
             db_remove_old_connections.main(c)
 
 

@@ -7,14 +7,14 @@ import unittest
 from unittest.mock import patch
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-import check_aws_things_w_no_power_unit
-from utils import Config, configure_logging
+from cron_d import check_aws_things_w_no_power_unit
+from cron_d.utils import Config, configure_logging
 
 
 LOGFILE_NAME = "test_main_programs"
@@ -41,7 +41,9 @@ class TestAll(unittest.TestCase):
     def test_update_gw_power_unit_id_from_shadow(self):
         """Test the main program"""
         global c
-        with patch("check_aws_things_w_no_power_unit.exit_if_already_running") as _:
+        with patch(
+            "cron_d.check_aws_things_w_no_power_unit.exit_if_already_running"
+        ) as _:
             check_aws_things_w_no_power_unit.main(c)
 
 

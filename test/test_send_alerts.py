@@ -6,7 +6,7 @@ import sys
 import unittest
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -14,10 +14,10 @@ except ValueError:
 
 
 # local imports
-from utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
+from cron_d.utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -59,7 +59,9 @@ class TestAll(unittest.TestCase):
         self.assertNotEqual(message.error_code, "None")
         self.assertNotEqual(message.error_message, "None")
         self.assertIn(warning, message.body)
-        self.assertIn("Reply STOP to unsubscribe from ALL IJACK SMS alerts", message.body)
+        self.assertIn(
+            "Reply STOP to unsubscribe from ALL IJACK SMS alerts", message.body
+        )
         self.assertEqual(message.status, "queued")
 
     def test_mailgun_text_only(self):

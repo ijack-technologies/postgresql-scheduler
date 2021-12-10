@@ -6,23 +6,23 @@ import sys
 import unittest
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-import alarm_log_delete_duplicates
+from cron_d import alarm_log_delete_duplicates
 
-# import alarm_log_mv_refresh_old_non_surface
-import alarm_log_mv_refresh
-import time_series_mv_refresh
+# from cron_d import alarm_log_mv_refresh_old_non_surface
+from cron_d import alarm_log_mv_refresh
+from cron_d import time_series_mv_refresh
 
 # local imports
-from utils import Config, configure_logging
+from cron_d.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace/cron.d"
+pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:

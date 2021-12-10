@@ -12,7 +12,7 @@ import sys
 import time
 
 import requests
-from dotenv import load_dotenv   
+from dotenv import load_dotenv
 
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
@@ -26,11 +26,11 @@ def insert_path(pythonpath):
 # For running in development only
 project_folder = pathlib.Path(__file__).absolute().parent.parent
 ad_hoc_folder = project_folder.joinpath("ad_hoc")
-cron_d_folder = project_folder.joinpath("cron.d")
+cron_d_folder = project_folder.joinpath("cron_d")
 insert_path(cron_d_folder)  # second in path
 insert_path(ad_hoc_folder)  # first in path
 
-from utils import Config, configure_logging, error_wrapper, get_conn, run_query
+from cron_d.utils import Config, configure_logging, error_wrapper, get_conn, run_query
 
 load_dotenv()
 LOG_LEVEL = logging.INFO

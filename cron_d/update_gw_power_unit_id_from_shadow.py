@@ -1,10 +1,9 @@
 import logging
 import pathlib
 import time
-from datetime import datetime
 
 # local imports
-from utils import (
+from cron_d.utils import (
     Config,
     configure_logging,
     error_wrapper,
@@ -17,7 +16,7 @@ from utils import (
 )
 
 LOG_LEVEL = logging.INFO
-LOGFILE_NAME = "check_aws_things_w_no_power_unit"
+LOGFILE_NAME = "update_gw_power_unit_id_from_shadow"
 
 
 def convert_to_float(c, string):
@@ -28,68 +27,64 @@ def convert_to_float(c, string):
         return 0
 
 
-# def update_structures_table(c, power_unit_id, power_unit_shadow, column, new_value, structure, aws_thing, db_value):
-#     sql_update = f"""
-#         update public.structures
-#         set {column} = {new_value}
-#         -- previous value = {db_value}
-#         where power_unit_id = {power_unit_id}
-#             -- power unit reported in the AWS IoT device shadow:
-#             -- power_unit = {power_unit_shadow}
-#             -- structure from public.structures table,
-#             -- based on power_unit_id associated with aws_thing in public.gw table
-#             -- structure = {structure}
-#             -- aws_thing = {aws_thing}
-#     """
-#     run_query(c, sql_update, db="ijack", fetchall=False, commit=True)
-#     subject = "Changing public.structures table!"
-#     send_mailgun_email(c, text=sql_update, html='', emailees_list=c.EMAIL_LIST_DEV, subject=subject)
-
-
-# def compare_shadow_and_db(c, shadow_value, db_value, db_column, power_unit_id, power_unit_shadow, structure, aws_thing):
-#     if shadow_value is None:
-#         return None
-#     shadow_value2 = round(convert_to_float(c, shadow_value), 2)
-#     db_value2 = round(convert_to_float(c, db_value), 2)
-#     if shadow_value2 != 0 and shadow_value2 != db_value2:
-#         update_structures_table(c, power_unit_id, power_unit_shadow, db_column, shadow_value, structure, aws_thing, db_value)
-
-
-def seconds_since_last_any_msg(shadow):
-    """How many seconds has it been since we received ANY message from the gateway at AWS?"""
-
-    metadata = shadow.get("metadata", {}).get("reported", {})
-
-    # Find the last time any message was received
-    time_received_latest = 0
-    for _, value in metadata.items():
-        try:
-            if "timestamp" in value.keys():
-                time_received = value["timestamp"]
-            else:
-                # Must be a dictionary like the AGFT schedule
-                for _, value2 in value.items():
-                    time_received = value2["timestamp"]
-        except Exception:
-            print(f"Not sure where to find the timestamp in value '{value}'")
-            time_received = 0
-
-        # print(type(time_received))
-        # if isinstance(time_received, int):
-        if time_received > time_received_latest:
-            time_received_latest = time_received
-
-    # Convert to a datetime
-    since_when_time_received = datetime.utcfromtimestamp(time_received_latest)
-    # Get the timedelta since we started waiting
-    time_delta_time_received = datetime.utcnow() - since_when_time_received
-    # How many seconds has it been since we started waiting?
-    seconds_elapsed_total = (
-        time_delta_time_received.days * 24 * 60 * 60 + time_delta_time_received.seconds
+def update_structures_table(
+    c,
+    power_unit_id,
+    power_unit_shadow,
+    column,
+    new_value,
+    structure,
+    aws_thing,
+    db_value,
+):
+    sql_update = f"""
+        update public.structures
+        set {column} = {new_value}
+        -- previous value = {db_value}
+        where power_unit_id = {power_unit_id}
+            -- power unit reported in the AWS IoT device shadow:
+            -- power_unit = {power_unit_shadow}
+            -- structure from public.structures table,
+            -- based on power_unit_id associated with aws_thing in public.gw table
+            -- structure = {structure}
+            -- aws_thing = {aws_thing}
+    """
+    subject = "Please change GPS in public.structures table!"
+    send_mailgun_email(
+        c, text=sql_update, html="", emailees_list=c.EMAIL_LIST_DEV, subject=subject
     )
-    # c.logger.info(f"Minutes since last {metric_to_get}: {round(seconds_elapsed_total/60)}")
+    # Don't run this automatically since it undoes my manual updates with the
+    # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
+    # run_query(c, sql_update, db="ijack", fetchall=False, commit=True)
 
-    return seconds_elapsed_total
+
+def compare_shadow_and_db(
+    c,
+    shadow_value,
+    db_value,
+    db_column,
+    power_unit_id,
+    power_unit_shadow,
+    structure,
+    aws_thing,
+):
+    if shadow_value is None:
+        return None
+    shadow_value2 = round(convert_to_float(c, shadow_value), 2)
+    db_value2 = round(convert_to_float(c, db_value), 2)
+    if shadow_value2 != 0 and shadow_value2 != db_value2:
+        # The following program could potentially change the database,
+        # but it just emails me a warning instead
+        update_structures_table(
+            c,
+            power_unit_id,
+            power_unit_shadow,
+            db_column,
+            shadow_value,
+            structure,
+            aws_thing,
+            db_value,
+        )
 
 
 @error_wrapper()
@@ -112,12 +107,11 @@ def main(c):
         select 
             distinct on (aws_thing)
             t1.aws_thing, 
-            t1.power_unit_id
-            --t2.power_unit
+            t1.power_unit_id, 
+            t2.power_unit
         from public.gw t1
-        where t1.power_unit_id is null
-        --left join public.power_units t2
-        --    on t2.id = t1.power_unit_id
+        left join public.power_units t2 
+            on t2.id = t1.power_unit_id
         --where aws_thing <> 'test'
         --    and aws_thing is not null
         --    and power_unit_id is not null
@@ -134,20 +128,24 @@ def main(c):
     _, pu_rows = run_query(c, sql_pu, db="ijack", fetchall=True, conn=conn)
     pu_dict = {row["power_unit"]: row["power_unit_id"] for row in pu_rows}
 
-    # # Get structure records
-    # sql_structures = """
-    #     select
-    #         structure,
-    #         power_unit_id,
-    #         t3.customer
-    #     from public.structures t1
-    #     left join myijack.structure_customer_rel t2
-    #         on t2.structure_id = t1.id
-    #     left join myijack.customers t3
-    #         on t3.id = t2.customer_id
-    #     where power_unit_id is not null
-    # """
-    # _, structure_rows = run_query(c, sql_structures, db="ijack", fetchall=True, conn=conn)
+    # Get structure records for comparing GPS lat/lon by power unit
+    sql_structures = """
+        select 
+            structure,
+            power_unit_id,
+            gps_lat,
+            gps_lon,
+            t3.customer
+        from public.structures t1
+        left join myijack.structure_customer_rel t2
+            on t2.structure_id = t1.id
+        left join myijack.customers t3
+            on t3.id = t2.customer_id
+        where power_unit_id is not null
+    """
+    _, structure_rows = run_query(
+        c, sql_structures, db="ijack", fetchall=True, conn=conn
+    )
 
     # Close the DB connection now
     conn.close()
@@ -176,19 +174,10 @@ def main(c):
             )
             continue
 
-        seconds_since_last_update = seconds_since_last_any_msg(shadow)
-        days_since_last_update = round(seconds_since_last_update / 60 / 60 / 24, 1)
-        # If not in last two hours, ignore
-        if days_since_last_update > 0.5:
-            c.logger.warning(
-                f"Ignoring gateway '{aws_thing}' since shadow hasn't been updated in {days_since_last_update} days. Continuing with next AWS_THING in public.gw table..."
-            )
-            continue
-
         reported = shadow.get("state", {}).get("reported", {})
         power_unit_shadow = reported.get("SERIAL_NUMBER", None)
-        # latitude_shadow = reported.get('LATITUDE', None)
-        # longitude_shadow = reported.get('LONGITUDE', None)
+        latitude_shadow = reported.get("LATITUDE", None)
+        longitude_shadow = reported.get("LONGITUDE", None)
 
         if power_unit_shadow is None:
             c.logger.warning(
@@ -216,6 +205,36 @@ Continuing with next AWS_THING in public.gw table..."
         # Get the power_unit_id already in the public.gw table
         power_unit_id_gw = dict_.get("power_unit_id", None)
 
+        # Compare the GPS first
+        structure = None
+        customer = None
+        structure_rows_relevant = [
+            row for row in structure_rows if row["power_unit_id"] == power_unit_id_gw
+        ]
+        for row in structure_rows_relevant:
+            structure = row["structure"]
+            customer = row["customer"]
+            compare_shadow_and_db(
+                c,
+                latitude_shadow,
+                row["gps_lat"],
+                "gps_lat",
+                power_unit_id_gw,
+                power_unit_shadow,
+                structure,
+                aws_thing,
+            )
+            compare_shadow_and_db(
+                c,
+                longitude_shadow,
+                row["gps_lon"],
+                "gps_lon",
+                power_unit_id_gw,
+                power_unit_shadow,
+                structure,
+                aws_thing,
+            )
+
         if power_unit_id_shadow == power_unit_id_gw:
             c.logger.info(
                 f"Power unit '{power_unit_shadow}' in the public.gw table matches the one reported in the device shadow. Continuing with next..."
@@ -228,9 +247,9 @@ Continuing with next AWS_THING in public.gw table..."
             f"{i+1} of {n_gw_rows}: Please update public.gw AWS_THING: {aws_thing} record to "
             + f"the power unit reported in the shadow: '{power_unit_shadow}' ({power_unit_id_shadow}) "
             + f"instead of '{power_unit_gw}' ({power_unit_id_gw}) in the public.gw table. "
+            + f"The structure for the current power unit ID of '{power_unit_id_gw}' is '{structure}'. "
+            + f"The customer for structure '{structure}' is '{customer}'. "
         )
-        # f"The structure for the current power unit ID of '{power_unit_id_gw}' is '{structure}'. " + \
-        # f"The customer for structure '{structure}' is '{customer}'. "
         c.logger.info(msg)
 
         subject = "Need new/different power unit in public.gw table!"

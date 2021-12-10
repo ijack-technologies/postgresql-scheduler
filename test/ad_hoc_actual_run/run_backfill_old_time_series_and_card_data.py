@@ -14,10 +14,10 @@
 #         sys.path.insert(0, pythonpath)
 
 # insert_path("/workspace/ad_hoc")
-# insert_path("/workspace/cron.d")
+# insert_path("/workspace/cron_d")
 
 # # local imports
-# from utils import Config, configure_logging
+# from cron_d.utils import Config, configure_logging
 # import backfill_old_time_series_and_card_data
 
 # LOGFILE_NAME = "test_backfill_old_time_series_and_card_data"
