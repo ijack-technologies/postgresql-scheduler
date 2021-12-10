@@ -37,7 +37,7 @@ cron_d_folder = project_folder.joinpath("cron_d")
 insert_path(cron_d_folder)  # second in path
 insert_path(ad_hoc_folder)  # first in path
 
-from cron_d.utils import (
+from .utils import (
     error_wrapper,  # Config,; configure_logging,
     exit_if_already_running,
     get_conn,

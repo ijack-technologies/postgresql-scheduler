@@ -12,7 +12,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 # local imports
-from cron_d.utils import (
+from .utils import (
     Config,
     configure_logging,
     error_wrapper,

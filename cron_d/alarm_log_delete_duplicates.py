@@ -11,7 +11,7 @@ except ValueError:
 
 
 # local imports
-from cron_d.utils import (
+from .utils import (
     Config,
     configure_logging,
     error_wrapper,

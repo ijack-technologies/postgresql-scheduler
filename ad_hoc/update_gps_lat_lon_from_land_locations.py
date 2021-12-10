@@ -30,7 +30,7 @@ cron_d_folder = project_folder.joinpath("cron_d")
 insert_path(cron_d_folder)  # second in path
 insert_path(ad_hoc_folder)  # first in path
 
-from cron_d.utils import Config, configure_logging, error_wrapper, get_conn, run_query
+from .utils import Config, configure_logging, error_wrapper, get_conn, run_query
 
 load_dotenv()
 LOG_LEVEL = logging.INFO
