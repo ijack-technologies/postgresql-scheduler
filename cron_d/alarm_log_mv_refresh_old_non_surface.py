@@ -16,7 +16,7 @@
 #     sys.path.insert(0, pythonpath)
 
 # # local imports
-# from .utils import (
+# from cron_d.utils import (
 #     Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms,
 #     exit_if_already_running,
 # )
