@@ -452,7 +452,9 @@ def error_wrapper():
                 # Every morning at 3:01 MDT I get an email that says "server closed the connection unexpectedly.
                 # This probably means the server terminated abnormally before or while processing the request."
                 try:
-                    check_time = datetime.datetime.utcnow().time()
+                    check_dt = datetime.datetime.utcnow()
+                    c.logger.info(f"The time of the error is {check_dt}")
+                    check_time = check_dt.time()
                     if (
                         is_time_between(
                             begin_time=datetime.time(hour=8, minute=0),
@@ -463,12 +465,10 @@ def error_wrapper():
                     ):
                         return None
                 except Exception as err_inner:
-                    pass
-                # # Original test case from OP
-                # print(is_time_between(datetime.time(10, 30), datetime.time(16, 30)))
-
-                # # Test case when range crosses midnight
-                # print(is_time_between(datetime.time(22, 0), datetime.time(4, 00)))
+                    c.logger.exception(
+                        f"ERROR checking the time of the error... \nError msg: {err_inner}"
+                    )
+                    err += f"\n\nWhile processing the initial error, another error happened while checking the time of the error: \n\n{err_inner}"
 
                 filename = pathlib.Path(__file__).name
                 c.logger.exception(
@@ -480,7 +480,7 @@ def error_wrapper():
                 msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error!"
                 msg_email = (
                     msg_sms
-                    + f"\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \nArgs: {err.args}. \nError message: {err}"
+                    + f"\n\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \nArgs: {err.args}. \nError message: {err}"
                 )
                 msg_email += f"Traceback: {traceback.format_exc()}"
 

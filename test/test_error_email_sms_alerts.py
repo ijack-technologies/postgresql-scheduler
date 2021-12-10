@@ -155,15 +155,14 @@ class TestAll(unittest.TestCase):
     ):
         """Test we ignore the 2-3am local time (8:00 UTC time) error every night"""
 
-        # instance = mock_dt.return_value
-        # mock_dt = MagicMock()
-        # mock_dt
         mock_check.side_effect = Exception("server closed the connection unexpectedly")
         mock_dt.utcnow.return_value = datetime(2021, 1, 1, 8, 1)
         global c
         c.TEST_FUNC = True
         # c.TEST_ERROR = False
+
         alarm_log_mv_refresh.main(c)
+
         mock_check.assert_called_once()
         mock_mail.assert_not_called()
         mock_twil.assert_not_called()
