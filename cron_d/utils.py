@@ -460,7 +460,7 @@ def error_wrapper():
                             end_time=datetime.time(hour=9, minute=3),
                             check_time=check_dt.time(),
                         )
-                        and "server closed the connection unexpectedly" in err.args
+                        and "server closed the connection" in str(err)
                     ):
                         return None
                 except Exception as err_inner:
@@ -479,9 +479,9 @@ def error_wrapper():
                 msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error at {check_dt} UTC time!"
                 msg_email = (
                     msg_sms
-                    + f"\n\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \nArgs: {err.args}. \nError message: {err}"
+                    + f"\n\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \n\nArgs: {err.args}. \n\nError message: {err}"
                 )
-                msg_email += f"Traceback: {traceback.format_exc()}"
+                msg_email += f"\n\nTraceback: {traceback.format_exc()}"
 
                 message = send_twilio_sms(c, alertees_sms, msg_sms)
                 rc = send_mailgun_email(

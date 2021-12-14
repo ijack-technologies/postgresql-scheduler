@@ -156,7 +156,7 @@ class TestAll(unittest.TestCase):
         """Test we ignore the 2-3am local time (8:00 UTC time) error every night"""
 
         mock_check.side_effect = Exception("server closed the connection unexpectedly")
-        mock_dt.utcnow.return_value = datetime(2021, 1, 1, 8, 1)
+        mock_dt.utcnow.return_value = datetime(2021, 1, 1, 9, 1)
         global c
         c.TEST_FUNC = True
         # c.TEST_ERROR = False
