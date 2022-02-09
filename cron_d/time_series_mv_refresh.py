@@ -86,6 +86,7 @@ def get_and_insert_latest_values(c):
         END_STOP_TIME,
         DER_OK_COUNTS,
         stroke_up_time, stroke_down_time,
+        HYD_OIL_LVL, HYD_FILT_LIFE, HYD_OIL_LIFE,
         -- booleans below
 		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf
     )
@@ -99,6 +100,7 @@ def get_and_insert_latest_values(c):
         END_STOP_TIME,
         DER_OK_COUNTS,
         stroke_up_time, stroke_down_time,
+        HYD_OIL_LVL, HYD_FILT_LIFE, HYD_OIL_LIFE,
         -- booleans below
 		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf
 	FROM public.time_series_locf

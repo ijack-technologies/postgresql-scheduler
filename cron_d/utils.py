@@ -503,3 +503,25 @@ def error_wrapper():
         return wrapper_inner
 
     return wrapper_outer
+
+
+def get_all_gateways(c) -> list:
+    """Get all gateways from database"""
+
+    # These are all the metrics that will be put in the AWS IoT device shadow as "C__{METRIC}"
+    SQL = """
+        select aws_thing, gateway, customer, mqtt_topic, cust_sub_group_abbrev,
+            unit_type, apn, 
+            location, power_unit, model, 
+            time_zone,
+            heartbeat_enabled, online_hb_enabled, spm, stboxf, suction, discharge, hyd_temp, 
+            wait_time_mins, wait_time_mins_ol, wait_time_mins_spm, wait_time_mins_stboxf, 
+            wait_time_mins_suction, wait_time_mins_discharge, wait_time_mins_hyd_temp
+        from public.gateways
+        where aws_thing <> 'test'
+            and aws_thing is not null
+            and customer_id != 21 -- demo customer
+    """
+    _, rows = run_query(c, SQL, db="ijack", fetchall=True)
+
+    return rows
