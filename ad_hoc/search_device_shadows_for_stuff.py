@@ -34,7 +34,6 @@ rows = get_all_gateways(c)
 # Get the Boto3 AWS IoT client for updating the "thing shadow"
 client_iot = get_client_iot()
 
-search_for = "5328"
 for i, dict_ in enumerate(rows):
     aws_thing = dict_.get("aws_thing", None)
 
@@ -55,11 +54,16 @@ for i, dict_ in enumerate(rows):
 
     reported = shadow.get("state", {}).get("reported", {})
 
-    phone_country = reported.get("PHONE_COUNTRY", None)
-    phone_area = reported.get("PHONE_AREA", None)
-    phone_number = reported.get("PHONE_NUMBER", None)
+    SWV = reported.get("SWV", None)
+    # phone_country = reported.get("PHONE_COUNTRY", None)
+    # phone_area = reported.get("PHONE_AREA", None)
+    # phone_number = reported.get("PHONE_NUMBER", None)
+    # phone_number = reported.get("HYD_FILT_LIFE", None)
+    # phone_number = reported.get("HYD_OIL_LVL", None)
+    # phone_number = reported.get("HYD_OIL_LIFE", None)
 
-    if phone_number and search_for in str(phone_number):
+    # if phone_number and search_for in str(phone_number):
+    if SWV and SWV >= 319:
         print("got it!")
 
 print("Finished")

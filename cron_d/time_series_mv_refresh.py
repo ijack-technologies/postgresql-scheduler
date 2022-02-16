@@ -99,7 +99,9 @@ def get_and_insert_latest_values(c):
         AGFN_SL,
         AGFM_SL,
         HP_RAISING_AVG_SL,
-        HP_LOWERING_AVG_SL
+        HP_LOWERING_AVG_SL,
+        AGFT_SL,
+        MGP_SL
     )
     select
         timestamp_utc, gateway,
@@ -124,7 +126,9 @@ def get_and_insert_latest_values(c):
         AGFN_SL,
         AGFM_SL,
         HP_RAISING_AVG_SL,
-        HP_LOWERING_AVG_SL
+        HP_LOWERING_AVG_SL,
+        AGFT_SL,
+        MGP_SL
 	FROM public.time_series_locf
     --Use the "latest_ts_utc" table from above as a filter
     where timestamp_utc > (select timestamp_utc from latest_ts_utc)
