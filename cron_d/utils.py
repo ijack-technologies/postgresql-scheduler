@@ -112,7 +112,9 @@ def get_conn(c, db="ijack"):
     return conn
 
 
-def run_query(c, sql, db="ijack", fetchall=False, commit=False, conn=None):
+def run_query(
+    c, sql, db="ijack", fetchall=False, commit=False, conn=None, execute=True
+):
     """Run and time the SQL query"""
 
     is_close_conn = False
@@ -127,12 +129,13 @@ def run_query(c, sql, db="ijack", fetchall=False, commit=False, conn=None):
     with conn.cursor(cursor_factory=RealDictCursor) as cursor:
         c.logger.info(f"Running query now... SQL to run: \n{sql}")
         time_start = time.time()
-        cursor.execute(sql)
-        if commit:
-            conn.commit()
-        if fetchall:
-            columns = [str.lower(x[0]) for x in cursor.description]
-            rows = cursor.fetchall()
+        if execute:
+            cursor.execute(sql)
+            if commit:
+                conn.commit()
+            if fetchall:
+                columns = [str.lower(x[0]) for x in cursor.description]
+                rows = cursor.fetchall()
 
     time_finish = time.time()
     c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")

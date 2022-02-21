@@ -35,35 +35,122 @@ def convert_to_float(c, string):
         return 0
 
 
-def update_structures_table(
-    c,
-    power_unit_id,
-    power_unit_shadow,
-    column,
-    new_value,
-    structure,
-    aws_thing,
-    db_value,
-):
-    sql_update = f"""
-        update public.structures
-        set {column} = {new_value}
-        -- previous value = {db_value}
+def sql_get_info(power_unit_id, power_unit_shadow, structure, aws_thing):
+    return f"""
+        SELECT id, structure, structure_slave_id, structure_slave, 
+            downhole, surface, location, gps_lat, gps_lon, 
+            power_unit_id, power_unit, power_unit_str, 
+            gateway_id, gateway, aws_thing, qb_sale, unit_type_id, unit_type, 
+            model_type_id, model, model_unit_type_id, model_unit_type, 
+            model_type_id_slave, model_slave, model_unit_type_id_slave, model_unit_type_slave, 
+            customer_id, customer, cust_sub_group_id, cust_sub_group, 
+            run_mfg_date, structure_install_date, slave_install_date, 
+            notes_1, well_license, time_zone_id, time_zone, apn
+	    FROM public.vw_structures_joined
         where power_unit_id = {power_unit_id}
+            and customer_id != 21 --demo customer
             -- power unit reported in the AWS IoT device shadow:
             -- power_unit = {power_unit_shadow}
             -- structure from public.structures table,
             -- based on power_unit_id associated with aws_thing in public.gw table
             -- structure = {structure}
             -- aws_thing = {aws_thing}
+        limit 1
     """
-    subject = "Please change GPS in public.structures table!"
+
+
+def get_sql_update(
+    column,
+    new_value,
+    db_value,
+    power_unit_id,
+    dict_,
+    power_unit_shadow,
+    structure,
+    aws_thing,
+):
+    return f"""
+        update public.structures
+        set {column} = {new_value}
+        -- previous value = {db_value}
+        where power_unit_id = {power_unit_id}
+            -- customer = {dict_["customer"]}
+            -- model = {dict_["model"]}
+            -- surface = {dict_["surface"]}
+            -- cust_sub_group = {dict_["cust_sub_group"]}
+            -- power unit reported in the AWS IoT device shadow:
+            -- power_unit = {power_unit_shadow}
+            -- structure from public.structures table,
+            -- based on power_unit_id associated with aws_thing in public.gw table
+            -- structure = {structure}
+            -- aws_thing = {aws_thing}
+            -- notes_1 = {dict_["notes_1"]}
+    """
+
+
+def get_html(power_unit_shadow, sql_update, dict_):
+    return f"""
+        <html>
+        <body>
+
+        <h1>Running the following SQL to update the public.structures table!</h1>
+        <br>
+        <a href="https://myijack.com/rcom?unit={power_unit_shadow}">https://myijack.com/rcom?unit={power_unit_shadow}</a>
+        <br>
+        <p>{sql_update}</p>
+        <p>{dict_}</p>
+
+        </body>
+        </html>
+    """
+
+
+def update_structures_table(
+    c,
+    power_unit_id: int,
+    power_unit_shadow: int,
+    column: str,
+    new_value,
+    structure: int,
+    aws_thing: str,
+    db_value,
+    # for testing
+    execute: bool = True,
+) -> None:
+    """Actually update the public.structures table, and send an email alert about it"""
+
+    # Gather a bit more info for the email alert
+    sql_get_info_str = sql_get_info(
+        power_unit_id, power_unit_shadow, structure, aws_thing
+    )
+    _, rows = run_query(
+        c, sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
+    )
+    dict_ = rows[0]
+
+    sql_update = get_sql_update(
+        column,
+        new_value,
+        db_value,
+        power_unit_id,
+        dict_,
+        power_unit_shadow,
+        structure,
+        aws_thing,
+    )
+
+    html = get_html(power_unit_shadow, sql_update, dict_)
+
+    # Just send a warning instead of auto-updating?
+    subject = "Updating GPS in public.structures table!"
     send_mailgun_email(
-        c, text=sql_update, html="", emailees_list=c.EMAIL_LIST_DEV, subject=subject
+        c, text="", html=html, emailees_list=c.EMAIL_LIST_DEV, subject=subject
     )
     # Don't run this automatically since it undoes my manual updates with the
     # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
-    # run_query(c, sql_update, db="ijack", fetchall=False, commit=True)
+    run_query(c, sql_update, db="ijack", fetchall=False, execute=execute)
+
+    return None
 
 
 def compare_shadow_and_db(

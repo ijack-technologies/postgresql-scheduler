@@ -18,7 +18,7 @@ except ValueError:
 from cron_d import update_gw_power_unit_id_from_shadow
 
 # local imports
-from cron_d.utils import Config, configure_logging
+from cron_d.utils import Config, configure_logging, run_query
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -49,13 +49,78 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
 
-    def test_update_gw_power_unit_id_from_shadow(self):
+    @patch("cron_d.update_gw_power_unit_id_from_shadow.exit_if_already_running")
+    def test_update_gw_power_unit_id_from_shadow(self, mock_exit_if_already_running):
         """Test the main program"""
         global c
-        with patch(
-            "cron_d.update_gw_power_unit_id_from_shadow.exit_if_already_running"
-        ) as _:
-            update_gw_power_unit_id_from_shadow.main(c)
+        update_gw_power_unit_id_from_shadow.main(c)
+
+    @patch("cron_d.update_gw_power_unit_id_from_shadow.send_mailgun_email")
+    @patch("cron_d.update_gw_power_unit_id_from_shadow.run_query")
+    def test_update_structures_table(
+        self,
+        mock_run_query,
+        mock_send_mailgun_email,
+    ):
+        """
+        Test the function that sends an email warning of a GPS lat/lon update,
+        and that auto-updates the public.structures table
+        """
+        global c
+        power_unit_id = 313
+        power_unit_shadow = 200476
+        column = "gps_lon"
+        new_value = -190.01567895242
+        structure = 190619
+        aws_thing = "1000051"
+        db_value = -120.09023308333333
+
+        sql_get_info_str = update_gw_power_unit_id_from_shadow.sql_get_info(
+            power_unit_id, power_unit_shadow, structure, aws_thing
+        )
+
+        _, rows = run_query(
+            c, sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
+        )
+        mock_run_query.return_value = (["col1", "col2"], rows)
+
+        # Run the main function we're testing
+        update_gw_power_unit_id_from_shadow.update_structures_table(
+            c,
+            power_unit_id=power_unit_id,
+            power_unit_shadow=power_unit_shadow,
+            column=column,
+            new_value=new_value,
+            structure=structure,
+            aws_thing=aws_thing,
+            db_value=db_value,
+            execute=False,
+        )
+
+        dict_ = rows[0]
+        sql_update = update_gw_power_unit_id_from_shadow.get_sql_update(
+            column,
+            new_value,
+            db_value,
+            power_unit_id,
+            dict_,
+            power_unit_shadow,
+            structure,
+            aws_thing,
+        )
+
+        html = update_gw_power_unit_id_from_shadow.get_html(
+            power_unit_shadow, sql_update, dict_
+        )
+
+        # mock_send_mailgun_email.assert_called_once()
+        mock_send_mailgun_email.assert_called_once_with(
+            c,
+            text="",
+            html=html,
+            emailees_list=["smccarthy@myijack.com"],
+            subject="Updating GPS in public.structures table!",
+        )
 
 
 if __name__ == "__main__":
