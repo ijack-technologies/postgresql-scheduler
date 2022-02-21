@@ -163,13 +163,15 @@ def compare_shadow_and_db(
     structure,
     aws_thing,
 ):
+    """
+    Compare the shadow and database values,
+    and if they're significantly different, update the database
+    """
     if shadow_value is None:
         return None
     shadow_value2 = round(convert_to_float(c, shadow_value), 2)
     db_value2 = round(convert_to_float(c, db_value), 2)
     if shadow_value2 != 0 and shadow_value2 != db_value2:
-        # The following program could potentially change the database,
-        # but it just emails me a warning instead
         update_structures_table(
             c,
             power_unit_id,
