@@ -49,12 +49,6 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
 
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.exit_if_already_running")
-    def test_update_gw_power_unit_id_from_shadow(self, mock_exit_if_already_running):
-        """Test the main program"""
-        global c
-        update_gw_power_unit_id_from_shadow.main(c)
-
     @patch("cron_d.update_gw_power_unit_id_from_shadow.send_mailgun_email")
     @patch("cron_d.update_gw_power_unit_id_from_shadow.run_query")
     def test_update_structures_table(
@@ -67,6 +61,8 @@ class TestAll(unittest.TestCase):
         and that auto-updates the public.structures table
         """
         global c
+        c.TEST_FUNC = False  # using mocks instead
+
         power_unit_id = 313
         power_unit_shadow = 200476
         column = "gps_lon"
