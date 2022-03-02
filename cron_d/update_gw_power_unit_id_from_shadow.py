@@ -2,6 +2,7 @@ import logging
 import pathlib
 import time
 import sys
+import pprint
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -75,11 +76,10 @@ def get_sql_update(
         -- previous value = {db_value}
         where power_unit_id = {power_unit_id}
             -- customer = {dict_["customer"]}
-            -- model = {dict_["model"]}
             -- surface = {dict_["surface"]}
+            -- power_unit = {power_unit_shadow} from AWS IoT
+            -- model = {dict_["model"]}
             -- cust_sub_group = {dict_["cust_sub_group"]}
-            -- power unit reported in the AWS IoT device shadow:
-            -- power_unit = {power_unit_shadow}
             -- structure from public.structures table,
             -- based on power_unit_id associated with aws_thing in public.gw table
             -- structure = {structure}
@@ -89,16 +89,22 @@ def get_sql_update(
 
 
 def get_html(power_unit_shadow, sql_update, dict_):
+    unit_str = f'{dict_["customer"]} {dict_["surface"]} {power_unit_shadow}'
     return f"""
         <html>
         <body>
 
-        <h1>Running the following SQL to update the public.structures table!</h1>
-        <br>
+        <h2>{unit_str}</h2>
         <a href="https://myijack.com/rcom?unit={power_unit_shadow}">https://myijack.com/rcom?unit={power_unit_shadow}</a>
+        <h2>Running the following SQL to update the public.structures table!</h2>
         <br>
-        <p>{sql_update}</p>
-        <p>{dict_}</p>
+        <br>
+        <h3>SQL Update Text</h3>
+        <p>{str(sql_update).replace(chr(10), "<br>")}</p>
+        <br>
+        <br>
+        <h3>Dictionary Contents</h3>
+        <p>{str(pprint.pformat(dict_)).replace(chr(10), "<br>")}</p>
 
         </body>
         </html>
@@ -148,7 +154,7 @@ def update_structures_table(
     )
     # Don't run this automatically since it undoes my manual updates with the
     # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
-    run_query(c, sql_update, db="ijack", fetchall=False, execute=execute)
+    run_query(c, sql_update, db="ijack", fetchall=False, execute=execute, commit=False)
 
     return None
 
@@ -162,12 +168,16 @@ def compare_shadow_and_db(
     power_unit_shadow: int,
     structure: int,
     aws_thing: str,
+    allow_zero: bool = False,
 ):
     """
     Compare the shadow and database values,
     and if they're significantly different, update the database
     """
     if shadow_value is None:
+        return None
+
+    if not allow_zero and shadow_value == 0:
         return None
 
     if abs(shadow_value - db_value) > 0.01:
@@ -310,6 +320,8 @@ Continuing with next AWS_THING in public.gw table..."
         for row in structure_rows_relevant:
             structure = row["structure"]
             customer = row["customer"]
+
+            # GPS latitude
             compare_shadow_and_db(
                 c,
                 latitude_shadow,
@@ -320,6 +332,8 @@ Continuing with next AWS_THING in public.gw table..."
                 structure,
                 aws_thing,
             )
+
+            # GPS longitude
             compare_shadow_and_db(
                 c,
                 longitude_shadow,
