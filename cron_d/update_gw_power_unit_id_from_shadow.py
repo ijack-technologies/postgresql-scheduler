@@ -155,13 +155,13 @@ def update_structures_table(
 
 def compare_shadow_and_db(
     c,
-    shadow_value,
-    db_value,
-    db_column,
-    power_unit_id,
-    power_unit_shadow,
-    structure,
-    aws_thing,
+    shadow_value: float,
+    db_value: float,
+    db_column: str,
+    power_unit_id: int,
+    power_unit_shadow: int,
+    structure: int,
+    aws_thing: str,
 ):
     """
     Compare the shadow and database values,
@@ -169,9 +169,8 @@ def compare_shadow_and_db(
     """
     if shadow_value is None:
         return None
-    shadow_value2 = round(convert_to_float(c, shadow_value), 2)
-    db_value2 = round(convert_to_float(c, db_value), 2)
-    if shadow_value2 != 0 and shadow_value2 != db_value2:
+
+    if abs(shadow_value - db_value) > 0.01:
         update_structures_table(
             c,
             power_unit_id,
