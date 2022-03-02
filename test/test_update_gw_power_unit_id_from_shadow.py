@@ -92,7 +92,9 @@ class TestAll(unittest.TestCase):
             structure=structure,
             aws_thing=aws_thing,
             db_value=db_value,
+            # Testing only
             execute=False,
+            commit=False,
         )
 
         dict_ = rows[0]
@@ -117,7 +119,7 @@ class TestAll(unittest.TestCase):
             text="",
             html=html,
             emailees_list=["smccarthy@myijack.com"],
-            subject="Updating GPS in public.structures table!",
+            subject="NOT updating GPS in structures table - just testing!",
         )
 
     @patch("cron_d.update_gw_power_unit_id_from_shadow.send_mailgun_email")
