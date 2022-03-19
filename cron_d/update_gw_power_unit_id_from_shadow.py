@@ -326,7 +326,7 @@ Continuing with next AWS_THING in public.gw table..."
             customer = row["customer"]
 
             # GPS latitude
-            if round(float(latitude_shadow), 4) != 50.1631:  # IJACK SHOP GPS
+            if str(latitude_shadow)[:7] != "50.1631":  # IJACK SHOP GPS
                 compare_shadow_and_db(
                     c,
                     latitude_shadow,
@@ -339,7 +339,7 @@ Continuing with next AWS_THING in public.gw table..."
                 )
 
             # GPS longitude
-            if round(float(longitude_shadow), 4) != 101.6754:  # IJACK SHOP GPS
+            if str(longitude_shadow)[:7] != "101.6754":  # IJACK SHOP GPS
                 compare_shadow_and_db(
                     c,
                     longitude_shadow,
