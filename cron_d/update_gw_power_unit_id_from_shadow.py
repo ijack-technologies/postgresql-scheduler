@@ -339,7 +339,7 @@ Continuing with next AWS_THING in public.gw table..."
                 )
 
             # GPS longitude
-            if str(longitude_shadow)[:7] != "101.6754":  # IJACK SHOP GPS
+            if str(longitude_shadow)[:7] != "101.675":  # IJACK SHOP GPS
                 compare_shadow_and_db(
                     c,
                     longitude_shadow,
