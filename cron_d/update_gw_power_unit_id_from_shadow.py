@@ -326,28 +326,30 @@ Continuing with next AWS_THING in public.gw table..."
             customer = row["customer"]
 
             # GPS latitude
-            compare_shadow_and_db(
-                c,
-                latitude_shadow,
-                row["gps_lat"],
-                "gps_lat",
-                power_unit_id_gw,
-                power_unit_shadow,
-                structure,
-                aws_thing,
-            )
+            if round(float(latitude_shadow), 4) != 50.1631:  # IJACK SHOP GPS
+                compare_shadow_and_db(
+                    c,
+                    latitude_shadow,
+                    row["gps_lat"],
+                    "gps_lat",
+                    power_unit_id_gw,
+                    power_unit_shadow,
+                    structure,
+                    aws_thing,
+                )
 
             # GPS longitude
-            compare_shadow_and_db(
-                c,
-                longitude_shadow,
-                row["gps_lon"],
-                "gps_lon",
-                power_unit_id_gw,
-                power_unit_shadow,
-                structure,
-                aws_thing,
-            )
+            if round(float(longitude_shadow), 4) != 101.6754:  # IJACK SHOP GPS
+                compare_shadow_and_db(
+                    c,
+                    longitude_shadow,
+                    row["gps_lon"],
+                    "gps_lon",
+                    power_unit_id_gw,
+                    power_unit_shadow,
+                    structure,
+                    aws_thing,
+                )
 
         if power_unit_id_shadow == power_unit_id_gw:
             c.logger.info(
