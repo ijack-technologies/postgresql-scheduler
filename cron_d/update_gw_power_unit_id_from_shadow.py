@@ -178,10 +178,20 @@ def compare_shadow_and_db(
     Compare the shadow and database values,
     and if they're significantly different, update the database
     """
-    if shadow_value is None:
+    if not shadow_value:
         return None
 
     if not allow_zero and shadow_value == 0:
+        return None
+
+    # Convert to floats so we can compare them mathematically
+    try:
+        shadow_value = float(shadow_value)
+        db_value = float(db_value)
+    except Exception:
+        c.logger.error(
+            f"Error converting either shadow_value '{shadow_value}' or db_value '{db_value}' to float"
+        )
         return None
 
     if abs(shadow_value - db_value) > 0.01:
