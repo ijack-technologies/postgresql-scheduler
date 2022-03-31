@@ -130,12 +130,16 @@ def run_query(
         c.logger.info(f"Running query now... SQL to run: \n{sql}")
         time_start = time.time()
         if execute:
-            cursor.execute(sql)
-            if commit:
-                conn.commit()
-            if fetchall:
-                columns = [str.lower(x[0]) for x in cursor.description]
-                rows = cursor.fetchall()
+            try:
+                cursor.execute(sql)
+            except psycopg2.OperationalError:
+                c.logger.exception(f"ERROR executing SQL: '{sql}'")
+            else:
+                if commit:
+                    conn.commit()
+                if fetchall:
+                    columns = [str.lower(x[0]) for x in cursor.description]
+                    rows = cursor.fetchall()
 
     time_finish = time.time()
     c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
