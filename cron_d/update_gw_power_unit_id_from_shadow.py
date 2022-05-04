@@ -36,8 +36,10 @@ def convert_to_float(c, string):
         return 0
 
 
-def sql_get_info(power_unit_id, power_unit_shadow, structure, aws_thing):
-    return f"""
+def sql_get_info(c, power_unit_id, power_unit_shadow, structure, aws_thing):
+    """Gather a bit more info for the email alert"""
+
+    select_sql = f"""
         SELECT id, structure, structure_slave_id, structure_slave, 
             downhole, surface, location, gps_lat, gps_lon, 
             power_unit_id, power_unit, power_unit_str, 
@@ -50,17 +52,26 @@ def sql_get_info(power_unit_id, power_unit_shadow, structure, aws_thing):
 	    FROM public.vw_structures_joined
         where power_unit_id = {power_unit_id}
             and customer_id != 21 --demo customer
-            -- power unit reported in the AWS IoT device shadow:
-            -- power_unit = {power_unit_shadow}
-            -- structure from public.structures table,
-            -- based on power_unit_id associated with aws_thing in public.gw table
-            -- structure = {structure}
-            -- aws_thing = {aws_thing}
-        limit 1
+        limit 1;
     """
+
+    # Just for logging
+    log_msg = f"""
+power unit reported in the AWS IoT device shadow:
+power_unit = {power_unit_shadow}
+structure from public.structures table,
+based on power_unit_id associated with aws_thing in public.gw table
+structure = {structure}
+aws_thing = {aws_thing}
+    """
+    c.logger.info(log_msg)
+    c.logger.info(f"Select SQL: {select_sql}")
+
+    return select_sql
 
 
 def get_sql_update(
+    c,
     column,
     new_value,
     db_value,
@@ -70,27 +81,42 @@ def get_sql_update(
     structure,
     aws_thing,
 ):
-    return f"""
+    """Get the SQL for updating the structures table"""
+
+    update_sql = f"""
         update public.structures
         set {column} = {new_value}
         -- previous value = {db_value}
-        where power_unit_id = {power_unit_id}
-            -- customer = {dict_["customer"]}
-            -- surface = {dict_["surface"]}
-            -- power_unit = {power_unit_shadow} from AWS IoT
-            -- model = {dict_["model"]}
-            -- cust_sub_group = {dict_["cust_sub_group"]}
-            -- structure from public.structures table,
-            -- based on power_unit_id associated with aws_thing in public.gw table
-            -- structure = {structure}
-            -- aws_thing = {aws_thing}
-            -- notes_1 = {dict_["notes_1"]}
+        where power_unit_id = {power_unit_id};"""
+
+    # Just for logging
+    customer = str(dict_["customer"]).strip().replace("\n", ". ")
+    cust_sub_group = str(dict_["cust_sub_group"]).strip().replace("\n", ". ")
+    surface = str(dict_["surface"]).strip().replace("\n", ". ")
+    model = str(dict_["model"]).strip().replace("\n", ". ")
+
+    log_msg = f"""
+customer = {customer}
+surface = {surface}
+power_unit = {power_unit_shadow} from AWS IoT
+model = {model}
+cust_sub_group = {cust_sub_group}
+structure from public.structures table,
+based on power_unit_id associated with aws_thing in public.gw table:
+structure = {structure}
+aws_thing = {aws_thing}
     """
+    c.logger.info(log_msg)
+    c.logger.info(f"Update SQL: {update_sql}")
+
+    return update_sql
 
 
 def get_html(power_unit_shadow, sql_update, dict_):
+    """Get HTML for the email"""
+
     unit_str = f'{dict_["customer"]} {dict_["surface"]} {power_unit_shadow}'
-    return f"""
+    html = f"""
         <html>
         <body>
 
@@ -109,6 +135,7 @@ def get_html(power_unit_shadow, sql_update, dict_):
         </body>
         </html>
     """
+    return html
 
 
 def update_structures_table(
@@ -128,7 +155,7 @@ def update_structures_table(
 
     # Gather a bit more info for the email alert
     sql_get_info_str = sql_get_info(
-        power_unit_id, power_unit_shadow, structure, aws_thing
+        c, power_unit_id, power_unit_shadow, structure, aws_thing
     )
     _, rows = run_query(
         c, sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
@@ -136,6 +163,7 @@ def update_structures_table(
     dict_ = rows[0]
 
     sql_update = get_sql_update(
+        c,
         column,
         new_value,
         db_value,

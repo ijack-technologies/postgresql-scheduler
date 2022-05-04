@@ -74,7 +74,7 @@ class TestAll(unittest.TestCase):
         db_value = -120.09023308333333
 
         sql_get_info_str = update_gw_power_unit_id_from_shadow.sql_get_info(
-            power_unit_id, power_unit_shadow, structure, aws_thing
+            c, power_unit_id, power_unit_shadow, structure, aws_thing
         )
 
         _, rows = run_query(
@@ -99,6 +99,7 @@ class TestAll(unittest.TestCase):
 
         dict_ = rows[0]
         sql_update = update_gw_power_unit_id_from_shadow.get_sql_update(
+            c,
             column,
             new_value,
             db_value,
