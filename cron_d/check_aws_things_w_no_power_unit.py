@@ -36,33 +36,6 @@ def convert_to_float(c, string):
         return 0
 
 
-# def update_structures_table(c, power_unit_id, power_unit_shadow, column, new_value, structure, aws_thing, db_value):
-#     sql_update = f"""
-#         update public.structures
-#         set {column} = {new_value}
-#         -- previous value = {db_value}
-#         where power_unit_id = {power_unit_id}
-#             -- power unit reported in the AWS IoT device shadow:
-#             -- power_unit = {power_unit_shadow}
-#             -- structure from public.structures table,
-#             -- based on power_unit_id associated with aws_thing in public.gw table
-#             -- structure = {structure}
-#             -- aws_thing = {aws_thing}
-#     """
-#     run_query(c, sql_update, db="ijack", fetchall=False, commit=True)
-#     subject = "Changing public.structures table!"
-#     send_mailgun_email(c, text=sql_update, html='', emailees_list=c.EMAIL_LIST_DEV, subject=subject)
-
-
-# def compare_shadow_and_db(c, shadow_value, db_value, db_column, power_unit_id, power_unit_shadow, structure, aws_thing):
-#     if shadow_value is None:
-#         return None
-#     shadow_value2 = round(convert_to_float(c, shadow_value), 2)
-#     db_value2 = round(convert_to_float(c, db_value), 2)
-#     if shadow_value2 != 0 and shadow_value2 != db_value2:
-#         update_structures_table(c, power_unit_id, power_unit_shadow, db_column, shadow_value, structure, aws_thing, db_value)
-
-
 def seconds_since_last_any_msg(shadow):
     """How many seconds has it been since we received ANY message from the gateway at AWS?"""
 
