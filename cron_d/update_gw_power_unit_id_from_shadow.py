@@ -403,6 +403,7 @@ Continuing with next AWS_THING in public.gw table..."
             + f"instead of '{power_unit_gw}' ({power_unit_id_gw}) in the public.gw table. "
             + f"The structure for the current power unit ID of '{power_unit_id_gw}' is '{structure}'. "
             + f"The customer for structure '{structure}' is '{customer}'. "
+            + "\n\nModule: 'update_gw_power_unit_id_from_shadow.py'"
         )
         c.logger.info(msg)
 
