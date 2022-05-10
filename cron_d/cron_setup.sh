@@ -24,7 +24,7 @@ BASH_ENV=/container.env
 # */3 * * * * python3 /cron_d/gateways_mv_refresh.py
 3 * * * * python3 /cron_d/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
 15 * * * * python3 /cron_d/update_gw_power_unit_id_from_shadow.py
-5 * * * * python3 /cron_d/check_aws_things_w_no_power_unit.py
+# 5 * * * * python3 /cron_d/check_aws_things_w_no_power_unit.py
 # Leave the last line blank for a valid cron file" > /cron_d/crontab.txt
 
 # Make the shell scripts executable

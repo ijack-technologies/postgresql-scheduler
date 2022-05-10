@@ -13,7 +13,7 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from cron_d import check_aws_things_w_no_power_unit
+from cron_d._archive import check_aws_things_w_no_power_unit
 from cron_d.utils import Config, configure_logging
 
 
@@ -38,13 +38,11 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
 
-    def test_update_gw_power_unit_id_from_shadow(self):
+    @patch("cron_d._archive.check_aws_things_w_no_power_unit.exit_if_already_running")
+    def test_update_gw_power_unit_id_from_shadow(self, mock_exit_if_already_running):
         """Test the main program"""
         global c
-        with patch(
-            "cron_d.check_aws_things_w_no_power_unit.exit_if_already_running"
-        ) as _:
-            check_aws_things_w_no_power_unit.main(c)
+        check_aws_things_w_no_power_unit.main(c)
 
 
 if __name__ == "__main__":

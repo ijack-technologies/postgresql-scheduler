@@ -1,3 +1,9 @@
+"""
+The module 'update_gw_power_unit_id_from_shadow.py' does everything that this module does,
+so this one is no longer necessary. This one grabs all gateways WITHOUT power units assigned,
+so it doesn't cover gateways whose power unit has changed. The other module deals with these ones too.
+Therefore, this module is deprecated and ready for removal. It's no longer scheduled to run in Crontab.
+"""
 import logging
 import pathlib
 import time
