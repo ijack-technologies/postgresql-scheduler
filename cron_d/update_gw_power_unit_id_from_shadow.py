@@ -1,3 +1,4 @@
+from datetime import date
 import logging
 import pathlib
 import time
@@ -406,6 +407,11 @@ Continuing with next AWS_THING in public.gw table..."
             + "\n\nModule: 'update_gw_power_unit_id_from_shadow.py'"
         )
         c.logger.info(msg)
+        if aws_thing == "00:60:E0:86:4C:DA" and date.today() < date(2022, 6, 30):
+            c.logger.warning(
+                "skipping gateway '00:60:E0:86:4C:DA' since Richie needs to reset the power unit on the CAN bus, on-site..."
+            )
+            continue
 
         subject = "Need new/different power unit in public.gw table!"
         send_mailgun_email(

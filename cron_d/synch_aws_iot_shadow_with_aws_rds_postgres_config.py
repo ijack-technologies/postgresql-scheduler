@@ -20,7 +20,6 @@ from cron_d.utils import (
     exit_if_already_running,
     get_all_gateways,
     get_client_iot,
-    run_query,
 )
 
 LOG_LEVEL = logging.INFO
