@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta
 import logging
 import pathlib
 import sys
+import psycopg2
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -15,6 +17,7 @@ from cron_d.utils import (
     configure_logging,
     error_wrapper,
     exit_if_already_running,
+    get_conn,
     run_query,
 )
 
@@ -59,23 +62,31 @@ def refresh_locf_materialized_view(c):
 #     return True
 
 
-def get_and_insert_latest_values(c):
+def get_latest_timestamp_in_locf_copy(c) -> datetime:
+    """Get the most recent timestamp in public.time_series_locf_copy"""
+    sql = """
+        select max(timestamp_utc)
+        from public.time_series_locf_copy
+        where timestamp_utc >= now() - interval '7 days'
+    """
+    _, rows = run_query(c, sql, db="timescale", fetchall=True)
+
+    if not rows or not isinstance(rows, list) or len(rows) == 0:
+        return None
+
+    return rows[0]["timestamp_utc"]
+
+
+def get_and_insert_latest_values(c, after_this_date: datetime):
     """
     Get the latest values from the "last one carried forward" materialized view,
     which are not already in the regular "copied" table, and insert them.
     This should allow us to run continuous aggregates on the "regular copied table".
     """
 
-    sql_get_insert_latest = """
-    --Get latest timestamp_utc and use it in the next query
-    with latest_ts_utc as (
-        select timestamp_utc
-        from public.time_series_locf_copy
-        order by timestamp_utc DESC
-        limit 1
-    )
+    datetime_string = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
-    --Use the "latest_ts_utc" table from above as a filter
+    sql_get_insert_latest = f"""
     insert into public.time_series_locf_copy (
         timestamp_utc, gateway,
 		spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
@@ -134,10 +145,77 @@ def get_and_insert_latest_values(c):
         lag_btm_ms,
         lag_top_ms
 	FROM public.time_series_locf
-    --Use the "latest_ts_utc" table from above as a filter
-    where timestamp_utc > (select timestamp_utc from latest_ts_utc)
+    where timestamp_utc > '{datetime_string}'
     """
     run_query(c, sql_get_insert_latest, db="timescale", commit=True)
+
+    return True
+
+
+def force_refresh_continuous_aggregates(c, after_this_date: datetime):
+    """
+    Force the continuous aggregates to refresh with the latest data.
+    It is possible to specify NULL in a manual refresh to get an open-ended range,
+    but we do not recommend using it, because you could inadvertently materialize
+    a large amount of data, slow down your performance, and have unintended consequences
+    on other policies like data retention.
+    """
+
+    def get_sql(
+        name: str,
+        date_begin: datetime,
+        date_end: datetime = datetime.utcnow(),
+        min_window: timedelta = timedelta(minutes=21),
+    ):
+        """
+        The refresh command takes three arguments:
+            The name of the continuous aggregate view to refresh
+            The timestamp of the beginning of the refresh window
+            The timestamp of the end of the refresh window
+        """
+        global c
+        refresh_window_timespan = date_end - date_begin
+        if refresh_window_timespan < min_window:
+            date_begin = date_end - min_window
+
+        dt_format = "%Y-%m-%d %H:%M:%S"
+        dt_beg_str = date_begin.strftime(dt_format)
+        dt_end_str = date_end.strftime(dt_format)
+
+        return f"CALL refresh_continuous_aggregate('{name}', '{dt_beg_str}', '{dt_end_str}');"
+
+    views_to_update = {
+        "time_series_mvca_20_minute_interval": timedelta(minutes=40),
+        "time_series_mvca_1_hour_interval": timedelta(hours=2),
+        "time_series_mvca_3_hour_interval": timedelta(hours=6),
+        "time_series_mvca_6_hour_interval": timedelta(hours=12),
+        "time_series_mvca_24_hour_interval": timedelta(hours=48),
+    }
+    conn = get_conn(c, db="timescale")
+    # Continuous aggregates cannot be run inside transaction blocks.
+    # Set AUTOCOMMIT so no transaction block is started
+    conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+    for view, min_time_delta in views_to_update.items():
+        try:
+            c.logger.info(
+                "Force-refreshing continuously-aggregating materialized view '%s'", view
+            )
+            sql = get_sql(view, date_begin=after_this_date, min_window=min_time_delta)
+            # AUTOCOMMIT is set, so commit is irrelevant
+            run_query(c, sql, db="timescale", commit=False, conn=conn)
+        except psycopg2.errors.InvalidParameterValue:
+            c.logger.exception(
+                "ERROR force-refreshing continuously-aggregating materialized view '%s'",
+                view,
+            )
+        except Exception:
+            c.logger.exception(
+                "ERROR force-refreshing continuously-aggregating materialized view '%s'",
+                view,
+            )
+
+    # cursor.close()
+    conn.close()
 
     return True
 
@@ -156,7 +234,11 @@ def main(c):
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
-    get_and_insert_latest_values(c)
+    timestamp = get_latest_timestamp_in_locf_copy(c)
+    get_and_insert_latest_values(c, after_this_date=timestamp)
+
+    # Force the continuous aggregates to refresh
+    force_refresh_continuous_aggregates(c, after_this_date=timestamp)
 
     return True
 

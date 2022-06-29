@@ -13,21 +13,21 @@ echo "Current working directory: $(pwd)"
 echo ""
 echo "Running autoflake..."
 autoflake --in-place --remove-unused-variables --remove-all-unused-imports --verbose --recursive ../cron_d
-autoflake --in-place --remove-unused-variables --remove-all-unused-imports --verbose --recursive ../tests
+autoflake --in-place --remove-unused-variables --remove-all-unused-imports --verbose --recursive ../test
 
 echo ""
 echo "Running autopep8 to remove whitespace (NOTE this doesn't change multi-line strings!)..."
 autopep8 --in-place --recursive --exclude="*/migrations/*" --select="W291,W293" ../cron_d
-autopep8 --in-place --recursive --exclude="*/migrations/*" --select="W291,W293" ../tests
+autopep8 --in-place --recursive --exclude="*/migrations/*" --select="W291,W293" ../test
 
 # Opinionated but lovely auto-formatting
 echo ""
 echo "Running black..."
 black ../cron_d
-black ../tests
+black ../test
 
 # Nice sorting of imports
 echo ""
 echo "Running isort..."
 isort --profile black ../cron_d
-isort --profile black ../tests
+isort --profile black ../test

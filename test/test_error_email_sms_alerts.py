@@ -5,7 +5,7 @@
 from datetime import datetime
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
@@ -20,7 +20,6 @@ from cron_d import alarm_log_delete_duplicates
 
 # import alarm_log_mv_refresh_old_non_surface
 from cron_d import alarm_log_mv_refresh
-from cron_d import gateways_mv_refresh
 from cron_d import time_series_mv_refresh
 
 # local imports

@@ -18,7 +18,7 @@ except ValueError:
 from cron_d import update_gw_power_unit_id_from_shadow
 
 # local imports
-from cron_d.utils import Config, configure_logging, run_query
+from cron_d.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
