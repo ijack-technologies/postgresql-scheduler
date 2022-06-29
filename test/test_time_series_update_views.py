@@ -28,8 +28,6 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-
-
 # local imports
 from cron_d.utils import Config, configure_logging
 

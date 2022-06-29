@@ -65,7 +65,7 @@ def refresh_locf_materialized_view(c):
 def get_latest_timestamp_in_locf_copy(c) -> datetime:
     """Get the most recent timestamp in public.time_series_locf_copy"""
     sql = """
-        select max(timestamp_utc)
+        select max(timestamp_utc) as timestamp_utc
         from public.time_series_locf_copy
         where timestamp_utc >= now() - interval '7 days'
     """
