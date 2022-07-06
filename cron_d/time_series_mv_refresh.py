@@ -71,10 +71,13 @@ def get_latest_timestamp_in_locf_copy(c) -> datetime:
     """
     _, rows = run_query(c, sql, db="timescale", fetchall=True)
 
-    if not rows or not isinstance(rows, list) or len(rows) == 0:
-        return None
+    timestamp = rows[0]["timestamp_utc"]
+    if not timestamp:
+        raise ValueError(
+            f"'rows' type = {type(rows)} with value = '{rows}' after the following query: \n'{sql}'"
+        )
 
-    return rows[0]["timestamp_utc"]
+    return timestamp
 
 
 def get_and_insert_latest_values(c, after_this_date: datetime):

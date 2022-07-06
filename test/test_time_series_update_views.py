@@ -77,14 +77,36 @@ class TestAll(unittest.TestCase):
     ):
         """Test the get_latest_timestamp_in_locf_copy() function"""
         global c
-        mock_run_query.return_value = ["timestamp_utc"], [
-            {"timestamp_utc": datetime.utcnow()},
-        ]
+        mock_run_query.return_value = (
+            ["timestamp_utc"],
+            [
+                {"timestamp_utc": datetime.utcnow()},
+            ],
+        )
 
         timestamp = get_latest_timestamp_in_locf_copy(c)
 
         assert isinstance(timestamp, datetime)
         assert timestamp < datetime.utcnow()
+        mock_run_query.assert_called_once()
+
+    @patch("cron_d.time_series_mv_refresh.run_query")
+    def test_get_latest_timestamp_in_locf_copy_raises_error(
+        self,
+        mock_run_query,
+    ):
+        """Test the get_latest_timestamp_in_locf_copy() function"""
+        global c
+        mock_run_query.return_value = (
+            ["timestamp_utc"],
+            [
+                {"timestamp_utc": None},
+            ],
+        )
+
+        with self.assertRaises(ValueError):
+            get_latest_timestamp_in_locf_copy(c)
+
         mock_run_query.assert_called_once()
 
     @patch("cron_d.time_series_mv_refresh.run_query")

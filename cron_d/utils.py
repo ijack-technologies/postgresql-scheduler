@@ -12,6 +12,7 @@ import datetime
 from logging.handlers import TimedRotatingFileHandler
 from subprocess import PIPE, STDOUT
 import traceback
+from typing import Tuple, List
 
 import boto3
 import psycopg2
@@ -114,7 +115,7 @@ def get_conn(c, db="ijack"):
 
 def run_query(
     c, sql, db="ijack", fetchall=False, commit=False, conn=None, execute=True
-):
+) -> Tuple[List, List]:
     """Run and time the SQL query"""
 
     is_close_conn = False
