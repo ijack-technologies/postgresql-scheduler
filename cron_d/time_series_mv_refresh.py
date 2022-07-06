@@ -67,7 +67,7 @@ def get_latest_timestamp_in_locf_copy(c) -> datetime:
     sql = """
         select max(timestamp_utc) as timestamp_utc
         from public.time_series_locf_copy
-        where timestamp_utc >= now() - interval '7 days'
+        where timestamp_utc >= now() - interval '14 days'
     """
     _, rows = run_query(c, sql, db="timescale", fetchall=True)
 
