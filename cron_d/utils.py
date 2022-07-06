@@ -135,6 +135,8 @@ def run_query(
                 cursor.execute(sql)
             except psycopg2.OperationalError:
                 c.logger.exception(f"ERROR executing SQL: '{sql}'")
+                if commit:
+                    raise
             else:
                 if commit:
                     conn.commit()
