@@ -114,7 +114,14 @@ def get_conn(c, db="ijack"):
 
 
 def run_query(
-    c, sql, db="ijack", fetchall=False, commit=False, conn=None, execute=True
+    c,
+    sql,
+    db="ijack",
+    fetchall=False,
+    commit=False,
+    conn=None,
+    execute=True,
+    raise_error: bool = False,
 ) -> Tuple[List, List]:
     """Run and time the SQL query"""
 
@@ -135,7 +142,7 @@ def run_query(
                 cursor.execute(sql)
             except psycopg2.OperationalError:
                 c.logger.exception(f"ERROR executing SQL: '{sql}'")
-                if commit:
+                if raise_error:
                     raise
             else:
                 if commit:

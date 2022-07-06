@@ -39,7 +39,7 @@ def refresh_locf_materialized_view(c):
         public.time_series_locf
         WITH DATA;
     """
-    run_query(c, sql_refresh_locf_mv, db="timescale", commit=True)
+    run_query(c, sql_refresh_locf_mv, db="timescale", commit=True, raise_error=True)
 
     return True
 
@@ -57,27 +57,67 @@ def refresh_locf_materialized_view(c):
 #         public.time_series_mv
 #         WITH DATA;
 #     """
-#     run_query(c, sql_refresh_hybrid_mv, db="timescale", commit=True)
+#     run_query(c, sql_refresh_hybrid_mv, db="timescale", commit=True, raise_error=True)
 
 #     return True
 
 
-def get_latest_timestamp_in_locf_copy(c) -> datetime:
+def get_latest_timestamp_in_table(
+    c,
+    table: str = "time_series_locf_copy",
+    raise_error: bool = True,
+    threshold: timedelta = None,
+) -> datetime:
     """Get the most recent timestamp in public.time_series_locf_copy"""
-    sql = """
+    sql = f"""
         select max(timestamp_utc) as timestamp_utc
-        from public.time_series_locf_copy
-        where timestamp_utc >= now() - interval '14 days'
+        from public.{table}
+        where timestamp_utc >= now() - interval '7 days'
     """
-    _, rows = run_query(c, sql, db="timescale", fetchall=True)
+    _, rows = run_query(c, sql, db="timescale", fetchall=True, raise_error=raise_error)
 
     timestamp = rows[0]["timestamp_utc"]
     if not timestamp:
         raise ValueError(
-            f"'rows' type = {type(rows)} with value = '{rows}' after the following query: \n'{sql}'"
+            f"'rows' type = {type(rows)} with value = '{rows}' after the following query on table '{table}': \n'{sql}'"
         )
 
+    if threshold:
+        if not isinstance(threshold, timedelta):
+            raise TypeError(
+                f"threshold is not of type 'timedelta'. Instead, it's of type '{type(threshold)}'"
+            )
+
+        timestamp_threshold = datetime.utcnow() - threshold
+        if timestamp < timestamp_threshold:
+            raise Exception(
+                f"ERROR: latest timestamp in table '{table}' is {timestamp} which is before the threshold timedelta '{threshold}' (threshold timestamp: {timestamp_threshold}"
+            )
+
     return timestamp
+
+
+def check_table_timestamps(
+    c,
+    tables: list = ["time_series", "time_series_locf"],
+    time_delta: timedelta = timedelta(hours=1),
+) -> bool:
+    """Check the tables to see if their timestamps are recent"""
+
+    if not isinstance(tables, (list, tuple)):
+        raise ValueError(
+            f"tables is not of type 'list'. Instead, it's of type '{type(tables)}'"
+        )
+
+    if len(tables) == 0:
+        raise ValueError("There are no tables to check!")
+
+    for table in tables:
+        get_latest_timestamp_in_table(
+            c, table=table, raise_error=True, threshold=time_delta
+        )
+
+    return True
 
 
 def get_and_insert_latest_values(c, after_this_date: datetime):
@@ -150,7 +190,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
 	FROM public.time_series_locf
     where timestamp_utc > '{datetime_string}'
     """
-    run_query(c, sql_get_insert_latest, db="timescale", commit=True)
+    run_query(c, sql_get_insert_latest, db="timescale", commit=True, raise_error=True)
 
     return True
 
@@ -205,7 +245,7 @@ def force_refresh_continuous_aggregates(c, after_this_date: datetime):
             )
             sql = get_sql(view, date_begin=after_this_date, min_window=min_time_delta)
             # AUTOCOMMIT is set, so commit is irrelevant
-            run_query(c, sql, db="timescale", commit=False, conn=conn)
+            run_query(c, sql, db="timescale", commit=False, conn=conn, raise_error=True)
         except psycopg2.errors.InvalidParameterValue:
             c.logger.exception(
                 "ERROR force-refreshing continuously-aggregating materialized view '%s'",
@@ -229,6 +269,9 @@ def main(c):
 
     exit_if_already_running(c, pathlib.Path(__file__).name)
 
+    # Check the table timestamps to see if they're recent
+    check_table_timestamps(c)
+
     # First refresh the main "last one carried forward" MV
     refresh_locf_materialized_view(c)
 
@@ -237,7 +280,9 @@ def main(c):
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
-    timestamp = get_latest_timestamp_in_locf_copy(c)
+    timestamp = get_latest_timestamp_in_table(
+        c, table="time_series_locf_copy", threshold=timedelta(hours=1)
+    )
     get_and_insert_latest_values(c, after_this_date=timestamp)
 
     # Force the continuous aggregates to refresh
