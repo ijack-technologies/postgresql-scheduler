@@ -108,6 +108,10 @@ def get_conn(c, db="ijack"):
         password=password,
         connect_timeout=5,
         # cursor_factory=psycopg2.extras.DictCursor
+        keepalives=1,  # is default
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=5,
     )
 
     return conn
