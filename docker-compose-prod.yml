@@ -3,6 +3,14 @@ services:
   postgresql_scheduler:
     # Name and tag of image the Dockerfile creates
     image: mccarthysean/ijack:postgresql_scheduler
+    # this will signal that the connection is alive after 200 seconds,
+    # which is less than the time it takes to drop the connection (300 seconds?), thus preventing it from being dropped.
+    # https://stackoverflow.com/questions/56289874/postgres-closes-connection-during-query-after-a-few-hundred-seconds-when-using-p
+    # https://github.com/moby/moby/issues/31208#issuecomment-303905737
+    sysctls:
+      - net.ipv4.tcp_keepalive_time=200
+      - net.ipv4.tcp_keepalive_intvl=30
+      - net.ipv4.tcp_keepalive_probes=10
     env_file: .env
     networks:
       - traefik-public

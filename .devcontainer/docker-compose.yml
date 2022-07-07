@@ -14,20 +14,28 @@ services:
       # i.e. either a path to a directory containing a Dockerfile, or a url to a git repository
       context: ..
       dockerfile: Dockerfile.dev
-    env_file: 
+    # this will signal that the connection is alive after 200 seconds,
+    # which is less than the time it takes to drop the connection (300 seconds?), thus preventing it from being dropped.
+    # https://stackoverflow.com/questions/56289874/postgres-closes-connection-during-query-after-a-few-hundred-seconds-when-using-p
+    # https://github.com/moby/moby/issues/31208#issuecomment-303905737
+    sysctls:
+      - net.ipv4.tcp_keepalive_time=200
+      - net.ipv4.tcp_keepalive_intvl=30
+      - net.ipv4.tcp_keepalive_probes=10
+    env_file:
       - ../.env
-    # environment:
-    #   - FLASK_CONFIG=development
-    #   - FLASK_ENV=development
-    # Forwards port 5001 from the Docker host (e.g. Windows desktop) to the dev environment container's port 5000
-    # ports:
-    #   - 0.0.0.0:5000:5000
+      # environment:
+      #   - FLASK_CONFIG=development
+      #   - FLASK_ENV=development
+      # Forwards port 5001 from the Docker host (e.g. Windows desktop) to the dev environment container's port 5000
+      # ports:
+      #   - 0.0.0.0:5000:5000
       # - 0.0.0.0:5005:5005
       # - 0.0.0.0:85:85
       # # npm start
       # - 0.0.0.0:3001:3000
-    # Overrides default command so things don't shut down after the process ends.
-    command: sleep infinity 
+      # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
     # command: /bin/sh -c "while sleep 1000; do :; done"
     # links:
     #   - container-2
