@@ -99,7 +99,7 @@ def get_latest_timestamp_in_table(
 
 def check_table_timestamps(
     c,
-    tables: list = ["time_series", "time_series_locf"],
+    tables: list = ["time_series", "time_series_locf", "time_series_locf_copy"],
     time_delta: timedelta = timedelta(hours=1),
 ) -> bool:
     """Check the tables to see if their timestamps are recent"""
@@ -270,23 +270,22 @@ def main(c):
     exit_if_already_running(c, pathlib.Path(__file__).name)
 
     # First refresh the main "last one carried forward" MV
-    refresh_locf_materialized_view(c)
-
-    # Check the table timestamps to see if they're recent
-    check_table_timestamps(c)
+    # refresh_locf_materialized_view(c)
 
     # # Refresh the hybrid MV with different granularities by date
     # refresh_hybrid_time_series_materialized_view()
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
-    timestamp = get_latest_timestamp_in_table(
-        c, table="time_series_locf_copy", threshold=timedelta(hours=1)
-    )
+    timestamp = get_latest_timestamp_in_table(c, table="time_series_locf_copy")
     get_and_insert_latest_values(c, after_this_date=timestamp)
 
     # Force the continuous aggregates to refresh
     force_refresh_continuous_aggregates(c, after_this_date=timestamp)
+
+    # Check the table timestamps to see if they're recent.
+    # Do this last so the processes above at least get a chance to correct the situation first.
+    check_table_timestamps(c)
 
     return True
 
