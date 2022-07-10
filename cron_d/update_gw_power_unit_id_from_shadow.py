@@ -396,6 +396,10 @@ Continuing with next AWS_THING in public.gw table..."
             )
             continue
 
+        if aws_thing == "00:60:E0:86:4C:DA" and str(power_unit_shadow) == "200442":
+            # Richie needs to fix this on on-site, so it uses the correct 200408 power unit
+            continue
+
         power_unit_gw = dict_.get("power_unit", None)
 
         msg = (
