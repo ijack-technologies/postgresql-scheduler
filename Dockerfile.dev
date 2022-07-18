@@ -11,3 +11,4 @@ RUN pip3 install --upgrade pip && \
 
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /root/
+
