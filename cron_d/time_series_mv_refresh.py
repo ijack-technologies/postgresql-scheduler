@@ -195,7 +195,31 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     return True
 
 
-def force_refresh_continuous_aggregates(c, after_this_date: datetime):
+def get_refresh_continuous_aggregate_sql(
+    name: str,
+    date_begin: datetime,
+    date_end: datetime = datetime.utcnow(),
+    min_window: timedelta = timedelta(minutes=21),
+):
+    """
+    The refresh command takes three arguments:
+        The name of the continuous aggregate view to refresh
+        The timestamp of the beginning of the refresh window
+        The timestamp of the end of the refresh window
+    """
+    global c
+    refresh_window_timespan = date_end - date_begin
+    if refresh_window_timespan < min_window:
+        date_begin = date_end - min_window
+
+    dt_format = "%Y-%m-%d %H:%M:%S"
+    dt_beg_str = date_begin.strftime(dt_format)
+    dt_end_str = date_end.strftime(dt_format)
+
+    return f"CALL refresh_continuous_aggregate('{name}', '{dt_beg_str}', '{dt_end_str}');"
+
+
+def force_refresh_continuous_aggregates(c, after_this_date: datetime, views_to_update: dict=None):
     """
     Force the continuous aggregates to refresh with the latest data.
     It is possible to specify NULL in a manual refresh to get an open-ended range,
@@ -204,30 +228,7 @@ def force_refresh_continuous_aggregates(c, after_this_date: datetime):
     on other policies like data retention.
     """
 
-    def get_sql(
-        name: str,
-        date_begin: datetime,
-        date_end: datetime = datetime.utcnow(),
-        min_window: timedelta = timedelta(minutes=21),
-    ):
-        """
-        The refresh command takes three arguments:
-            The name of the continuous aggregate view to refresh
-            The timestamp of the beginning of the refresh window
-            The timestamp of the end of the refresh window
-        """
-        global c
-        refresh_window_timespan = date_end - date_begin
-        if refresh_window_timespan < min_window:
-            date_begin = date_end - min_window
-
-        dt_format = "%Y-%m-%d %H:%M:%S"
-        dt_beg_str = date_begin.strftime(dt_format)
-        dt_end_str = date_end.strftime(dt_format)
-
-        return f"CALL refresh_continuous_aggregate('{name}', '{dt_beg_str}', '{dt_end_str}');"
-
-    views_to_update = {
+    views_to_update = views_to_update or {
         "time_series_mvca_20_minute_interval": timedelta(minutes=40),
         "time_series_mvca_1_hour_interval": timedelta(hours=2),
         "time_series_mvca_3_hour_interval": timedelta(hours=6),
@@ -243,7 +244,7 @@ def force_refresh_continuous_aggregates(c, after_this_date: datetime):
             c.logger.info(
                 "Force-refreshing continuously-aggregating materialized view '%s'", view
             )
-            sql = get_sql(view, date_begin=after_this_date, min_window=min_time_delta)
+            sql = get_refresh_continuous_aggregate_sql(view, date_begin=after_this_date, min_window=min_time_delta)
             # AUTOCOMMIT is set, so commit is irrelevant
             run_query(c, sql, db="timescale", commit=False, conn=conn, raise_error=True)
         except psycopg2.errors.InvalidParameterValue:
@@ -268,6 +269,23 @@ def main(c):
     """Main entrypoint function"""
 
     exit_if_already_running(c, pathlib.Path(__file__).name)
+
+    dt_today = datetime.today()
+    if dt_today < datetime(2022, 7, 20, 17):
+        # This is just for ad hoc force-refreshing the continuously-aggregated materialized views,
+        # starting at a certain date. Run this with the "real_time_series_mv_refresh.py" module.
+        refresh_all_after_this_date = datetime(2020, 1, 1)
+        force_refresh_continuous_aggregates(
+            c,
+            after_this_date = refresh_all_after_this_date,
+            views_to_update = {
+                "time_series_mvca_1_hour_interval": timedelta(hours=2),
+                "time_series_mvca_20_minute_interval": timedelta(minutes=40),
+                # "time_series_mvca_3_hour_interval": timedelta(hours=6),
+                # "time_series_mvca_6_hour_interval": timedelta(hours=12),
+                # "time_series_mvca_24_hour_interval": timedelta(hours=48),
+            }
+        )
 
     # First refresh the main "last one carried forward" MV
     refresh_locf_materialized_view(c)
