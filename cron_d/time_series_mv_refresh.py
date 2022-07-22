@@ -261,6 +261,7 @@ def force_refresh_continuous_aggregates(c, after_this_date: datetime, views_to_u
     # cursor.close()
     conn.close()
 
+
     return True
 
 
