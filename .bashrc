@@ -138,7 +138,7 @@ alias python=python3
 alias pip=pip3
 
 # # Make Docker aliases
-# alias dc=docker-compose
+# alias dc=docker compose
 
 # At yarn's request
 # alias node=nodejs

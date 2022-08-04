@@ -10,7 +10,7 @@ services:
       # [Optional] For reusing Git SSH keys.
       # - ~/.ssh:/root/.ssh-local:ro
     build:
-      # context: where should docker-compose look for the Dockerfile?
+      # context: where should docker compose look for the Dockerfile?
       # i.e. either a path to a directory containing a Dockerfile, or a url to a git repository
       context: ..
       dockerfile: Dockerfile.dev
