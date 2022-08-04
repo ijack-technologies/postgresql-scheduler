@@ -5,15 +5,15 @@
     // Path that the Docker build should be run from relative to devcontainer.json. 
     // For example, a value of ".." would allow you to reference content in sibling directories. Defaults to "."
     "context": "..",
-    // Use either the Dockerfile or docker compose.yml to create the Docker container
+    // Use either the Dockerfile or docker-compose.yml to create the Docker container
     // "dockerFile": "Dockerfile",
-    "dockerComposeFile": "docker compose.yml",
+    "dockerComposeFile": "docker-compose.yml",
     // Required if using dockerComposeFile. The name of the service VS Code should connect to once running.
     // The 'service' property is the name of the service for the container that VS Code should
-    // use. Update this value and .devcontainer/docker compose.yml to the real service name.
+    // use. Update this value and .devcontainer/docker-compose.yml to the real service name.
     "service": "container1",
     // The optional 'workspaceFolder' property is the path VS Code should open by default when
-    // connected. This is typically a file mount in .devcontainer/docker compose.yml
+    // connected. This is typically a file mount in .devcontainer/docker-compose.yml
     "workspaceFolder": "/workspace",
     // Forward Docker container port 5000 to Docker host port 8080 with -p 8080:5000 (host port localhost:8080 or http://127.0.0.1/:8080)
     // "appPort": ["8080:5000"],

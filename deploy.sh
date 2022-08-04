@@ -4,8 +4,8 @@
 # No need for docker tag <image> mccarthysean/ijack:<tag>
 echo ""
 echo "Building the image locally..."
-echo "docker compose -f docker compose.build.yml build"
-docker compose -f docker compose.build.yml build
+echo "docker compose -f docker-compose.build.yml build"
+docker compose -f docker-compose.build.yml build
 
 # Push to Docker Hub
 # docker login --username=mccarthysean
