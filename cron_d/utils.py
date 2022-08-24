@@ -19,6 +19,8 @@ import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor
 from twilio.rest import Client
+import pytz
+
 
 LOG_LEVEL = logging.INFO
 # logger = logging.getLogger(__name__)
@@ -32,6 +34,11 @@ class Config:
     DEV_TEST_PRD = "production"
     PHONE_LIST_DEV = ["+14036897250"]
     EMAIL_LIST_DEV = ["smccarthy@myijack.com"]
+    EMAIL_LIST_SERVICE_PRODUCTION_IT = [
+        "rbarry@myijack.com",
+        "gmannle@myijack.com",
+        "smccarthy@myijack.com",
+    ]
     # For returning values in the "c" config object
     TEST_DICT = {}
 
@@ -308,7 +315,11 @@ def get_iot_device_shadow(c, client_iot, aws_thing):
         streamingBody = response["payload"]
         response_payload = json.loads(streamingBody.read())
     except Exception:
-        c.logger.exception(f"ERROR! Probably no shadow exists...")
+        c.logger.exception(
+            f"ERROR! Probably no shadow exists for aws_thing '{aws_thing}'..."
+        )
+    else:
+        response_payload["aws_thing"] = aws_thing
 
     return response_payload
 
@@ -548,3 +559,38 @@ def get_all_gateways(c) -> list:
     _, rows = run_query(c, SQL, db="ijack", fetchall=True)
 
     return rows
+
+
+def utc_to_local_dt(dt_utc, to_pytz_timezone=pytz.timezone("America/Regina")):
+    """
+    Takes a non-timezone-aware UTC datetime.datetime() in structured
+    (non-string) format and converts it to the pytz_timezone wanted
+    [e.g. pytz.timezone('America/Edmonton')],
+    still in datetime.datetime() format
+    """
+    return dt_utc.replace(tzinfo=pytz.utc).astimezone(to_pytz_timezone)
+
+
+def utc_datetime_to_string(
+    dt_utc,
+    to_pytz_timezone=pytz.timezone("America/Regina"),
+    format_string="%Y-%m-%d %H:%M:%S %Z%z",
+):
+    """
+    Takes a UTC datetime.datetime() in structured (non-string) format
+    and converts it to a printable string, with the format specified.
+    """
+    return utc_to_local_dt(dt_utc, to_pytz_timezone).strftime(format_string)
+
+
+def utc_timestamp_to_datetime_string(
+    timestamp_utc,
+    to_pytz_timezone=pytz.timezone("America/Regina"),
+    format_string="%Y-%m-%d %H:%M:%S %Z%z",
+):
+    """
+    Takes a UTC timestamp and converts it to a printable string,
+    with the format specified.
+    """
+    dt = datetime.datetime.fromtimestamp(timestamp_utc)
+    return utc_datetime_to_string(dt, to_pytz_timezone, format_string)
