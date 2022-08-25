@@ -18,5 +18,5 @@ docker push mccarthysean/ijack:postgresql_scheduler
 # to other nodes in the swarm with "--with-registry-auth"
 echo ""
 echo "Deploying to the Docker swarm..."
-echo "docker stack deploy --with-registry-auth -c docker compose-prod.yml postgresql_scheduler"
-docker stack deploy --with-registry-auth -c docker compose-prod.yml postgresql_scheduler
+echo "docker stack deploy --with-registry-auth -c docker-compose-prod.yml postgresql_scheduler"
+docker stack deploy --with-registry-auth -c docker-compose-prod.yml postgresql_scheduler
