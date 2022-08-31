@@ -656,18 +656,18 @@ Continuing with next AWS_THING in public.gw table..."
 
         shadow_html = get_shadow_table_html(c, shadow)
         if shadow_html:
-            html += f"<br><br><b>AWS IoT device shadow data for new gateway '{aws_thing}' not yet linked to power unit '{power_unit_shadow}':</b>"
+            html += f"<br><br><b>AWS IoT device shadow data for new gateway '{aws_thing}':</b>"
             html += f"<br><br>{shadow_html}"
         else:
-            html += f"<p>No AWS IoT device shadow information for new gateway '{aws_thing}' not yet linked to power unit '{power_unit_shadow}'.</p>"
+            html += f"<p>No AWS IoT device shadow information for new gateway '{aws_thing}'.</p>"
 
         shadow_already_linked = shadows.get(gateway_already_linked, None)
         shadow_already_linked_html = get_shadow_table_html(c, shadow_already_linked)
         if shadow_already_linked_html:
-            html += f"<br><br><b>AWS IoT device shadow data for gateway '{gateway_already_linked}' which is already linked to power unit '{power_unit_shadow}':</b>"
+            html += f"<br><br><b>AWS IoT device shadow data for previously-linked gateway '{gateway_already_linked}':</b>"
             html += f"<br><br>{shadow_already_linked_html}"
         else:
-            html += f"<p>No AWS IoT device shadow information for gateway '{gateway_already_linked}' which is already linked to power unit '{power_unit_shadow}'.</p>"
+            html += f"<p>No AWS IoT device shadow information for previously-linked gateway '{gateway_already_linked}'.</p>"
 
         c.logger.info(html)
 
