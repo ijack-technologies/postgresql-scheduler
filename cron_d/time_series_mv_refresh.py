@@ -157,7 +157,9 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         AGFT_SL,
         MGP_SL,
         lag_btm_ms,
-        lag_top_ms
+        lag_top_ms,
+        suction_vru,
+        max_fl_tmp_b4_dr
     )
     select
         timestamp_utc, gateway,
@@ -186,7 +188,9 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         AGFT_SL,
         MGP_SL,
         lag_btm_ms,
-        lag_top_ms
+        lag_top_ms,
+        suction_vru,
+        max_fl_tmp_b4_dr
 	FROM public.time_series_locf
     where timestamp_utc > '{datetime_string}'
     """
@@ -216,10 +220,14 @@ def get_refresh_continuous_aggregate_sql(
     dt_beg_str = date_begin.strftime(dt_format)
     dt_end_str = date_end.strftime(dt_format)
 
-    return f"CALL refresh_continuous_aggregate('{name}', '{dt_beg_str}', '{dt_end_str}');"
+    return (
+        f"CALL refresh_continuous_aggregate('{name}', '{dt_beg_str}', '{dt_end_str}');"
+    )
 
 
-def force_refresh_continuous_aggregates(c, after_this_date: datetime, views_to_update: dict=None):
+def force_refresh_continuous_aggregates(
+    c, after_this_date: datetime, views_to_update: dict = None
+):
     """
     Force the continuous aggregates to refresh with the latest data.
     It is possible to specify NULL in a manual refresh to get an open-ended range,
@@ -244,7 +252,9 @@ def force_refresh_continuous_aggregates(c, after_this_date: datetime, views_to_u
             c.logger.info(
                 "Force-refreshing continuously-aggregating materialized view '%s'", view
             )
-            sql = get_refresh_continuous_aggregate_sql(view, date_begin=after_this_date, min_window=min_time_delta)
+            sql = get_refresh_continuous_aggregate_sql(
+                view, date_begin=after_this_date, min_window=min_time_delta
+            )
             # AUTOCOMMIT is set, so commit is irrelevant
             run_query(c, sql, db="timescale", commit=False, conn=conn, raise_error=True)
         except psycopg2.errors.InvalidParameterValue:
@@ -260,7 +270,6 @@ def force_refresh_continuous_aggregates(c, after_this_date: datetime, views_to_u
 
     # cursor.close()
     conn.close()
-
 
     return True
 
@@ -278,14 +287,14 @@ def main(c):
         refresh_all_after_this_date = datetime(2020, 1, 1)
         force_refresh_continuous_aggregates(
             c,
-            after_this_date = refresh_all_after_this_date,
-            views_to_update = {
+            after_this_date=refresh_all_after_this_date,
+            views_to_update={
                 "time_series_mvca_1_hour_interval": timedelta(hours=2),
                 "time_series_mvca_20_minute_interval": timedelta(minutes=40),
                 # "time_series_mvca_3_hour_interval": timedelta(hours=6),
                 # "time_series_mvca_6_hour_interval": timedelta(hours=12),
                 # "time_series_mvca_24_hour_interval": timedelta(hours=48),
-            }
+            },
         )
 
     # First refresh the main "last one carried forward" MV
