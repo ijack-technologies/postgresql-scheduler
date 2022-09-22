@@ -447,7 +447,7 @@ def get_shadow_table_html(c, shadow: dict) -> str:
         </tr>
         """
 
-    html += "</table>"
+    html += "\n</table>"
 
     return html
 
@@ -606,18 +606,18 @@ Continuing with next AWS_THING in public.gw table..."
             subject = f"Power unit '{power_unit_shadow}' already used by gateway '{gateway_already_linked}'"
             html = f"Can't set gateway '{aws_thing}' power unit to '{power_unit_shadow}' because that power unit is already used by gateway '{gateway_already_linked}'"
 
-            html += "<br><br><b>See which unit is already using that power unit:</b>"
-            html += "<ul>"
-            html += f'<li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></li>'
-            html += f'<li><a href="https://myijack.com/rcom/?gateway={gateway_already_linked}">https://myijack.com/rcom/?gateway={gateway_already_linked}</a></li>'
-            html += f'<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow</a></li>'
-            html += "</ul>"
+            html += "\n<p><b>See which unit is already using that power unit:</b></p>"
+            html += "\n<ul>"
+            html += f'\n<li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></li>'
+            html += f'\n<li><a href="https://myijack.com/rcom/?gateway={gateway_already_linked}">https://myijack.com/rcom/?gateway={gateway_already_linked}</a></li>'
+            html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow</a></li>'
+            html += "\n</ul>"
 
-            html += f"<br><br><b>New gateway that also wants to use power unit '{power_unit_shadow}'</b>"
-            html += "<ul>"
-            html += f'<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
-            html += f'<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
-            html += "</ul>"
+            html += f"\n<p><b>New gateway that also wants to use power unit '{power_unit_shadow}':</b></p>"
+            html += "\n<ul>"
+            html += f'\n<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
+            html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
+            html += "\n</ul>"
 
         elif gateway_already_has_power_unit:
             # There's a problem since the gateway already has a power unit assigned to it
@@ -625,12 +625,12 @@ Continuing with next AWS_THING in public.gw table..."
             subject = f"Gateway '{aws_thing}' already linked to power unit '{power_unit_gw}' so can't link new power unit '{power_unit_shadow}'"
             html = f"Can't link gateway '{aws_thing}' to power unit '{power_unit_shadow}' because the gateway is already linked to power unit '{power_unit_gw}'"
 
-            html += f"<br><br><b>See already-linked power unit '{power_unit_gw}' in action:</b>"
-            html += "<ul>"
-            html += f'<li><a href="https://myijack.com/rcom/?power_unit={power_unit_gw}">https://myijack.com/rcom/?power_unit={power_unit_gw}</a></li>'
-            html += f'<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
-            html += f'<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
-            html += "</ul>"
+            html += f"\n<p><b>See already-linked power unit '{power_unit_gw}' in action:</b></p>"
+            html += "\n<ul>"
+            html += f'\n<li><a href="https://myijack.com/rcom/?power_unit={power_unit_gw}">https://myijack.com/rcom/?power_unit={power_unit_gw}</a></li>'
+            html += f'\n<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
+            html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
+            html += "\n</ul>"
 
         else:
             # No gateway is using that power unit, so link the two in the public.gw table
@@ -641,33 +641,44 @@ Continuing with next AWS_THING in public.gw table..."
             )
             html = f"<p>Power unit '{power_unit_shadow}' is now linked to gateway '{aws_thing}'."
             html += f' Check it out at <a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></p>'
-            html += "<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
-            html += "<p>This gateway is also not already linked to an existing power unit.</p>"
+            html += "\n<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
+            html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
 
         if not structure:
-            html += f"<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
+            html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
         else:
-            html += f"<p>The structure for the current power unit '{power_unit_shadow}' is '{structure}'.</p>"
+            html += f"\n<p>The structure for the current power unit '{power_unit_shadow}' is '{structure}'.</p>"
 
         if customer:
-            html += f"<p>The customer for structure '{structure}' is '{customer}'.</p>"
+            html += (
+                f"\n<p>The customer for structure '{structure}' is '{customer}'.</p>"
+            )
         else:
-            html += f"<p>There is no customer for power unit '{power_unit_shadow}'.</p>"
+            html += (
+                f"\n<p>There is no customer for power unit '{power_unit_shadow}'.</p>"
+            )
+
+        html += f"\n<p><b>Edit the data in the 'Admin' site:</b></p>"
+        html += "\n<ul>"
+        html += f'\n<li>Structures table at <a href="https://myijack.com/admin/structures/?search={power_unit_shadow}">https://myijack.com/admin/structures/?search={power_unit_shadow}</a></li>'
+        html += f'\n<li>Gateways table for <b><em>new</em></b> gateway "{aws_thing}" at <a href="https://myijack.com/admin/gateways/?search={aws_thing}">https://myijack.com/admin/gateways/?search={aws_thing}</a></li>'
+        html += f'\n<li>Gateways table for <b><em>old</em></b> gateway "{gateway_already_linked}" at <a href="https://myijack.com/admin/gateways/?search={gateway_already_linked}">https://myijack.com/admin/gateways/?search={gateway_already_linked}</a></li>'
+        html += "\n</ul>"
 
         shadow_html = get_shadow_table_html(c, shadow)
         if shadow_html:
-            html += f"<br><br><b>AWS IoT device shadow data for new gateway '{aws_thing}':</b>"
-            html += f"<br><br>{shadow_html}"
+            html += f"\n<p><b>AWS IoT device shadow data for new gateway '{aws_thing}':</b></p>"
+            html += f"\n<p>{shadow_html}</p>"
         else:
-            html += f"<p>No AWS IoT device shadow information for new gateway '{aws_thing}'.</p>"
+            html += f"\n<p>No AWS IoT device shadow information for new gateway '{aws_thing}'.</p>"
 
         shadow_already_linked = shadows.get(gateway_already_linked, None)
         shadow_already_linked_html = get_shadow_table_html(c, shadow_already_linked)
         if shadow_already_linked_html:
-            html += f"<br><br><b>AWS IoT device shadow data for previously-linked gateway '{gateway_already_linked}':</b>"
-            html += f"<br><br>{shadow_already_linked_html}"
+            html += f"\n<p><b>AWS IoT device shadow data for previously-linked gateway '{gateway_already_linked}':</b></p>"
+            html += f"\n<p>{shadow_already_linked_html}</p>"
         else:
-            html += f"<p>No AWS IoT device shadow information for previously-linked gateway '{gateway_already_linked}'.</p>"
+            html += f"\n<p>No AWS IoT device shadow information for previously-linked gateway '{gateway_already_linked}'.</p>"
 
         c.logger.info(html)
 
