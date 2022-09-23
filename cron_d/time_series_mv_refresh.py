@@ -159,7 +159,10 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         lag_btm_ms,
         lag_top_ms,
         suction_vru,
-        max_fl_tmp_b4_dr
+        max_fl_tmp_b4_dr,
+        fl_tmp,
+        fl_tmp_derate_pct,
+        lag_time_derate_pct
     )
     select
         timestamp_utc, gateway,
@@ -190,7 +193,10 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         lag_btm_ms,
         lag_top_ms,
         suction_vru,
-        max_fl_tmp_b4_dr
+        max_fl_tmp_b4_dr,
+        fl_tmp,
+        fl_tmp_derate_pct,
+        lag_time_derate_pct
 	FROM public.time_series_locf
     where timestamp_utc > '{datetime_string}'
     """
