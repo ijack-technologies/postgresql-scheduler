@@ -161,6 +161,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         suction_vru,
         max_fl_tmp_b4_dr,
         fl_tmp,
+        suction_tmp,
         fl_tmp_derate_pct,
         lag_time_derate_pct
     )
@@ -195,6 +196,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         suction_vru,
         max_fl_tmp_b4_dr,
         fl_tmp,
+        suction_tmp,
         fl_tmp_derate_pct,
         lag_time_derate_pct
 	FROM public.time_series_locf
