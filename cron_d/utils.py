@@ -550,7 +550,8 @@ def get_all_gateways(c) -> list:
             wait_time_mins, wait_time_mins_ol, wait_time_mins_spm, wait_time_mins_stboxf, 
             wait_time_mins_suction, wait_time_mins_discharge, wait_time_mins_hyd_temp,
             hyd_oil_lvl_thresh, hyd_filt_life_thresh, hyd_oil_life_thresh,
-            wait_time_mins_hyd_oil_lvl, wait_time_mins_hyd_filt_life, wait_time_mins_hyd_oil_life
+            wait_time_mins_hyd_oil_lvl, wait_time_mins_hyd_filt_life, wait_time_mins_hyd_oil_life,
+            ip_modbus
         from public.gateways
         where aws_thing <> 'test'
             and aws_thing is not null
