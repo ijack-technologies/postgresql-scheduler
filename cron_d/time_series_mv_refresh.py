@@ -69,6 +69,7 @@ def get_latest_timestamp_in_table(
     threshold: timedelta = None,
 ) -> datetime:
     """Get the most recent timestamp in public.time_series_locf_copy"""
+
     sql = f"""
         select max(timestamp_utc) as timestamp_utc
         from public.{table}
@@ -236,13 +237,7 @@ def get_refresh_continuous_aggregate_sql(
 def force_refresh_continuous_aggregates(
     c, after_this_date: datetime, views_to_update: dict = None
 ):
-    """
-    Force the continuous aggregates to refresh with the latest data.
-    It is possible to specify NULL in a manual refresh to get an open-ended range,
-    but we do not recommend using it, because you could inadvertently materialize
-    a large amount of data, slow down your performance, and have unintended consequences
-    on other policies like data retention.
-    """
+    """Force the continuous aggregates to refresh with the latest data"""
 
     views_to_update = views_to_update or {
         "time_series_mvca_20_minute_interval": timedelta(minutes=40),
@@ -282,16 +277,16 @@ def force_refresh_continuous_aggregates(
     return True
 
 
-@error_wrapper()
-def main(c):
-    """Main entrypoint function"""
-
-    exit_if_already_running(c, pathlib.Path(__file__).name)
-
+def ad_hoc_maybe_refresh_continuous_aggs() -> None:
+    """
+    NOTE the following is only for ad hoc purposes;
+    it only runs if the date is before a certain date!
+    """
     dt_today = datetime.today()
     if dt_today < datetime(2022, 7, 20, 17):
         # This is just for ad hoc force-refreshing the continuously-aggregated materialized views,
-        # starting at a certain date. Run this with the "real_time_series_mv_refresh.py" module.
+        # starting at a certain date.
+        # Run this with the "real_time_series_mv_refresh.py" module, if you like.
         refresh_all_after_this_date = datetime(2020, 1, 1)
         force_refresh_continuous_aggregates(
             c,
@@ -299,13 +294,27 @@ def main(c):
             views_to_update={
                 "time_series_mvca_1_hour_interval": timedelta(hours=2),
                 "time_series_mvca_20_minute_interval": timedelta(minutes=40),
-                # "time_series_mvca_3_hour_interval": timedelta(hours=6),
-                # "time_series_mvca_6_hour_interval": timedelta(hours=12),
-                # "time_series_mvca_24_hour_interval": timedelta(hours=48),
+                "time_series_mvca_3_hour_interval": timedelta(hours=6),
+                "time_series_mvca_6_hour_interval": timedelta(hours=12),
+                "time_series_mvca_24_hour_interval": timedelta(hours=48),
             },
         )
 
-    # First refresh the main "last one carried forward" MV
+    return None
+
+
+@error_wrapper()
+def main(c):
+    """Main entrypoint function"""
+
+    exit_if_already_running(c, pathlib.Path(__file__).name)
+
+    # NOTE the following is only for ad hoc purposes;
+    # it only runs if the date is before a certain date!
+    # It also runs again after the latest values are inserted, below!
+    ad_hoc_maybe_refresh_continuous_aggs()
+
+    # First refresh the main "last one carried forward" materialized view
     refresh_locf_materialized_view(c)
 
     # Get the lastest values from the LOCF MV and insert
@@ -313,7 +322,7 @@ def main(c):
     timestamp = get_latest_timestamp_in_table(c, table="time_series_locf_copy")
     get_and_insert_latest_values(c, after_this_date=timestamp)
 
-    # Force the continuous aggregates to refresh
+    # Force the continuous aggregates to refresh, including the latest data
     force_refresh_continuous_aggregates(c, after_this_date=timestamp)
 
     # Check the table timestamps to see if they're recent.

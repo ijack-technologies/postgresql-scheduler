@@ -32,17 +32,7 @@ except ValueError:
 # local imports
 from cron_d.utils import Config, configure_logging
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace"
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
-
-
-# import alarm_log_mv_refresh_old_non_surface
-
-LOGFILE_NAME = "test_main_programs"
+LOGFILE_NAME = "test_time_series_update_views"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
