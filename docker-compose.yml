@@ -22,7 +22,7 @@ services:
     # The following is only for development
     volumes:
       - type: bind
-        source: C:\Users\SeanMcCarthy\git\postgresql-scheduler\
+        source: C:\Users\seanm\git\postgresql-scheduler\
         target: /
         # Can Docker write to the directory, or just read from it?
         # The code coverage writes a report to this mount

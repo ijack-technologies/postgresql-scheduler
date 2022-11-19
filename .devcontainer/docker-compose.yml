@@ -6,7 +6,7 @@ services:
       # Mount the root folder that contains .git
       - ..:/workspace
       # Windows home folder:
-      - C:\Users\SeanMcCarthy\:/c_users_sean
+      - C:\Users\seanm\:/c_users_sean
       # [Optional] For reusing Git SSH keys.
       # - ~/.ssh:/root/.ssh-local:ro
     build:
