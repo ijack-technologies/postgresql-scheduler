@@ -54,7 +54,7 @@ class TestAll(unittest.TestCase):
     def test_update_gw_power_unit_id_from_shadow(self, mock_exit_if_already_running):
         """Test the main program"""
         global c
-        update_gw_power_unit_id_from_shadow.main(c)
+        update_gw_power_unit_id_from_shadow.main(c, commit=True)
 
 
 if __name__ == "__main__":

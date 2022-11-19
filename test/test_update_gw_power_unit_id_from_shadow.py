@@ -300,9 +300,7 @@ class TestAll(unittest.TestCase):
             )
         ]
 
-        update_gw_power_unit_id_from_shadow.main(
-            c=c,
-        )
+        update_gw_power_unit_id_from_shadow.main(c=c, commit=False)
 
         mock_exit_if_already_running.assert_called_once()
         mock_get_conn.assert_called_once()

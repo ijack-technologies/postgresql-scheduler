@@ -207,6 +207,7 @@ def compare_shadow_and_db(
     structure: int,
     aws_thing: str,
     allow_zero: bool = False,
+    commit: bool = False,
 ):
     """
     Compare the shadow and database values,
@@ -238,6 +239,7 @@ def compare_shadow_and_db(
             structure,
             aws_thing,
             db_value,
+            commit=commit,
         )
 
 
@@ -453,7 +455,7 @@ def get_shadow_table_html(c, shadow: dict) -> str:
 
 
 @error_wrapper()
-def main(c):
+def main(c, commit: bool = False):
     """
     Query unit data from AWS RDS "IJACK" PostgreSQL database,
     and update it in the AWS IoT "thing shadow" from which the gateways
@@ -564,6 +566,7 @@ Continuing with next AWS_THING in public.gw table..."
                     power_unit_shadow,
                     structure,
                     aws_thing,
+                    commit=commit,
                 )
 
             # GPS longitude
@@ -577,6 +580,7 @@ Continuing with next AWS_THING in public.gw table..."
                     power_unit_shadow,
                     structure,
                     aws_thing,
+                    commit=commit,
                 )
 
         if power_unit_id_shadow == power_unit_id_gw:
@@ -701,4 +705,4 @@ if __name__ == "__main__":
     c.logger = configure_logging(
         __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
     )
-    main(c)
+    main(c, commit=True)
