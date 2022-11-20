@@ -290,13 +290,38 @@ def send_mailgun_email(
     return rc
 
 
-def get_client_iot():
-    """"""
+def get_aws_iot_ats_endpoint():
+    """
+    Get the "Data-ATS" endpoint instead of the
+    untrusted "Symantec" endpoint that's built-in.
+    """
+    # iot_client = boto3.client("iot", "us-west-2", verify=True)
+    # details = iot_client.describe_endpoint(endpointType="iot:Data-ATS")
+    # host = details.get("endpointAddress")
+    # url = f"https://{host}"
+    url = "https://a2zzb3nqu1iqym-ats.iot.us-west-2.amazonaws.com"
+    return url
+
+
+def get_client_iot() -> boto3.client:
+    """Get the AWS IoT boto3 client"""
+    client_name = "iot-data"
+    if client_name == "iot-data":
+        # Need this to avoid "CERTIFICATE_VERIFY_FAILED" error
+        endpoint_url = get_aws_iot_ats_endpoint()
+    else:
+        # Auto-constructed
+        endpoint_url = None
+
     client_iot = boto3.client(
-        "iot-data",
+        client_name,
         region_name="us-west-2",
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", None),
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", None),
+        # it still uses SSL even if verification is turned off
+        use_ssl=True,
+        verify=True,
+        endpoint_url=endpoint_url,
     )
     # Change the botocore logger from logging.DEBUG to INFO,
     # since DEBUG produces too many messages
