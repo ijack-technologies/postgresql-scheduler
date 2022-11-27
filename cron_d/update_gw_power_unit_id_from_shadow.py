@@ -465,6 +465,9 @@ def upsert_gw_info(
 ) -> bool:
     """Update (or insert) the gateway-reported info from the shadow into the RDS database"""
 
+    if not gateway_id or not aws_thing:
+        return False
+
     timestamp_utc_now = str(datetime.utcnow())
     values_dict = {
         "gateway_id": gateway_id,

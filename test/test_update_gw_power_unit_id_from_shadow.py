@@ -334,7 +334,7 @@ class TestAll(unittest.TestCase):
         mock_run_query.assert_not_called()
 
     def test_upsert_gw_info(self):
-        """Test that a small change will trigger an update"""
+        """Test the 'upsert_gw_info' function"""
         global c
         c.TEST_FUNC = False
 
@@ -396,6 +396,21 @@ class TestAll(unittest.TestCase):
             raise
         finally:
             conn.close()
+
+    def test_upsert_gw_info_no_aws_thing_no_gateway_id(self):
+        """Test the 'upsert_gw_info' function"""
+        global c
+        c.TEST_FUNC = False
+
+        bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
+            c, gateway_id=None, aws_thing="something", reported={}, conn=MagicMock()
+        )
+        self.assertFalse(bool_return)
+
+        bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
+            c, gateway_id="something", aws_thing=None, reported={}, conn=MagicMock()
+        )
+        self.assertFalse(bool_return)
 
 
 if __name__ == "__main__":
