@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 import logging
 import pathlib
 import time
@@ -8,6 +8,7 @@ import pickle
 from typing import List, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytz
+from psycopg2 import connect as psycopg2_connect
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -297,6 +298,7 @@ def get_gateway_records(c, conn) -> list:
     sql_gw = """
         select 
             distinct on (aws_thing)
+            t1.id as gateway_id,
             t1.aws_thing, 
             t1.power_unit_id, 
             t2.power_unit
@@ -454,8 +456,77 @@ def get_shadow_table_html(c, shadow: dict) -> str:
     return html
 
 
+def upsert_gw_info(
+    c: Config,
+    gateway_id: int,
+    aws_thing: str,
+    reported: dict,
+    conn: psycopg2_connect,
+) -> bool:
+    """Update (or insert) the gateway-reported info from the shadow into the RDS database"""
+
+    timestamp_utc_now = str(datetime.utcnow())
+    values_dict = {
+        "gateway_id": gateway_id,
+        "aws_thing": aws_thing,
+        "timestamp_utc_updated": timestamp_utc_now,
+    }
+
+    metrics_to_update = (
+        "os_name",
+        "os_pretty_name",
+        "os_version",
+        "os_version_id",
+        "os_release",
+        "os_machine",
+        "os_platform",
+        "os_python_version",
+        "modem_model",
+        "modem_firmware_rev",
+        "modem_drivers",
+        "sim_operator",
+    )
+    for metric in metrics_to_update:
+        value = reported.get(metric, -1)
+        if value != -1:
+            # Must escape/double-up apostrophes when inserting into PostgreSQL
+            value = str(value).replace("'", "''")
+            values_dict[metric] = value
+
+    insert_str = ""
+    values_str = ""
+    set_str = ""
+    for metric, value in values_dict.items():
+        comma = ","
+        if insert_str == "":
+            comma = ""
+        insert_str += f"{comma} {metric}"
+        # The actual value is in the "values" dictionary
+        values_str += f"{comma} %({metric})s"
+        set_str += f"{comma} {metric}='{value}'"
+
+    sql = f"""
+        INSERT INTO public.gw_info
+            ({insert_str})
+            VALUES ({values_str})
+            ON CONFLICT (gateway_id) DO UPDATE
+                SET {set_str}
+    """
+    run_query(
+        c,
+        sql,
+        db="ijack",
+        fetchall=False,
+        conn=conn,
+        commit=True,
+        values_dict=values_dict,
+    )
+
+    return True
+
+
 @error_wrapper()
-def main(c, commit: bool = False):
+def main(c: Config, commit: bool = False):
     """
     Query unit data from AWS RDS "IJACK" PostgreSQL database,
     and update it in the AWS IoT "thing shadow" from which the gateways
@@ -474,10 +545,6 @@ def main(c, commit: bool = False):
     pu_dict = {row["power_unit"]: row["power_unit_id"] for row in pu_rows}
     structure_rows = get_structure_records(c, conn)
 
-    # Close the DB connection now
-    conn.close()
-    del conn
-
     # Get the Boto3 AWS IoT client for updating the "thing shadow"
     client_iot = get_client_iot()
     shadows = get_device_shadows_in_threadpool(c, gw_rows, client_iot)
@@ -494,208 +561,216 @@ def main(c, commit: bool = False):
     # n_gw_rows = len(gw_rows)
     time_start = time.time()
     # for i, gw_dict in enumerate(gw_rows):
-    for gw_dict in gw_rows:
-        aws_thing = gw_dict.get("aws_thing", None)
+    try:
+        for gw_dict in gw_rows:
+            aws_thing = gw_dict.get("aws_thing", None)
+            gateway_id = gw_dict.get("gateway_id", None)
 
-        # This "if aws_thing is None" is unnecessary since the nulls are filtered out in the query,
-        # and simply not allowed in the table, but it doesn't hurt
-        if aws_thing is None:
-            c.logger.warning(
-                '"AWS thing" is None. Continuing with next aws_thing in public.gw table...'
-            )
-            continue
-
-        # shadow = get_iot_device_shadow(c, client_iot, aws_thing)
-        shadow = shadows.get(aws_thing, None)
-        if not shadow or not isinstance(shadow, dict):
-            c.logger.warning(
-                f'No shadow exists for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...'
-            )
-            continue
-
-        reported = shadow.get("state", {}).get("reported", {})
-        power_unit_shadow = reported.get("SERIAL_NUMBER", None)
-        latitude_shadow = reported.get("LATITUDE", None)
-        longitude_shadow = reported.get("LONGITUDE", None)
-
-        if power_unit_shadow is None:
-            c.logger.warning(
-                f'Power unit "SERIAL_NUMBER" not in shadow for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...'
-            )
-            continue
-
-        try:
-            power_unit_shadow = int(power_unit_shadow)
-        except Exception:
-            c.logger.exception(
-                f"Can't convert the '{aws_thing}' device shadow's power_unit of '{power_unit_shadow}' to an integer. \
-Continuing with next AWS_THING in public.gw table..."
-            )
-            continue
-
-        power_unit_id_shadow = pu_dict.get(power_unit_shadow, None)
-        if power_unit_id_shadow is None:
-            c.logger.warning(
-                f"Can't find the power unit ID for the shadow's reported power unit of '{power_unit_shadow}'. \
-Continuing with next AWS_THING in public.gw table..."
-            )
-            continue
-
-        # Get the power_unit_id already in the public.gw table
-        power_unit_id_gw = gw_dict.get("power_unit_id", None)
-        power_unit_gw = gw_dict.get("power_unit", None)
-
-        # Compare the GPS first
-        structure = None
-        customer = None
-        structure_rows_relevant = [
-            row for row in structure_rows if row["power_unit_id"] == power_unit_id_gw
-        ]
-        for row in structure_rows_relevant:
-            structure = row["structure"]
-            customer = row["customer"]
-
-            # GPS latitude
-            if str(latitude_shadow)[:7] != "50.1631":  # IJACK SHOP GPS
-                compare_shadow_and_db(
-                    c,
-                    latitude_shadow,
-                    row["gps_lat"],
-                    "gps_lat",
-                    power_unit_id_gw,
-                    power_unit_shadow,
-                    structure,
-                    aws_thing,
-                    commit=commit,
+            # This "if aws_thing is None" is unnecessary since the nulls are filtered out in the query,
+            # and simply not allowed in the table, but it doesn't hurt
+            if aws_thing is None:
+                c.logger.warning(
+                    '"AWS thing" is None. Continuing with next aws_thing in public.gw table...'
                 )
+                continue
 
-            # GPS longitude
-            if str(longitude_shadow)[:7] != "101.675":  # IJACK SHOP GPS
-                compare_shadow_and_db(
-                    c,
-                    longitude_shadow,
-                    row["gps_lon"],
-                    "gps_lon",
-                    power_unit_id_gw,
-                    power_unit_shadow,
-                    structure,
-                    aws_thing,
-                    commit=commit,
+            # shadow = get_iot_device_shadow(c, client_iot, aws_thing)
+            shadow = shadows.get(aws_thing, None)
+            if not shadow or not isinstance(shadow, dict):
+                c.logger.warning(
+                    f'No shadow exists for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...'
                 )
+                continue
 
-        if power_unit_id_shadow == power_unit_id_gw:
-            c.logger.info(
-                f"Power unit '{power_unit_shadow}' in the public.gw table matches the one reported in the device shadow. Continuing with next..."
+            reported = shadow.get("state", {}).get("reported", {})
+
+            # Update the public.gw_info table using info reported in the shadow
+            upsert_gw_info(c, gateway_id, aws_thing, reported, conn)
+
+            power_unit_shadow = reported.get("SERIAL_NUMBER", None)
+            latitude_shadow = reported.get("LATITUDE", None)
+            longitude_shadow = reported.get("LONGITUDE", None)
+
+            if power_unit_shadow is None:
+                c.logger.warning(
+                    f'Power unit "SERIAL_NUMBER" not in shadow for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...'
+                )
+                continue
+
+            try:
+                power_unit_shadow = int(power_unit_shadow)
+            except Exception:
+                c.logger.exception(
+                    f"Can't convert the '{aws_thing}' device shadow's power_unit of '{power_unit_shadow}' to an integer. \
+    Continuing with next AWS_THING in public.gw table..."
+                )
+                continue
+
+            power_unit_id_shadow = pu_dict.get(power_unit_shadow, None)
+            if power_unit_id_shadow is None:
+                c.logger.warning(
+                    f"Can't find the power unit ID for the shadow's reported power unit of '{power_unit_shadow}'. \
+    Continuing with next AWS_THING in public.gw table..."
+                )
+                continue
+
+            # Get the power_unit_id already in the public.gw table
+            power_unit_id_gw = gw_dict.get("power_unit_id", None)
+            power_unit_gw = gw_dict.get("power_unit", None)
+
+            # Compare the GPS first
+            structure = None
+            customer = None
+            structure_rows_relevant = [
+                row
+                for row in structure_rows
+                if row["power_unit_id"] == power_unit_id_gw
+            ]
+            for row in structure_rows_relevant:
+                structure = row["structure"]
+                customer = row["customer"]
+
+                # GPS latitude
+                if str(latitude_shadow)[:7] != "50.1631":  # IJACK SHOP GPS
+                    compare_shadow_and_db(
+                        c,
+                        latitude_shadow,
+                        row["gps_lat"],
+                        "gps_lat",
+                        power_unit_id_gw,
+                        power_unit_shadow,
+                        structure,
+                        aws_thing,
+                        commit=commit,
+                    )
+
+                # GPS longitude
+                if str(longitude_shadow)[:7] != "101.675":  # IJACK SHOP GPS
+                    compare_shadow_and_db(
+                        c,
+                        longitude_shadow,
+                        row["gps_lon"],
+                        "gps_lon",
+                        power_unit_id_gw,
+                        power_unit_shadow,
+                        structure,
+                        aws_thing,
+                        commit=commit,
+                    )
+
+            if power_unit_id_shadow == power_unit_id_gw:
+                c.logger.info(
+                    f"Power unit '{power_unit_shadow}' in the public.gw table matches the one reported in the device shadow. Continuing with next..."
+                )
+                continue
+
+            if aws_thing == "00:60:E0:86:4C:DA" and str(power_unit_shadow) == "200442":
+                # Richie needs to fix this on on-site, so it uses the correct 200408 power unit
+                continue
+
+            if aws_thing == "00:60:E0:86:4C:DA" and date.today() < date(2022, 6, 30):
+                c.logger.warning(
+                    "skipping gateway '00:60:E0:86:4C:DA' since Richie needs to reset the power unit on the CAN bus, on-site..."
+                )
+                continue
+
+            gateway_already_has_power_unit = bool(power_unit_id_gw)
+
+            is_power_unit_in_use, gateway_already_linked = is_power_unit_already_in_use(
+                c, power_unit_id_shadow
             )
-            continue
+            if is_power_unit_in_use:
+                # There's a problem since another gateway is already using that power unit
+                emailees_list = c.EMAIL_LIST_DEV
+                subject = f"Power unit '{power_unit_shadow}' already used by gateway '{gateway_already_linked}'"
+                html = f"Can't set gateway '{aws_thing}' power unit to '{power_unit_shadow}' because that power unit is already used by gateway '{gateway_already_linked}'"
 
-        if aws_thing == "00:60:E0:86:4C:DA" and str(power_unit_shadow) == "200442":
-            # Richie needs to fix this on on-site, so it uses the correct 200408 power unit
-            continue
+                html += (
+                    "\n<p><b>See which unit is already using that power unit:</b></p>"
+                )
+                html += "\n<ul>"
+                html += f'\n<li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></li>'
+                html += f'\n<li><a href="https://myijack.com/rcom/?gateway={gateway_already_linked}">https://myijack.com/rcom/?gateway={gateway_already_linked}</a></li>'
+                html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow</a></li>'
+                html += "\n</ul>"
 
-        if aws_thing == "00:60:E0:86:4C:DA" and date.today() < date(2022, 6, 30):
-            c.logger.warning(
-                "skipping gateway '00:60:E0:86:4C:DA' since Richie needs to reset the power unit on the CAN bus, on-site..."
+                html += f"\n<p><b>New gateway that also wants to use power unit '{power_unit_shadow}':</b></p>"
+                html += "\n<ul>"
+                html += f'\n<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
+                html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
+                html += "\n</ul>"
+
+            elif gateway_already_has_power_unit:
+                # There's a problem since the gateway already has a power unit assigned to it
+                emailees_list = c.EMAIL_LIST_DEV
+                subject = f"Gateway '{aws_thing}' already linked to power unit '{power_unit_gw}' so can't link new power unit '{power_unit_shadow}'"
+                html = f"Can't link gateway '{aws_thing}' to power unit '{power_unit_shadow}' because the gateway is already linked to power unit '{power_unit_gw}'"
+
+                html += f"\n<p><b>See already-linked power unit '{power_unit_gw}' in action:</b></p>"
+                html += "\n<ul>"
+                html += f'\n<li><a href="https://myijack.com/rcom/?power_unit={power_unit_gw}">https://myijack.com/rcom/?power_unit={power_unit_gw}</a></li>'
+                html += f'\n<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
+                html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
+                html += "\n</ul>"
+
+            else:
+                # No gateway is using that power unit, so link the two in the public.gw table
+                set_power_unit_to_gateway(c, power_unit_id_shadow, aws_thing)
+                emailees_list = c.EMAIL_LIST_SERVICE_PRODUCTION_IT
+                subject = f"Power unit '{power_unit_shadow}' now linked to gateway '{aws_thing}'"
+                html = f"<p>Power unit '{power_unit_shadow}' is now linked to gateway '{aws_thing}'."
+                html += f' Check it out at <a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></p>'
+                html += "\n<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
+                html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
+
+            if not structure:
+                html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
+            else:
+                html += f"\n<p>The structure for the current power unit '{power_unit_shadow}' is '{structure}'.</p>"
+
+            if customer:
+                html += f"\n<p>The customer for structure '{structure}' is '{customer}'.</p>"
+            else:
+                html += f"\n<p>There is no customer for power unit '{power_unit_shadow}'.</p>"
+
+            html += f"\n<p><b>Edit the data in the 'Admin' site:</b></p>"
+            html += "\n<ul>"
+            html += f'\n<li>Structures table at <a href="https://myijack.com/admin/structures/?search={power_unit_shadow}">https://myijack.com/admin/structures/?search={power_unit_shadow}</a></li>'
+            html += f'\n<li>Gateways table for <b><em>new</em></b> gateway "{aws_thing}" at <a href="https://myijack.com/admin/gateways/?search={aws_thing}">https://myijack.com/admin/gateways/?search={aws_thing}</a></li>'
+            html += f'\n<li>Gateways table for <b><em>old</em></b> gateway "{gateway_already_linked}" at <a href="https://myijack.com/admin/gateways/?search={gateway_already_linked}">https://myijack.com/admin/gateways/?search={gateway_already_linked}</a></li>'
+            html += "\n</ul>"
+
+            shadow_html = get_shadow_table_html(c, shadow)
+            if shadow_html:
+                html += f"\n<p><b>AWS IoT device shadow data for new gateway '{aws_thing}':</b></p>"
+                html += f"\n<p>{shadow_html}</p>"
+            else:
+                html += f"\n<p>No AWS IoT device shadow information for new gateway '{aws_thing}'.</p>"
+
+            shadow_already_linked = shadows.get(gateway_already_linked, None)
+            shadow_already_linked_html = get_shadow_table_html(c, shadow_already_linked)
+            if shadow_already_linked_html:
+                html += f"\n<p><b>AWS IoT device shadow data for previously-linked gateway '{gateway_already_linked}':</b></p>"
+                html += f"\n<p>{shadow_already_linked_html}</p>"
+            else:
+                html += f"\n<p>No AWS IoT device shadow information for previously-linked gateway '{gateway_already_linked}'.</p>"
+
+            c.logger.info(html)
+
+            send_mailgun_email(
+                c, text="", html=html, emailees_list=emailees_list, subject=subject
             )
-            continue
 
-        gateway_already_has_power_unit = bool(power_unit_id_gw)
-
-        is_power_unit_in_use, gateway_already_linked = is_power_unit_already_in_use(
-            c, power_unit_id_shadow
+        time_finish = time.time()
+        c.logger.info(
+            f"Time to update all gateways to their reported power units: {round(time_finish - time_start)} seconds"
         )
-        if is_power_unit_in_use:
-            # There's a problem since another gateway is already using that power unit
-            emailees_list = c.EMAIL_LIST_DEV
-            subject = f"Power unit '{power_unit_shadow}' already used by gateway '{gateway_already_linked}'"
-            html = f"Can't set gateway '{aws_thing}' power unit to '{power_unit_shadow}' because that power unit is already used by gateway '{gateway_already_linked}'"
 
-            html += "\n<p><b>See which unit is already using that power unit:</b></p>"
-            html += "\n<ul>"
-            html += f'\n<li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></li>'
-            html += f'\n<li><a href="https://myijack.com/rcom/?gateway={gateway_already_linked}">https://myijack.com/rcom/?gateway={gateway_already_linked}</a></li>'
-            html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow</a></li>'
-            html += "\n</ul>"
-
-            html += f"\n<p><b>New gateway that also wants to use power unit '{power_unit_shadow}':</b></p>"
-            html += "\n<ul>"
-            html += f'\n<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
-            html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
-            html += "\n</ul>"
-
-        elif gateway_already_has_power_unit:
-            # There's a problem since the gateway already has a power unit assigned to it
-            emailees_list = c.EMAIL_LIST_DEV
-            subject = f"Gateway '{aws_thing}' already linked to power unit '{power_unit_gw}' so can't link new power unit '{power_unit_shadow}'"
-            html = f"Can't link gateway '{aws_thing}' to power unit '{power_unit_shadow}' because the gateway is already linked to power unit '{power_unit_gw}'"
-
-            html += f"\n<p><b>See already-linked power unit '{power_unit_gw}' in action:</b></p>"
-            html += "\n<ul>"
-            html += f'\n<li><a href="https://myijack.com/rcom/?power_unit={power_unit_gw}">https://myijack.com/rcom/?power_unit={power_unit_gw}</a></li>'
-            html += f'\n<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
-            html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
-            html += "\n</ul>"
-
-        else:
-            # No gateway is using that power unit, so link the two in the public.gw table
-            set_power_unit_to_gateway(c, power_unit_id_shadow, aws_thing)
-            emailees_list = c.EMAIL_LIST_SERVICE_PRODUCTION_IT
-            subject = (
-                f"Power unit '{power_unit_shadow}' now linked to gateway '{aws_thing}'"
-            )
-            html = f"<p>Power unit '{power_unit_shadow}' is now linked to gateway '{aws_thing}'."
-            html += f' Check it out at <a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></p>'
-            html += "\n<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
-            html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
-
-        if not structure:
-            html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
-        else:
-            html += f"\n<p>The structure for the current power unit '{power_unit_shadow}' is '{structure}'.</p>"
-
-        if customer:
-            html += (
-                f"\n<p>The customer for structure '{structure}' is '{customer}'.</p>"
-            )
-        else:
-            html += (
-                f"\n<p>There is no customer for power unit '{power_unit_shadow}'.</p>"
-            )
-
-        html += f"\n<p><b>Edit the data in the 'Admin' site:</b></p>"
-        html += "\n<ul>"
-        html += f'\n<li>Structures table at <a href="https://myijack.com/admin/structures/?search={power_unit_shadow}">https://myijack.com/admin/structures/?search={power_unit_shadow}</a></li>'
-        html += f'\n<li>Gateways table for <b><em>new</em></b> gateway "{aws_thing}" at <a href="https://myijack.com/admin/gateways/?search={aws_thing}">https://myijack.com/admin/gateways/?search={aws_thing}</a></li>'
-        html += f'\n<li>Gateways table for <b><em>old</em></b> gateway "{gateway_already_linked}" at <a href="https://myijack.com/admin/gateways/?search={gateway_already_linked}">https://myijack.com/admin/gateways/?search={gateway_already_linked}</a></li>'
-        html += "\n</ul>"
-
-        shadow_html = get_shadow_table_html(c, shadow)
-        if shadow_html:
-            html += f"\n<p><b>AWS IoT device shadow data for new gateway '{aws_thing}':</b></p>"
-            html += f"\n<p>{shadow_html}</p>"
-        else:
-            html += f"\n<p>No AWS IoT device shadow information for new gateway '{aws_thing}'.</p>"
-
-        shadow_already_linked = shadows.get(gateway_already_linked, None)
-        shadow_already_linked_html = get_shadow_table_html(c, shadow_already_linked)
-        if shadow_already_linked_html:
-            html += f"\n<p><b>AWS IoT device shadow data for previously-linked gateway '{gateway_already_linked}':</b></p>"
-            html += f"\n<p>{shadow_already_linked_html}</p>"
-        else:
-            html += f"\n<p>No AWS IoT device shadow information for previously-linked gateway '{gateway_already_linked}'.</p>"
-
-        c.logger.info(html)
-
-        send_mailgun_email(
-            c, text="", html=html, emailees_list=emailees_list, subject=subject
-        )
-
-    time_finish = time.time()
-    c.logger.info(
-        f"Time to update all gateways to their reported power units: {round(time_finish - time_start)} seconds"
-    )
-
-    del client_iot
+        del client_iot
+    except Exception:
+        raise
+    finally:
+        conn.close()
 
     return None
 

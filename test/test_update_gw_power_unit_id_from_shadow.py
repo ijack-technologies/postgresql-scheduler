@@ -8,7 +8,8 @@ import sys
 from typing import OrderedDict
 from datetime import date
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from psycopg2.extras import DictCursor
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -22,7 +23,7 @@ except ValueError:
 from cron_d import update_gw_power_unit_id_from_shadow
 
 # local imports
-from cron_d.utils import Config, configure_logging, run_query
+from cron_d.utils import Config, configure_logging, run_query, get_conn
 
 
 LOGFILE_NAME = "test_main_programs"
@@ -209,7 +210,7 @@ class TestAll(unittest.TestCase):
         mock_send_mailgun_email.assert_not_called()
         mock_run_query.assert_not_called()
 
-    # @patch("cron_d.update_gw_power_unit_id_from_shadow.send_mailgun_email")
+    @patch("cron_d.update_gw_power_unit_id_from_shadow.upsert_gw_info")
     @patch("cron_d.update_gw_power_unit_id_from_shadow.run_query")
     @patch("cron_d.update_gw_power_unit_id_from_shadow.get_client_iot")
     @patch(
@@ -230,7 +231,7 @@ class TestAll(unittest.TestCase):
         mock_get_device_shadows_in_threadpool,
         mock_get_client_iot,
         mock_run_query,
-        # mock_send_mailgun_email,
+        mock_upsert_gw_info,
     ):
         """Test that a small change will trigger an update"""
         global c
@@ -310,13 +311,13 @@ class TestAll(unittest.TestCase):
         mock_get_device_shadows_in_threadpool.assert_called_once()
         mock_get_client_iot.assert_called_once()
 
-        # Two emails are sent
-        # self.assertTrue(mock_send_mailgun_email.call_count == 2)
-        self.assertTrue(mock_run_query.call_count == 2)
+        self.assertEqual(mock_run_query.call_count, 2)
+        mock_upsert_gw_info.assert_called()
 
         # Run the test a second time, with a smaller change, and assert it doesn't trigger an update
         # mock_send_mailgun_email.reset_mock()
         mock_run_query.reset_mock()
+        mock_upsert_gw_info.reset_mock()
 
         update_gw_power_unit_id_from_shadow.compare_shadow_and_db(
             c=c,
@@ -331,6 +332,70 @@ class TestAll(unittest.TestCase):
 
         # mock_send_mailgun_email.assert_not_called()
         mock_run_query.assert_not_called()
+
+    def test_upsert_gw_info(self):
+        """Test that a small change will trigger an update"""
+        global c
+        c.TEST_FUNC = False
+
+        # lambda_access gateway
+        aws_thing = "lambda_access"
+        gateway_id = 93
+
+        conn = get_conn(c, db="ijack")
+
+        try:
+            # Update the record
+            sql = f"""
+            INSERT INTO public.gw_info
+                (gateway_id, aws_thing, os_name)
+                VALUES ({gateway_id}, '{aws_thing}', null)
+                ON CONFLICT (gateway_id) DO UPDATE
+                    set os_name = null
+            """
+            run_query(c, sql, db="ijack", fetchall=False, conn=conn, commit=True)
+
+            # Check the record
+            sql = f"select os_name from public.gw_info where gateway_id = {gateway_id}"
+            columns, rows = run_query(
+                c, sql, db="ijack", fetchall=True, conn=conn, commit=False
+            )
+            self.assertEqual(columns, ["os_name"])
+            self.assertIsNone(rows[0]["os_name"])
+
+            os_wanted = "Sean's OS"
+            reported = {
+                "os_name": os_wanted,
+                "os_pretty_name": "",
+                "os_version": "",
+                "os_version_id": "",
+                "os_release": "",
+                "os_machine": "",
+                "os_platform": "",
+                "os_python_version": "",
+                "modem_model": "",
+                "modem_firmware_rev": "",
+                "modem_drivers": "",
+                "sim_operator": "",
+            }
+
+            bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
+                c, gateway_id, aws_thing, reported, conn
+            )
+
+            self.assertTrue(bool_return)
+
+            # Check the record
+            sql = f"select os_name from public.gw_info where gateway_id = {gateway_id}"
+            columns, rows = run_query(
+                c, sql, db="ijack", fetchall=True, conn=conn, commit=False
+            )
+            self.assertTrue(rows)
+            self.assertEqual(rows[0]["os_name"], os_wanted)
+        except Exception:
+            raise
+        finally:
+            conn.close()
 
 
 if __name__ == "__main__":

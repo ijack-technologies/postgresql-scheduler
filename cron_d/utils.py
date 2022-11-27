@@ -91,7 +91,7 @@ def configure_logging(name, logfile_name, path_to_log_directory="/var/log/"):
     return logger
 
 
-def get_conn(c, db="ijack"):
+def get_conn(c, db="ijack", cursor_factory=None):
     """Get connection to IJACK database"""
 
     if db == "ijack":
@@ -114,7 +114,7 @@ def get_conn(c, db="ijack"):
         user=user,
         password=password,
         connect_timeout=5,
-        # cursor_factory=psycopg2.extras.DictCursor
+        cursor_factory=cursor_factory,
         keepalives=1,  # is default
         keepalives_idle=30,
         keepalives_interval=10,
@@ -133,6 +133,7 @@ def run_query(
     conn=None,
     execute=True,
     raise_error: bool = False,
+    values_dict: dict = None,
 ) -> Tuple[List, List]:
     """Run and time the SQL query"""
 
@@ -146,12 +147,12 @@ def run_query(
 
     # with conn.cursor(cursor_factory=DictCursor) as cursor:
     with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-        c.logger.info(f"Running query now... SQL to run: \n{sql}")
+        c.logger.info("Running query now... SQL to run: \n%s", sql)
         time_start = time.time()
         if execute:
             try:
-                cursor.execute(sql)
-            except psycopg2.OperationalError:
+                cursor.execute(sql, values_dict)
+            except Exception:
                 c.logger.exception(f"ERROR executing SQL: '{sql}'")
                 if raise_error:
                     raise
