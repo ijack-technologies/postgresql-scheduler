@@ -346,37 +346,42 @@ class TestAll(unittest.TestCase):
 
         try:
             # Update the record
+            os_pretty_name_updated = "some pretty OS"
             sql = f"""
             INSERT INTO public.gw_info
-                (gateway_id, aws_thing, os_name)
-                VALUES ({gateway_id}, '{aws_thing}', null)
+                (gateway_id, aws_thing, os_name, os_pretty_name)
+                VALUES ({gateway_id}, '{aws_thing}', null, '{os_pretty_name_updated}')
                 ON CONFLICT (gateway_id) DO UPDATE
-                    set os_name = null
+                    set os_name = null, os_pretty_name = '{os_pretty_name_updated}'
             """
             run_query(c, sql, db="ijack", fetchall=False, conn=conn, commit=True)
 
             # Check the record
-            sql = f"select os_name from public.gw_info where gateway_id = {gateway_id}"
+            sql = f"select os_name, os_pretty_name from public.gw_info where gateway_id = {gateway_id}"
             columns, rows = run_query(
                 c, sql, db="ijack", fetchall=True, conn=conn, commit=False
             )
-            self.assertEqual(columns, ["os_name"])
+            self.assertEqual(columns, ["os_name", "os_pretty_name"])
             self.assertIsNone(rows[0]["os_name"])
+            self.assertEqual(rows[0]["os_pretty_name"], os_pretty_name_updated)
 
             os_wanted = "Sean's OS"
+            os_pretty_name_not_updated = "Sean's OS - Pretty"
             reported = {
-                "os_name": os_wanted,
-                "os_pretty_name": "",
-                "os_version": "",
-                "os_version_id": "",
-                "os_release": "",
-                "os_machine": "",
-                "os_platform": "",
-                "os_python_version": "",
-                "modem_model": "",
-                "modem_firmware_rev": "",
-                "modem_drivers": "",
-                "sim_operator": "",
+                "OS_NAME": os_wanted,
+                # Test lowercase doesn't get updated
+                # since it's looking for an uppercase metric name
+                "os_pretty_name": os_pretty_name_not_updated,
+                "OS_VERSION": "",
+                "OS_VERSION_ID": "",
+                "OS_RELEASE": "",
+                "OS_MACHINE": "",
+                "OS_PLATFORM": "",
+                "OS_PYTHON_VERSION": "",
+                "MODEM_MODEL": "",
+                "MODEM_FIRMWARE_REV": "",
+                "MODEM_DRIVERS": "",
+                "SIM_OPERATOR": "",
             }
 
             bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
@@ -386,12 +391,17 @@ class TestAll(unittest.TestCase):
             self.assertTrue(bool_return)
 
             # Check the record
-            sql = f"select os_name from public.gw_info where gateway_id = {gateway_id}"
+            sql = f"select os_name, os_pretty_name from public.gw_info where gateway_id = {gateway_id}"
             columns, rows = run_query(
                 c, sql, db="ijack", fetchall=True, conn=conn, commit=False
             )
             self.assertTrue(rows)
             self.assertEqual(rows[0]["os_name"], os_wanted)
+
+            # This one doesn't get updated since it's not uppercase
+            os_pretty_name_in_db = rows[0]["os_pretty_name"]
+            self.assertNotEqual(os_pretty_name_in_db, os_pretty_name_not_updated)
+            self.assertEqual(os_pretty_name_in_db, os_pretty_name_updated)
         except Exception:
             raise
         finally:

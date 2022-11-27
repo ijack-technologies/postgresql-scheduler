@@ -475,19 +475,20 @@ def upsert_gw_info(
         "timestamp_utc_updated": timestamp_utc_now,
     }
 
+    # These are all capitalized in the AWS IoT device shadow
     metrics_to_update = (
-        "os_name",
-        "os_pretty_name",
-        "os_version",
-        "os_version_id",
-        "os_release",
-        "os_machine",
-        "os_platform",
-        "os_python_version",
-        "modem_model",
-        "modem_firmware_rev",
-        "modem_drivers",
-        "sim_operator",
+        "OS_NAME",
+        "OS_PRETTY_NAME",
+        "OS_VERSION",
+        "OS_VERSION_ID",
+        "OS_RELEASE",
+        "OS_MACHINE",
+        "OS_PLATFORM",
+        "OS_PYTHON_VERSION",
+        "MODEM_MODEL",
+        "MODEM_FIRMWARE_REV",
+        "MODEM_DRIVERS",
+        "SIM_OPERATOR",
     )
     for metric in metrics_to_update:
         value = reported.get(metric, -1)
