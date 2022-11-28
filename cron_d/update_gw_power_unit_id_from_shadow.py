@@ -475,39 +475,43 @@ def upsert_gw_info(
         "timestamp_utc_updated": timestamp_utc_now,
     }
 
-    # These are all capitalized in the AWS IoT device shadow
-    metrics_to_update = (
-        "OS_NAME",
-        "OS_PRETTY_NAME",
-        "OS_VERSION",
-        "OS_VERSION_ID",
-        "OS_RELEASE",
-        "OS_MACHINE",
-        "OS_PLATFORM",
-        "OS_PYTHON_VERSION",
-        "MODEM_MODEL",
-        "MODEM_FIRMWARE_REV",
-        "MODEM_DRIVERS",
-        "SIM_OPERATOR",
-    )
-    for metric in metrics_to_update:
-        value = reported.get(metric, -1)
+    # These are all capitalized in the AWS IoT device shadow.
+    # The key is the public.gw_info database column name.
+    # The value is the AWS IoT device shadow name
+    metrics_to_update = {
+        "os_name": "OS_NAME",
+        "os_pretty_name": "OS_PRETTY_NAME",
+        "os_version": "OS_VERSION",
+        "os_version_id": "OS_VERSION_ID",
+        "os_release": "OS_RELEASE",
+        "os_machine": "OS_MACHINE",
+        "os_platform": "OS_PLATFORM",
+        "os_python_version": "OS_PYTHON_VERSION",
+        "modem_model": "MODEM_MODEL",
+        "modem_firmware_rev": "MODEM_FIRMWARE_REV",
+        "modem_drivers": "MODEM_DRIVERS",
+        "sim_operator": "SIM_OPERATOR",
+        "swv_canpy": "SWV_PYTHON",
+        "swv_plc": "SWV",
+    }
+    for db_col_name, shadow_name in metrics_to_update.items():
+        value = reported.get(shadow_name, -1)
         if value != -1:
             # Must escape/double-up apostrophes when inserting into PostgreSQL
             value = str(value).replace("'", "''")
-            values_dict[metric] = value
+            values_dict[db_col_name] = value
 
     insert_str = ""
     values_str = ""
     set_str = ""
-    for metric, value in values_dict.items():
+    for db_col_name, value in values_dict.items():
         comma = ","
         if insert_str == "":
             comma = ""
-        insert_str += f"{comma} {metric}"
+        insert_str += f"{comma} {db_col_name}"
         # The actual value is in the "values" dictionary
-        values_str += f"{comma} %({metric})s"
-        set_str += f"{comma} {metric}='{value}'"
+        values_str += f"{comma} %({db_col_name})s"
+        set_str += f"{comma} {db_col_name}='{value}'"
 
     sql = f"""
         INSERT INTO public.gw_info
