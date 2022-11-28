@@ -27,6 +27,7 @@ from cron_d.utils import (
     get_conn,
     get_iot_device_shadow,
     run_query,
+    seconds_since_last_any_msg,
     send_mailgun_email,
     utc_timestamp_to_datetime_string,
 )
@@ -460,7 +461,7 @@ def upsert_gw_info(
     c: Config,
     gateway_id: int,
     aws_thing: str,
-    reported: dict,
+    shadow: dict,
     conn: psycopg2_connect,
 ) -> bool:
     """Update (or insert) the gateway-reported info from the shadow into the RDS database"""
@@ -468,11 +469,14 @@ def upsert_gw_info(
     if not gateway_id or not aws_thing:
         return False
 
+    _, msg = seconds_since_last_any_msg(c, shadow)
+
     timestamp_utc_now = str(datetime.utcnow())
     values_dict = {
         "gateway_id": gateway_id,
         "aws_thing": aws_thing,
         "timestamp_utc_updated": timestamp_utc_now,
+        "time_since_reported": msg,
     }
 
     # These are all capitalized in the AWS IoT device shadow.
@@ -494,6 +498,7 @@ def upsert_gw_info(
         "swv_canpy": "SWV_PYTHON",
         "swv_plc": "SWV",
     }
+    reported = shadow.get("state", {}).get("reported", {})
     for db_col_name, shadow_name in metrics_to_update.items():
         value = reported.get(shadow_name, -1)
         if value != -1:
@@ -590,10 +595,10 @@ def main(c: Config, commit: bool = False):
                 )
                 continue
 
-            reported = shadow.get("state", {}).get("reported", {})
-
             # Update the public.gw_info table using info reported in the shadow
-            upsert_gw_info(c, gateway_id, aws_thing, reported, conn)
+            upsert_gw_info(c, gateway_id, aws_thing, shadow, conn)
+
+            reported = shadow.get("state", {}).get("reported", {})
 
             power_unit_shadow = reported.get("SERIAL_NUMBER", None)
             latitude_shadow = reported.get("LATITUDE", None)

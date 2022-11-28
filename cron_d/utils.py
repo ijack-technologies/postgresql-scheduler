@@ -621,3 +621,78 @@ def utc_timestamp_to_datetime_string(
     """
     dt = datetime.datetime.fromtimestamp(timestamp_utc)
     return utc_datetime_to_string(dt, to_pytz_timezone, format_string)
+
+
+def seconds_since_last_any_msg(c, shadow):
+    """How many seconds has it been since we received ANY message from the gateway at AWS?"""
+
+    time_received_latest = 0
+    key_latest = None
+    meta_reported = shadow.get("metadata", {}).get("reported", {})
+    for key, _ in meta_reported.items():
+        # metadata contains the timestamps for each attribute in the desired and reported sections so that you can determine when the state was updated
+        if (
+            "wait_okay" in key  # alerts sent flags
+            # or key == 'connected' # AWS Lambda updates this for the last will and testament
+            or key.startswith(
+                "AWS_"
+            )  # commands from AWS are not okay since it includes the desired state...
+            or key.startswith("C__")  # config data, which is refreshed periodically
+            # Latitude and longitude can be updated by the website itself, if the unit is selected!
+            or key == "LATITUDE"
+            or key == "LONGITUDE"
+        ):
+            continue
+
+        meta_reported_sub_dict = meta_reported.get(key, {})
+        if not isinstance(meta_reported_sub_dict, dict):
+            continue
+
+        time_received = meta_reported_sub_dict.get("timestamp", 0)
+        if time_received > time_received_latest:
+            time_received_latest = time_received
+            key_latest = key
+
+            # ####################
+            # # For debugging only
+            # # Convert to a datetime
+            # since_when_time_received = datetime.utcfromtimestamp(time_received_latest)
+            # # Get the timedelta since we started waiting
+            # time_delta_time_received = (datetime.utcnow() - since_when_time_received)
+            # # How many seconds has it been since we started waiting?
+            # seconds_elapsed_total = time_delta_time_received.days*24*60*60 + time_delta_time_received.seconds
+            # current_app.logger.debug(f"Most recent metric in AWS IoT device shadow: {key_latest} as of {round(seconds_elapsed_total/60, 1)} minutes ago")
+            # current_app.logger.debug("")
+
+    # How many seconds has it been since we started waiting?
+    seconds_elapsed_total = round(time.time() - time_received_latest, 1)
+
+    c.logger.debug(
+        "Most recent metric in AWS IoT device shadow: %s as of %s minutes ago",
+        key_latest,
+        round(seconds_elapsed_total / 60, 1),
+    )
+
+    mins_ago = round(seconds_elapsed_total / 60, 1)
+    hours_ago = round(mins_ago / 60, 1)
+    days_ago = round(hours_ago / 24, 1)
+    if seconds_elapsed_total < 60:
+        msg = f"{seconds_elapsed_total} seconds"
+        # color_time_since = "success"
+    elif mins_ago < 6:
+        msg = f"{mins_ago} minutes"
+        # color_time_since = "success"
+    elif mins_ago < 16:
+        msg = f"{mins_ago} minutes"
+        # color_time_since = "warning"
+    elif mins_ago < 60:
+        msg = f"{mins_ago} minutes"
+        # color_time_since = "danger"
+    elif hours_ago < 24:
+        msg = f"{hours_ago} hours"
+        # color_time_since = "danger"
+    else:
+        msg = f"{days_ago} days"
+        # color_time_since = "danger"
+
+    return seconds_elapsed_total, msg

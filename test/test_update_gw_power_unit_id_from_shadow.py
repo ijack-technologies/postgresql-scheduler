@@ -10,6 +10,7 @@ from datetime import date
 import unittest
 from unittest.mock import patch, MagicMock
 from psycopg2.extras import DictCursor
+import time
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -367,25 +368,46 @@ class TestAll(unittest.TestCase):
 
             os_wanted = "Sean's OS"
             os_pretty_name_not_updated = "Sean's OS - Pretty"
-            reported = {
-                "OS_NAME": os_wanted,
-                # Test lowercase doesn't get updated
-                # since it's looking for an uppercase metric name
-                "os_pretty_name": os_pretty_name_not_updated,
-                "OS_VERSION": "",
-                "OS_VERSION_ID": "",
-                "OS_RELEASE": "",
-                "OS_MACHINE": "",
-                "OS_PLATFORM": "",
-                "OS_PYTHON_VERSION": "",
-                "MODEM_MODEL": "",
-                "MODEM_FIRMWARE_REV": "",
-                "MODEM_DRIVERS": "",
-                "SIM_OPERATOR": "",
+            timestamp_10_seconds_ago = time.time() - 10
+            shadow = {
+                "state": {
+                    "reported": {
+                        "OS_NAME": os_wanted,
+                        # Test lowercase doesn't get updated
+                        # since it's looking for an uppercase metric name
+                        "os_pretty_name": os_pretty_name_not_updated,
+                        "OS_VERSION": "",
+                        "OS_VERSION_ID": "",
+                        "OS_RELEASE": "",
+                        "OS_MACHINE": "",
+                        "OS_PLATFORM": "",
+                        "OS_PYTHON_VERSION": "",
+                        "MODEM_MODEL": "",
+                        "MODEM_FIRMWARE_REV": "",
+                        "MODEM_DRIVERS": "",
+                        "SIM_OPERATOR": "",
+                    }
+                },
+                "metadata": {
+                    "reported": {
+                        "OS_NAME": {"timestamp": timestamp_10_seconds_ago},
+                        "os_pretty_name": {"timestamp": timestamp_10_seconds_ago},
+                        "OS_VERSION": {"timestamp": timestamp_10_seconds_ago},
+                        "OS_VERSION_ID": {"timestamp": timestamp_10_seconds_ago},
+                        "OS_RELEASE": {"timestamp": timestamp_10_seconds_ago},
+                        "OS_MACHINE": {"timestamp": timestamp_10_seconds_ago},
+                        "OS_PLATFORM": {"timestamp": timestamp_10_seconds_ago},
+                        "OS_PYTHON_VERSION": {"timestamp": timestamp_10_seconds_ago},
+                        "MODEM_MODEL": {"timestamp": timestamp_10_seconds_ago},
+                        "MODEM_FIRMWARE_REV": {"timestamp": timestamp_10_seconds_ago},
+                        "MODEM_DRIVERS": {"timestamp": timestamp_10_seconds_ago},
+                        "SIM_OPERATOR": {"timestamp": timestamp_10_seconds_ago},
+                    }
+                },
             }
 
             bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
-                c, gateway_id, aws_thing, reported, conn
+                c, gateway_id, aws_thing, shadow, conn
             )
 
             self.assertTrue(bool_return)
@@ -413,12 +435,12 @@ class TestAll(unittest.TestCase):
         c.TEST_FUNC = False
 
         bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
-            c, gateway_id=None, aws_thing="something", reported={}, conn=MagicMock()
+            c, gateway_id=None, aws_thing="something", shadow={}, conn=MagicMock()
         )
         self.assertFalse(bool_return)
 
         bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
-            c, gateway_id="something", aws_thing=None, reported={}, conn=MagicMock()
+            c, gateway_id="something", aws_thing=None, shadow={}, conn=MagicMock()
         )
         self.assertFalse(bool_return)
 
