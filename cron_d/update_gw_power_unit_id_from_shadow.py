@@ -500,6 +500,7 @@ def upsert_gw_info(
         "sim_operator": "SIM_OPERATOR",
         "swv_canpy": "SWV_PYTHON",
         "swv_plc": "SWV",
+        "gw_type_reported": "gateway_type",
     }
     reported = shadow.get("state", {}).get("reported", {})
     for db_col_name, shadow_name in metrics_to_update.items():
