@@ -469,14 +469,17 @@ def upsert_gw_info(
     if not gateway_id or not aws_thing:
         return False
 
-    _, msg = seconds_since_last_any_msg(c, shadow)
+    seconds_since, msg = seconds_since_last_any_msg(c, shadow)
+
+    days_since_reported = round(seconds_since / (60 * 60 * 24), 1)
 
     timestamp_utc_now = str(datetime.utcnow())
     values_dict = {
         "gateway_id": gateway_id,
         "aws_thing": aws_thing,
         "timestamp_utc_updated": timestamp_utc_now,
-        "time_since_reported": msg,
+        "days_since_reported": days_since_reported,
+        "time_since_reported": msg,        
     }
 
     # These are all capitalized in the AWS IoT device shadow.

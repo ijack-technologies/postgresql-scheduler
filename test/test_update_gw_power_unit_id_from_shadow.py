@@ -9,7 +9,7 @@ from typing import OrderedDict
 from datetime import date
 import unittest
 from unittest.mock import patch, MagicMock
-from psycopg2.extras import DictCursor
+# from psycopg2.extras import DictCursor
 import time
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
@@ -19,11 +19,7 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-
-# import alarm_log_mv_refresh_old_non_surface
 from cron_d import update_gw_power_unit_id_from_shadow
-
-# local imports
 from cron_d.utils import Config, configure_logging, run_query, get_conn
 
 
