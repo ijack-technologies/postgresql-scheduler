@@ -409,8 +409,9 @@ def get_shadow_table_html(c, shadow: dict) -> str:
     reported_meta = shadow.get("metadata", {}).get("reported", {})
 
     # Get timestamps by reported dict key
+    default_ts_if_not_found = time.time()
     reported_timestamps = {
-        key: reported_meta.get(key, {}).get("timestamp", None)
+        key: reported_meta.get(key, {}).get("timestamp", default_ts_if_not_found)
         for key in reported.keys()
     }
     # Sort by timestamp value, descending
