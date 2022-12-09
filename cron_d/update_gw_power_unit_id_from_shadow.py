@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import logging
 import pathlib
 import time
@@ -474,13 +474,17 @@ def upsert_gw_info(
 
     days_since_reported = round(seconds_since / (60 * 60 * 24), 1)
 
-    timestamp_utc_now = str(datetime.utcnow())
+    timestamp_utc_now = datetime.utcnow()
+    timestamp_utc_last_reported = timestamp_utc_now - timedelta(days=days_since_reported)
+    timestamp_utc_now_str = str(timestamp_utc_now)
+
     values_dict = {
         "gateway_id": gateway_id,
         "aws_thing": aws_thing,
-        "timestamp_utc_updated": timestamp_utc_now,
+        "timestamp_utc_updated": timestamp_utc_now_str,
         "days_since_reported": days_since_reported,
-        "time_since_reported": msg,        
+        "time_since_reported": msg,
+        "timestamp_utc_last_reported": timestamp_utc_last_reported
     }
 
     # These are all capitalized in the AWS IoT device shadow.
