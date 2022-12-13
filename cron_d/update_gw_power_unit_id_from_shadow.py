@@ -9,6 +9,7 @@ from typing import List, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytz
 from psycopg2 import connect as psycopg2_connect
+from psycopg2.sql import SQL, Literal, Identifier
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -547,6 +548,39 @@ def upsert_gw_info(
     return True
 
 
+def record_can_bus_cellular_test(c: Config, gateway_id: int, cellular_good: bool, can_bus_good: bool) -> bool:
+    """Record that the CAN bus and cellular have been tested and are working, or not!"""
+
+    # sql_gw = SQL("""
+    sql_gw = f"""
+        update public.gw
+        set test_cellular={'true' if cellular_good else 'false'},
+            test_can_bus={'true' if can_bus_good else 'false'}
+        where id = {gateway_id}
+    """
+    # """).format(cell_good=Literal(cellular_good), can_good=Literal(can_bus_good), gateway_id=Literal(gateway_id))
+    run_query(c, sql_gw, db="ijack", fetchall=False, commit=True)
+
+    if cellular_good:
+        user_id_shop_auto = 788 # SHOP automated user
+        network_id_sasktel = 1
+        # sql_gw_tested = SQL("""
+        sql_gw_tested = f"""
+            insert into public.gw_tested_cellular
+            (user_id, timestamp_utc, gateway_id, network_id)
+            values ({user_id_shop_auto}, '{datetime.utcnow()}', {gateway_id}, {network_id_sasktel})
+        """
+        # """).format(
+        #     user_id=Literal(user_id_shop_auto),
+        #     timestamp_utc=Identifier(str(datetime.utcnow())),
+        #     gateway_id=Literal(gateway_id),
+        #     network_id=Literal(network_id_sasktel)
+        # )
+        run_query(c, sql_gw_tested, db="ijack", fetchall=False, commit=True)
+
+    return True
+
+
 @error_wrapper()
 def main(c: Config, commit: bool = False):
     """
@@ -744,6 +778,8 @@ def main(c: Config, commit: bool = False):
                 html += f' Check it out at <a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></p>'
                 html += "\n<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
                 html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
+
+                record_can_bus_cellular_test(c, gateway_id, cellular_good=True, can_bus_good=True)
 
             if not structure:
                 html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
