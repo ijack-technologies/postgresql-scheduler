@@ -14,7 +14,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-from cron_d import db_remove_old_connections
+from cron_d._archive import db_remove_old_connections
 
 # local imports
 from cron_d.utils import Config, configure_logging
