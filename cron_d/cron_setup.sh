@@ -16,13 +16,13 @@ PATH=/:/cron_d:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 BASH_ENV=/container.env
 
 # min hour dom month dow   command
+# */15 * * * * python3 /cron_d/_archive/db_remove_old_connections.py
+# */3 * * * * python3 /cron_d/_archive/gateways_mv_refresh.py
 # Delete duplicate alarm log records once daily
-# */15 * * * * python3 /cron_d/db_remove_old_connections.py
 1 1 * * * python3 /cron_d/alarm_log_delete_duplicates.py
-31 1 * * * python3 /cron_d/timescaledb_restart_background_workers.py
 */1 * * * * python3 /cron_d/alarm_log_mv_refresh.py
 */30 * * * * python3 /cron_d/time_series_mv_refresh.py
-# */3 * * * * python3 /cron_d/gateways_mv_refresh.py
+31 1 * * * python3 /cron_d/timescaledb_restart_background_workers.py
 3 * * * * python3 /cron_d/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
 15 * * * * python3 /cron_d/update_gw_power_unit_id_from_shadow.py
 # Leave the last line blank for a valid cron file" > /cron_d/crontab.txt
