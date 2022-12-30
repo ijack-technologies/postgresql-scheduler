@@ -61,7 +61,7 @@ def get_latest_timestamp_in_table(
     sql = f"""
         select max(timestamp_utc) as timestamp_utc
         from public.{table}
-        where timestamp_utc >= now() - interval '7 days'
+        where timestamp_utc >= (now() - interval '7 days')
     """
     _, rows = run_query(c, sql, db="timescale", fetchall=True, raise_error=raise_error)
 
@@ -123,20 +123,20 @@ def get_gateway_power_unit_dict(c) -> dict:
     return dict_
 
 
-OPTIONS_DICT = {
-    "connect_timeout": 5,
-    "cursor_factory": DictCursor,
-    # whether client-side TCP keepalives are used
-    "keepalives": 1,
-    # seconds of inactivity after which TCP should send a keepalive message to the server
-    "keepalives_idle": 20,
-    # seconds after which a TCP keepalive message that is not acknowledged by the server should be retransmitted
-    "keepalives_interval": 10,
-    # TCP keepalives that can be lost before the client's connection to the server is considered dead
-    "keepalives_count": 5,
-    # milliseconds that transmitted data may remain unacknowledged before a connection is forcibly closed
-    "tcp_user_timeout": 0,
-}
+# OPTIONS_DICT = {
+#     "connect_timeout": 5,
+#     "cursor_factory": DictCursor,
+#     # whether client-side TCP keepalives are used
+#     "keepalives": 1,
+#     # seconds of inactivity after which TCP should send a keepalive message to the server
+#     "keepalives_idle": 20,
+#     # seconds after which a TCP keepalive message that is not acknowledged by the server should be retransmitted
+#     "keepalives_interval": 10,
+#     # TCP keepalives that can be lost before the client's connection to the server is considered dead
+#     "keepalives_count": 5,
+#     # milliseconds that transmitted data may remain unacknowledged before a connection is forcibly closed
+#     "tcp_user_timeout": 0,
+# }
 
 
 def get_and_insert_latest_values(c, after_this_date: datetime):
@@ -145,16 +145,36 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     which are not already in the regular "copied" table, and insert them.
     This should allow us to run continuous aggregates on the "regular copied table".
     """
+    dt_x_days_back_to_fill_forward = after_this_date - timedelta(days=3)
+    dt_x_days_back_str = dt_x_days_back_to_fill_forward.strftime("%Y-%m-%d %H:%M:%S")
+    after_this_date_str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
-    datetime_string = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
+    # First get data from LOCF table so we almost certainly have something to fill forward
+    SQL_OLD_DATA = f"""
+    select *
+    from public.time_series_locf
+    --where timestamp_utc > ('{dt_x_days_back_str}'::timestamp - interval '3 days')
+    where timestamp_utc > '{dt_x_days_back_str}'
+        and timestamp_utc <= '{after_this_date_str}'
+    """
+    columns_old, rows_old = run_query(c, SQL_OLD_DATA, db="timescale", fetchall=True, raise_error=True)
+    df_old = pd.DataFrame(rows_old, columns=columns_old)
+    del rows_old
 
+    # Now get new data from the regular time_series table (which contains nulls)
     SQL_LATEST_DATA = f"""
     select *
     from public.time_series
-    where timestamp_utc > '{datetime_string}' - interval '7 days'
+    where timestamp_utc > '{after_this_date_str}'
     """
-    columns, rows = run_query(c, SQL_LATEST_DATA, db="timescale", fetchall=True, raise_error=True)
-    df = pd.DataFrame(rows, columns=columns)
+    columns_new, rows_new = run_query(c, SQL_LATEST_DATA, db="timescale", fetchall=True, raise_error=True)
+    df_new = pd.DataFrame(rows_new, columns=columns_new)
+    del rows_new
+
+    # Join the old and new dataframes together
+    df = pd.concat([df_old, df_new], ignore_index=True)
+    del df_old
+    del df_new
 
     # If values are missing, it's because they were the same as the previous values so they weren't sent
     c.logger.info("Sorting and filling in missing values...")
@@ -191,7 +211,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         dbname="ijack",
         user=os.getenv("USER_TS"),
         password=os.getenv("PASS_TS"),
-        **OPTIONS_DICT
+        # **OPTIONS_DICT
     ) as conn:
         with conn.cursor() as cursor:
             # For some reason it doesn't work if you put the schema in the table name
