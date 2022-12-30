@@ -1,8 +1,14 @@
+import time
+import os
 from datetime import datetime, timedelta
 import logging
 import pathlib
 import sys
+from io import StringIO
+
 import psycopg2
+from psycopg2.extras import DictCursor
+import pandas as pd
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -25,50 +31,32 @@ LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "time_series_mv_refresh"
 
 
-def refresh_locf_materialized_view(c):
-    """
-    Refresh the "last one carried forward" or "filled forward"
-    time series view. This is extremely important for the
-    aggregated queries that come later, so the zeros are
-    properly carried forward.
-    """
-
-    # Requires owner privileges (must be run by "master" user, not "app_user")
-    sql_refresh_locf_mv = """
-        REFRESH MATERIALIZED VIEW CONCURRENTLY 
-        public.time_series_locf
-        WITH DATA;
-    """
-    run_query(c, sql_refresh_locf_mv, db="timescale", commit=True, raise_error=True)
-
-    return True
-
-
-# def refresh_hybrid_time_series_materialized_view():
+# def refresh_locf_materialized_view(c):
 #     """
-#     Refresh the hybrid time series materialized view,
-#     which contains more granular data for dates closer
-#     to the present time.
+#     Refresh the "last one carried forward" or "filled forward"
+#     time series view. This is extremely important for the
+#     aggregated queries that come later, so the zeros are
+#     properly carried forward.
 #     """
+
 #     # Requires owner privileges (must be run by "master" user, not "app_user")
-
-#     sql_refresh_hybrid_mv = """
-#         REFRESH MATERIALIZED VIEW CONCURRENTLY
-#         public.time_series_mv
+#     sql_refresh_locf_mv = """
+#         REFRESH MATERIALIZED VIEW CONCURRENTLY 
+#         public.time_series_locf
 #         WITH DATA;
 #     """
-#     run_query(c, sql_refresh_hybrid_mv, db="timescale", commit=True, raise_error=True)
+#     run_query(c, sql_refresh_locf_mv, db="timescale", commit=True, raise_error=True)
 
 #     return True
 
 
 def get_latest_timestamp_in_table(
     c,
-    table: str = "time_series_locf_copy",
+    table: str = "time_series_locf",
     raise_error: bool = True,
     threshold: timedelta = None,
 ) -> datetime:
-    """Get the most recent timestamp in public.time_series_locf_copy"""
+    """Get the most recent timestamp in public.time_series_locf"""
 
     sql = f"""
         select max(timestamp_utc) as timestamp_utc
@@ -100,7 +88,7 @@ def get_latest_timestamp_in_table(
 
 def check_table_timestamps(
     c,
-    tables: list = ["time_series", "time_series_locf", "time_series_locf_copy"],
+    tables: list = ["time_series", "time_series_locf"],
     time_delta: timedelta = timedelta(hours=1),
 ) -> bool:
     """Check the tables to see if their timestamps are recent"""
@@ -121,6 +109,36 @@ def check_table_timestamps(
     return True
 
 
+def get_gateway_power_unit_dict(c) -> dict:
+    """Get the gateway and power unit mapping"""
+    SQL_GW_PU = """
+        select gateway, power_unit 
+        from public.gateways
+        where power_unit is not null
+            and gateway is not null
+    """
+    columns, rows = run_query(c, SQL_GW_PU, db="ijack", fetchall=True, raise_error=True)
+    df = pd.DataFrame(rows, columns=columns)
+    dict_ = dict(zip(df["gateway"], df["power_unit"]))
+    return dict_
+
+
+OPTIONS_DICT = {
+    "connect_timeout": 5,
+    "cursor_factory": DictCursor,
+    # whether client-side TCP keepalives are used
+    "keepalives": 1,
+    # seconds of inactivity after which TCP should send a keepalive message to the server
+    "keepalives_idle": 20,
+    # seconds after which a TCP keepalive message that is not acknowledged by the server should be retransmitted
+    "keepalives_interval": 10,
+    # TCP keepalives that can be lost before the client's connection to the server is considered dead
+    "keepalives_count": 5,
+    # milliseconds that transmitted data may remain unacknowledged before a connection is forcibly closed
+    "tcp_user_timeout": 0,
+}
+
+
 def get_and_insert_latest_values(c, after_this_date: datetime):
     """
     Get the latest values from the "last one carried forward" materialized view,
@@ -130,80 +148,137 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
 
     datetime_string = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
-    sql_get_insert_latest = f"""
-    insert into public.time_series_locf_copy (
-        timestamp_utc, gateway,
-		spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
-        e3m3_d, m3pd, hp_limit, msp, mprl_max, mprl_avg, mprl_min, pprl_max, pprl_avg, pprl_min,
-        area_max, area_avg, area_min, pf_max, pf_avg, pf_min, hpt, hp_raising_avg, hp_lowering_avg,
-        der_dtp_vpd, der_hp_vpd, der_suc_vpd, der_dis_vpd, der_dis_temp_vpd, gvf, stroke_speed_avg,
-        fluid_rate_vpd, agf_dis_temp, agf_dis_temp_max, end_stop_avg_pveh, end_stop_counts, end_tap_avg_time, end_tap_counts,
-        END_STOP_TIME,
-        DER_OK_COUNTS,
-        stroke_up_time, stroke_down_time,
-        HYD_OIL_LVL, HYD_FILT_LIFE, HYD_OIL_LIFE,
-        -- booleans below
-		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf,
-        -- new slave metrics
-        STROKE_UP_TIME_SL,
-        STROKE_DOWN_TIME_SL,
-        SPM_EGAS_SL,
-        STROKE_SPEED_AVG_SL,
-        CGP_SL,
-        DGP_SL,
-        AGFN_SL,
-        AGFM_SL,
-        HP_RAISING_AVG_SL,
-        HP_LOWERING_AVG_SL,
-        AGFT_SL,
-        MGP_SL,
-        lag_btm_ms,
-        lag_top_ms,
-        suction_vru,
-        max_fl_tmp_b4_dr,
-        fl_tmp,
-        suction_tmp,
-        fl_tmp_derate_pct,
-        lag_time_derate_pct
-    )
-    select
-        timestamp_utc, gateway,
-		spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
-        e3m3_d, m3pd, hp_limit, msp, mprl_max, mprl_avg, mprl_min, pprl_max, pprl_avg, pprl_min,
-        area_max, area_avg, area_min, pf_max, pf_avg, pf_min, hpt, hp_raising_avg, hp_lowering_avg,
-        der_dtp_vpd, der_hp_vpd, der_suc_vpd, der_dis_vpd, der_dis_temp_vpd, gvf, stroke_speed_avg,
-        fluid_rate_vpd, agf_dis_temp, agf_dis_temp_max, end_stop_avg_pveh, end_stop_counts, end_tap_avg_time, end_tap_counts,
-        END_STOP_TIME,
-        DER_OK_COUNTS,
-        stroke_up_time, stroke_down_time,
-        HYD_OIL_LVL, HYD_FILT_LIFE, HYD_OIL_LIFE,
-        -- booleans below
-		hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf,
-        -- new slave metrics
-        STROKE_UP_TIME_SL,
-        STROKE_DOWN_TIME_SL,
-        SPM_EGAS_SL,
-        STROKE_SPEED_AVG_SL,
-        CGP_SL,
-        DGP_SL,
-        AGFN_SL,
-        AGFM_SL,
-        HP_RAISING_AVG_SL,
-        HP_LOWERING_AVG_SL,
-        AGFT_SL,
-        MGP_SL,
-        lag_btm_ms,
-        lag_top_ms,
-        suction_vru,
-        max_fl_tmp_b4_dr,
-        fl_tmp,
-        suction_tmp,
-        fl_tmp_derate_pct,
-        lag_time_derate_pct
-	FROM public.time_series_locf
-    where timestamp_utc > '{datetime_string}'
+    SQL_LATEST_DATA = f"""
+    select *
+    from public.time_series
+    where timestamp_utc > '{datetime_string}' - interval '7 days'
     """
-    run_query(c, sql_get_insert_latest, db="timescale", commit=True, raise_error=True)
+    columns, rows = run_query(c, SQL_LATEST_DATA, db="timescale", fetchall=True, raise_error=True)
+    df = pd.DataFrame(rows, columns=columns)
+
+    # If values are missing, it's because they were the same as the previous values so they weren't sent
+    c.logger.info("Sorting and filling in missing values...")
+    # df = df.sort_values(["gateway", "timestamp_utc"], ascending=True).groupby("gateway").ffill().bfill()
+    for gateway, group in df.groupby("gateway"):
+        c.logger.info(f"Group size: {len(group)}")
+        # Sort by timestamp_utc, then fill in missing values
+        sorted_group = group.sort_values("timestamp_utc", ascending=True).ffill().bfill()
+        # Replace the original group with the sorted and filled group
+        df.loc[df["gateway"] == gateway, :] = sorted_group
+    
+    # Get the gateway and power unit mapping
+    gateway_power_unit_dict = get_gateway_power_unit_dict(c)
+
+    c.logger.info("Replacing the power unit with the one from the mapping dictionary...")
+    df["power_unit"] = df["gateway"].map(gateway_power_unit_dict)
+
+    c.logger.info("Initializing a string buffer of the CSV data...")
+    time_start = time.time()
+    sio = StringIO()
+    # Write the Pandas DataFrame as a CSV to the buffer
+    sio.write(df.loc[df['timestamp_utc'] > after_this_date].to_csv(index=None, header=None, sep=',', encoding="utf-8"))
+    # Be sure to reset the position to the start of the stream
+    sio.seek(0) 
+    minutes_taken = round((time.time() - time_start) / 60, 1)
+    c.logger.info(
+        f"{minutes_taken} total minutes to create the string buffer of the CSV data."
+    )
+
+    time_start = time.time()
+    with psycopg2.connect(
+        host=os.getenv("HOST_TS"),
+        port=os.getenv("PORT_TS"),
+        dbname="ijack",
+        user=os.getenv("USER_TS"),
+        password=os.getenv("PASS_TS"),
+        **OPTIONS_DICT
+    ) as conn:
+        with conn.cursor() as cursor:
+            # For some reason it doesn't work if you put the schema in the table name
+            # table = "public.time_series_locf"
+            table = "time_series_locf"
+            cursor.copy_from(file=sio, table=table, sep=',', null='', size=8192, columns=df.columns)
+            conn.commit()
+
+    minutes_taken = round((time.time() - time_start) / 60, 1)
+    c.logger.info(
+        f"{minutes_taken} total minutes to run efficient copy_from(file=sio) operation!"
+    )
+
+    # sql_get_insert_latest = f"""
+    # insert into public.time_series_locf (
+    #     timestamp_utc, power_unit, gateway,
+	# 	spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
+    #     e3m3_d, m3pd, hp_limit, msp, mprl_max, mprl_avg, mprl_min, pprl_max, pprl_avg, pprl_min,
+    #     area_max, area_avg, area_min, pf_max, pf_avg, pf_min, hpt, hp_raising_avg, hp_lowering_avg,
+    #     der_dtp_vpd, der_hp_vpd, der_suc_vpd, der_dis_vpd, der_dis_temp_vpd, gvf, stroke_speed_avg,
+    #     fluid_rate_vpd, agf_dis_temp, agf_dis_temp_max, end_stop_avg_pveh, end_stop_counts, end_tap_avg_time, end_tap_counts,
+    #     END_STOP_TIME,
+    #     DER_OK_COUNTS,
+    #     stroke_up_time, stroke_down_time,
+    #     HYD_OIL_LVL, HYD_FILT_LIFE, HYD_OIL_LIFE,
+    #     -- booleans below
+	# 	hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf,
+    #     -- new slave metrics
+    #     STROKE_UP_TIME_SL,
+    #     STROKE_DOWN_TIME_SL,
+    #     SPM_EGAS_SL,
+    #     STROKE_SPEED_AVG_SL,
+    #     CGP_SL,
+    #     DGP_SL,
+    #     AGFN_SL,
+    #     AGFM_SL,
+    #     HP_RAISING_AVG_SL,
+    #     HP_LOWERING_AVG_SL,
+    #     AGFT_SL,
+    #     MGP_SL,
+    #     lag_btm_ms,
+    #     lag_top_ms,
+    #     suction_vru,
+    #     max_fl_tmp_b4_dr,
+    #     fl_tmp,
+    #     suction_tmp,
+    #     fl_tmp_derate_pct,
+    #     lag_time_derate_pct
+    # )
+    # select
+    #     timestamp_utc, gateway,
+	# 	spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
+    #     e3m3_d, m3pd, hp_limit, msp, mprl_max, mprl_avg, mprl_min, pprl_max, pprl_avg, pprl_min,
+    #     area_max, area_avg, area_min, pf_max, pf_avg, pf_min, hpt, hp_raising_avg, hp_lowering_avg,
+    #     der_dtp_vpd, der_hp_vpd, der_suc_vpd, der_dis_vpd, der_dis_temp_vpd, gvf, stroke_speed_avg,
+    #     fluid_rate_vpd, agf_dis_temp, agf_dis_temp_max, end_stop_avg_pveh, end_stop_counts, end_tap_avg_time, end_tap_counts,
+    #     END_STOP_TIME,
+    #     DER_OK_COUNTS,
+    #     stroke_up_time, stroke_down_time,
+    #     HYD_OIL_LVL, HYD_FILT_LIFE, HYD_OIL_LIFE,
+    #     -- booleans below
+	# 	hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf,
+    #     -- new slave metrics
+    #     STROKE_UP_TIME_SL,
+    #     STROKE_DOWN_TIME_SL,
+    #     SPM_EGAS_SL,
+    #     STROKE_SPEED_AVG_SL,
+    #     CGP_SL,
+    #     DGP_SL,
+    #     AGFN_SL,
+    #     AGFM_SL,
+    #     HP_RAISING_AVG_SL,
+    #     HP_LOWERING_AVG_SL,
+    #     AGFT_SL,
+    #     MGP_SL,
+    #     lag_btm_ms,
+    #     lag_top_ms,
+    #     suction_vru,
+    #     max_fl_tmp_b4_dr,
+    #     fl_tmp,
+    #     suction_tmp,
+    #     fl_tmp_derate_pct,
+    #     lag_time_derate_pct
+	# FROM public.time_series
+    # where timestamp_utc > '{datetime_string}'
+    # """
+    # run_query(c, sql_get_insert_latest, db="timescale", commit=True, raise_error=True)
 
     return True
 
@@ -309,17 +384,17 @@ def main(c):
 
     exit_if_already_running(c, pathlib.Path(__file__).name)
 
-    # NOTE the following is only for ad hoc purposes;
-    # it only runs if the date is before a certain date!
-    # It also runs again after the latest values are inserted, below!
-    ad_hoc_maybe_refresh_continuous_aggs()
+    # # NOTE the following is only for ad hoc purposes;
+    # # it only runs if the date is before a certain date!
+    # # It also runs again after the latest values are inserted, below!
+    # ad_hoc_maybe_refresh_continuous_aggs()
 
-    # First refresh the main "last one carried forward" materialized view
-    refresh_locf_materialized_view(c)
+    # # First refresh the main "last one carried forward" materialized view
+    # refresh_locf_materialized_view(c)
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
-    timestamp = get_latest_timestamp_in_table(c, table="time_series_locf_copy")
+    timestamp = get_latest_timestamp_in_table(c, table="time_series_locf")
     get_and_insert_latest_values(c, after_this_date=timestamp)
 
     # Force the continuous aggregates to refresh, including the latest data
