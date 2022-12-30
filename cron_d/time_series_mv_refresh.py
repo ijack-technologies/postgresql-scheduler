@@ -161,7 +161,8 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     df_old = pd.DataFrame(rows_old, columns=columns_old)
     del rows_old
 
-    # Now get new data from the regular time_series table (which contains nulls)
+    # Now get new data from the regular time_series table (which contains nulls),
+    # to be efficiently inserted into the LOCF table we previously queried above.
     SQL_LATEST_DATA = f"""
     select *
     from public.time_series
@@ -180,7 +181,8 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     c.logger.info("Sorting and filling in missing values...")
     # df = df.sort_values(["gateway", "timestamp_utc"], ascending=True).groupby("gateway").ffill().bfill()
     for gateway, group in df.groupby("gateway"):
-        c.logger.info(f"Group size: {len(group)}")
+        # TODO: We should change this to use the power unit at some point...
+        c.logger.info(f"Group size for gateway {gateway}: {len(group)}")
         # Sort by timestamp_utc, then fill in missing values
         sorted_group = group.sort_values("timestamp_utc", ascending=True).ffill().bfill()
         # Replace the original group with the sorted and filled group
