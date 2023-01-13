@@ -9,6 +9,7 @@ from typing import OrderedDict
 from datetime import date
 import unittest
 from unittest.mock import patch, MagicMock
+
 # from psycopg2.extras import DictCursor
 from psycopg2.sql import SQL, Literal
 import time
@@ -450,35 +451,39 @@ class TestAll(unittest.TestCase):
         def test_gw_table(gateway_id) -> Tuple[bool, bool]:
             """Check what's in the public.gw table"""
             columns, rows = run_query(
-                c, 
-                SQL("select test_can_bus, test_cellular from public.gw where id = {gateway_id}").format(gateway_id=Literal(gateway_id)), 
+                c,
+                SQL(
+                    "select test_can_bus, test_cellular from public.gw where id = {gateway_id}"
+                ).format(gateway_id=Literal(gateway_id)),
                 fetchall=True,
             )
             if not rows:
                 return None, None
-            test_can_bus = rows[0]['test_can_bus']
-            test_cellular = rows[0]['test_cellular']
+            test_can_bus = rows[0]["test_can_bus"]
+            test_cellular = rows[0]["test_cellular"]
             return test_can_bus, test_cellular
 
         def test_gw_inserted_table(gateway_id) -> Tuple[bool, bool]:
             """Check what's in the public.gw_tested_cellular table"""
             columns, rows = run_query(
-                c, 
-                SQL("""SELECT id, user_id, timestamp_utc, gateway_id, network_id FROM public.gw_tested_cellular where gateway_id = {gateway_id}""").format(gateway_id=Literal(gateway_id)),
+                c,
+                SQL(
+                    """SELECT id, user_id, timestamp_utc, gateway_id, network_id FROM public.gw_tested_cellular where gateway_id = {gateway_id}"""
+                ).format(gateway_id=Literal(gateway_id)),
                 fetchall=True,
             )
             if not rows:
                 return None, None, None, None
-            timestamp_utc = rows[0]['timestamp_utc']
-            user_id = rows[0]['user_id']
-            gateway_id = rows[0]['gateway_id']
-            network_id = rows[0]['network_id']
+            timestamp_utc = rows[0]["timestamp_utc"]
+            user_id = rows[0]["user_id"]
+            gateway_id = rows[0]["gateway_id"]
+            network_id = rows[0]["network_id"]
             return timestamp_utc, user_id, gateway_id, network_id
-        
+
         def delete_test_insert(gateway_id):
             """Delete the data we test-inserted"""
             run_query(
-                c, 
+                c,
                 SQL("delete from gw_tested_cellular where id = {gateway_id}").format(
                     gateway_id=Literal(gateway_id)
                 ),
@@ -489,24 +494,36 @@ class TestAll(unittest.TestCase):
         try:
             conn = get_conn(c, db="ijack")
 
-            bool_return = update_gw_power_unit_id_from_shadow.record_can_bus_cellular_test(c, gateway_id_lambda_access, cellular_good=False, can_bus_good=False)
+            bool_return = (
+                update_gw_power_unit_id_from_shadow.record_can_bus_cellular_test(
+                    c, gateway_id_lambda_access, cellular_good=False, can_bus_good=False
+                )
+            )
             can_bus, cellular = test_gw_table(gateway_id_lambda_access)
             self.assertFalse(can_bus)
             self.assertFalse(cellular)
 
-            timestamp_utc, user_id, gateway_id, network_id = test_gw_inserted_table(gateway_id_lambda_access)
+            timestamp_utc, user_id, gateway_id, network_id = test_gw_inserted_table(
+                gateway_id_lambda_access
+            )
             self.assertIsNone(timestamp_utc)
             self.assertIsNone(user_id)
             self.assertIsNone(gateway_id)
             self.assertIsNone(network_id)
 
-            bool_return = update_gw_power_unit_id_from_shadow.record_can_bus_cellular_test(c, gateway_id_lambda_access, cellular_good=True, can_bus_good=True)
+            bool_return = (
+                update_gw_power_unit_id_from_shadow.record_can_bus_cellular_test(
+                    c, gateway_id_lambda_access, cellular_good=True, can_bus_good=True
+                )
+            )
             can_bus, cellular = test_gw_table(gateway_id_lambda_access)
             self.assertTrue(can_bus)
             self.assertTrue(cellular)
 
-            timestamp_utc, user_id, gateway_id, network_id = test_gw_inserted_table(gateway_id_lambda_access)
-            user_id_shop_auto = 788 # SHOP automated user
+            timestamp_utc, user_id, gateway_id, network_id = test_gw_inserted_table(
+                gateway_id_lambda_access
+            )
+            user_id_shop_auto = 788  # SHOP automated user
             network_id_sasktel = 1
             self.assertEqual(user_id, user_id_shop_auto)
             self.assertEqual(network_id, network_id_sasktel)
@@ -516,6 +533,7 @@ class TestAll(unittest.TestCase):
             conn.close()
 
         self.assertTrue(bool_return)
+
 
 if __name__ == "__main__":
     unittest.main()

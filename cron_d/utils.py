@@ -38,7 +38,7 @@ class Config:
         "rbarry@myijack.com",
         "gmannle@myijack.com",
         "smccarthy@myijack.com",
-        "msenicar@myijack.com"
+        "msenicar@myijack.com",
     ]
     # For returning values in the "c" config object
     TEST_DICT = {}
