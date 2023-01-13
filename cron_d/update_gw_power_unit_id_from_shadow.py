@@ -402,8 +402,8 @@ def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
 def get_shadow_table_html(c, shadow: dict) -> str:
     """Get an HTML table with all the info in the AWS IoT device shadow, for the email"""
 
-    if not shadow:
-        c.logger.error(f"ERROR: shadow '{shadow}' cannot be converted to html...")
+    if not isinstance(shadow, dict) or not shadow:
+        c.logger.error(f"ERROR: shadow '{shadow}' of type '{type(shadow)}' cannot be converted to html...")
         return ""
 
     reported = shadow.get("state", {}).get("reported", {})
@@ -631,7 +631,7 @@ def main(c: Config, commit: bool = False):
                 continue
 
             # shadow = get_iot_device_shadow(c, client_iot, aws_thing)
-            shadow = shadows.get(aws_thing, None)
+            shadow = shadows.get(aws_thing, {})
             if not shadow or not isinstance(shadow, dict):
                 c.logger.warning(
                     f'No shadow exists for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...'
@@ -805,7 +805,7 @@ def main(c: Config, commit: bool = False):
             else:
                 html += f"\n<p>No AWS IoT device shadow information for new gateway '{aws_thing}'.</p>"
 
-            shadow_already_linked = shadows.get(gateway_already_linked, None)
+            shadow_already_linked = shadows.get(gateway_already_linked, {})
             shadow_already_linked_html = get_shadow_table_html(c, shadow_already_linked)
             if shadow_already_linked_html:
                 html += f"\n<p><b>AWS IoT device shadow data for previously-linked gateway '{gateway_already_linked}':</b></p>"
