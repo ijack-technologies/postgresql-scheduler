@@ -5,11 +5,10 @@ import time
 import sys
 import pprint
 import pickle
-from typing import List, Tuple
+from typing import Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytz
 from psycopg2 import connect as psycopg2_connect
-from psycopg2.sql import SQL, Literal, Identifier
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -41,7 +40,7 @@ def convert_to_float(c, string):
     try:
         return float(string)
     except Exception:
-        c.logger.info(f"Cannot convert '{string}' to float...")
+        c.logger.info("Cannot convert '%s' to float...", string)
         return 0
 
 
@@ -403,7 +402,9 @@ def get_shadow_table_html(c, shadow: dict) -> str:
     """Get an HTML table with all the info in the AWS IoT device shadow, for the email"""
 
     if not isinstance(shadow, dict) or not shadow:
-        c.logger.error(f"ERROR: shadow '{shadow}' of type '{type(shadow)}' cannot be converted to html...")
+        c.logger.error(
+            f"ERROR: shadow '{shadow}' of type '{type(shadow)}' cannot be converted to html..."
+        )
         return ""
 
     reported = shadow.get("state", {}).get("reported", {})
@@ -476,7 +477,9 @@ def upsert_gw_info(
     days_since_reported = round(seconds_since / (60 * 60 * 24), 1)
 
     timestamp_utc_now = datetime.utcnow()
-    timestamp_utc_last_reported = timestamp_utc_now - timedelta(days=days_since_reported)
+    timestamp_utc_last_reported = timestamp_utc_now - timedelta(
+        days=days_since_reported
+    )
     timestamp_utc_now_str = str(timestamp_utc_now)
 
     values_dict = {
@@ -485,7 +488,7 @@ def upsert_gw_info(
         "timestamp_utc_updated": timestamp_utc_now_str,
         "days_since_reported": days_since_reported,
         "time_since_reported": msg,
-        "timestamp_utc_last_reported": timestamp_utc_last_reported
+        "timestamp_utc_last_reported": timestamp_utc_last_reported,
     }
 
     # These are all capitalized in the AWS IoT device shadow.
@@ -548,7 +551,9 @@ def upsert_gw_info(
     return True
 
 
-def record_can_bus_cellular_test(c: Config, gateway_id: int, cellular_good: bool, can_bus_good: bool) -> bool:
+def record_can_bus_cellular_test(
+    c: Config, gateway_id: int, cellular_good: bool, can_bus_good: bool
+) -> bool:
     """Record that the CAN bus and cellular have been tested and are working, or not!"""
 
     # sql_gw = SQL("""
@@ -562,7 +567,7 @@ def record_can_bus_cellular_test(c: Config, gateway_id: int, cellular_good: bool
     run_query(c, sql_gw, db="ijack", fetchall=False, commit=True)
 
     if cellular_good:
-        user_id_shop_auto = 788 # SHOP automated user
+        user_id_shop_auto = 788  # SHOP automated user
         network_id_sasktel = 1
         # sql_gw_tested = SQL("""
         sql_gw_tested = f"""
@@ -779,7 +784,9 @@ def main(c: Config, commit: bool = False):
                 html += "\n<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
                 html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
 
-                record_can_bus_cellular_test(c, gateway_id, cellular_good=True, can_bus_good=True)
+                record_can_bus_cellular_test(
+                    c, gateway_id, cellular_good=True, can_bus_good=True
+                )
 
             if not structure:
                 html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
