@@ -7,8 +7,8 @@ import sys
 from io import StringIO
 
 import psycopg2
-from psycopg2.extras import DictCursor
 import pandas as pd
+# import numpy as np
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -41,7 +41,7 @@ LOGFILE_NAME = "time_series_mv_refresh"
 
 #     # Requires owner privileges (must be run by "master" user, not "app_user")
 #     sql_refresh_locf_mv = """
-#         REFRESH MATERIALIZED VIEW CONCURRENTLY 
+#         REFRESH MATERIALIZED VIEW CONCURRENTLY
 #         public.time_series_locf
 #         WITH DATA;
 #     """
@@ -112,14 +112,14 @@ def check_table_timestamps(
 def get_gateway_power_unit_dict(c) -> dict:
     """Get the gateway and power unit mapping"""
     SQL_GW_PU = """
-        select gateway, power_unit 
+        select gateway, power_unit_str
         from public.gateways
-        where power_unit is not null
+        where power_unit_str is not null
             and gateway is not null
     """
     columns, rows = run_query(c, SQL_GW_PU, db="ijack", fetchall=True, raise_error=True)
     df = pd.DataFrame(rows, columns=columns)
-    dict_ = dict(zip(df["gateway"], df["power_unit"]))
+    dict_ = dict(zip(df["gateway"], df["power_unit_str"]))
     return dict_
 
 
@@ -145,7 +145,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     which are not already in the regular "copied" table, and insert them.
     This should allow us to run continuous aggregates on the "regular copied table".
     """
-    dt_x_days_back_to_fill_forward = after_this_date - timedelta(days=3)
+    dt_x_days_back_to_fill_forward = after_this_date - timedelta(days=1)
     dt_x_days_back_str = dt_x_days_back_to_fill_forward.strftime("%Y-%m-%d %H:%M:%S")
     after_this_date_str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -153,11 +153,12 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     SQL_OLD_DATA = f"""
     select *
     from public.time_series_locf
-    --where timestamp_utc > ('{dt_x_days_back_str}'::timestamp - interval '3 days')
     where timestamp_utc > '{dt_x_days_back_str}'
         and timestamp_utc <= '{after_this_date_str}'
     """
-    columns_old, rows_old = run_query(c, SQL_OLD_DATA, db="timescale", fetchall=True, raise_error=True)
+    columns_old, rows_old = run_query(
+        c, SQL_OLD_DATA, db="timescale", fetchall=True, raise_error=True
+    )
     df_old = pd.DataFrame(rows_old, columns=columns_old)
     del rows_old
 
@@ -168,7 +169,9 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     from public.time_series
     where timestamp_utc > '{after_this_date_str}'
     """
-    columns_new, rows_new = run_query(c, SQL_LATEST_DATA, db="timescale", fetchall=True, raise_error=True)
+    columns_new, rows_new = run_query(
+        c, SQL_LATEST_DATA, db="timescale", fetchall=True, raise_error=True
+    )
     df_new = pd.DataFrame(rows_new, columns=columns_new)
     del rows_new
 
@@ -177,33 +180,78 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     del df_old
     del df_new
 
+    # Get the gateway and power unit mapping
+    gateway_power_unit_dict = get_gateway_power_unit_dict(c)
+    power_unit_gateway_dict = {pu: gw for gw, pu in gateway_power_unit_dict.items()}
+
+    c.logger.info(
+        "Ensuring the power unit and gateway are filled in (this takes way too long)..."
+    )
+    # # Fill in power unit if there's not power unit, but there is a gateway
+    # def get_power_unit_by_gateway(gateway: str) -> str:
+    #     power_unit = gateway_power_unit_dict.get(gateway, None)
+    #     return power_unit
+
+    def ensure_power_unit_and_gateway(series: pd.Series) -> pd.Series:
+        """Ensure there's both a power unit and a gateway"""
+
+        series.power_unit = str(series.power_unit).replace(".0", "")
+
+        if series.power_unit and not series.gateway:
+            series.gateway = power_unit_gateway_dict.get(series.power_unit, None)
+        elif series.gateway and not series.power_unit:
+            series.power_unit = gateway_power_unit_dict.get(series.gateway, None)
+
+        return series
+
+    time_start = time.time()
+    df = df.apply(ensure_power_unit_and_gateway, axis=1)
+    mins_taken = round((time.time() - time_start) / 60, 1)
+    c.logger.info("Minutes taken to ensure the power unit and gateway are filled in: %s", mins_taken)
+
+    # # Fill in power_unit if there's no power_unit, but there is a gateway
+    # df["gateway"] = df["power_unit"].map(gateway_power_unit_dict)
+    # # df["power_unit"] = np.where(
+    # #     (df["power_unit"].isna()) & (~df["gateway"].isna()),
+    # #     gateway_power_unit_dict.get(df["gateway"], None),
+    # #     df["power_unit"],
+    # # )
+    # # df.loc[df["power_unit"].isna(), "power_unit"] = 
+
+    # # Fill in gateway if there's no gateway, but there is a power unit
+    # df["power_unit"] = df["gateway"].map(gateway_power_unit_dict)
+    # # df["gateway"] = np.where(
+    # #     (df["gateway"].isna()) & (~df["power_unit"].isna()),
+    # #     power_unit_gateway_dict.get(df["power_unit"], None),
+    # #     df["gateway"],
+    # # )
+
     # If values are missing, it's because they were the same as the previous values so they weren't sent
     c.logger.info("Sorting and filling in missing values...")
     # df = df.sort_values(["gateway", "timestamp_utc"], ascending=True).groupby("gateway").ffill().bfill()
-    for gateway, group in df.groupby("gateway"):
-        # TODO: We should change this to use the power unit at some point...
-        c.logger.info(f"Group size for gateway {gateway}: {len(group)}")
+    for power_unit, group in df.groupby("power_unit"):
+        c.logger.info("Group size for power_unit %s: %s", power_unit, len(group))
         # Sort by timestamp_utc, then fill in missing values
-        sorted_group = group.sort_values("timestamp_utc", ascending=True).ffill().bfill()
+        sorted_group = (
+            group.sort_values("timestamp_utc", ascending=True).ffill().bfill()
+        )
         # Replace the original group with the sorted and filled group
-        df.loc[df["gateway"] == gateway, :] = sorted_group
-    
-    # Get the gateway and power unit mapping
-    gateway_power_unit_dict = get_gateway_power_unit_dict(c)
-
-    c.logger.info("Replacing the power unit with the one from the mapping dictionary...")
-    df["power_unit"] = df["gateway"].map(gateway_power_unit_dict)
+        df.loc[df["power_unit"] == power_unit, :] = sorted_group
 
     c.logger.info("Initializing a string buffer of the CSV data...")
     time_start = time.time()
     sio = StringIO()
     # Write the Pandas DataFrame as a CSV to the buffer
-    sio.write(df.loc[df['timestamp_utc'] > after_this_date].to_csv(index=None, header=None, sep=',', encoding="utf-8"))
+    sio.write(
+        df.loc[df["timestamp_utc"] > after_this_date].to_csv(
+            index=None, header=None, sep=",", encoding="utf-8"
+        )
+    )
     # Be sure to reset the position to the start of the stream
-    sio.seek(0) 
+    sio.seek(0)
     minutes_taken = round((time.time() - time_start) / 60, 1)
     c.logger.info(
-        f"{minutes_taken} total minutes to create the string buffer of the CSV data."
+        f"{minutes_taken} minutes to create the string buffer of the CSV data."
     )
 
     time_start = time.time()
@@ -219,18 +267,20 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
             # For some reason it doesn't work if you put the schema in the table name
             # table = "public.time_series_locf"
             table = "time_series_locf"
-            cursor.copy_from(file=sio, table=table, sep=',', null='', size=8192, columns=df.columns)
+            cursor.copy_from(
+                file=sio, table=table, sep=",", null="", size=8192, columns=df.columns
+            )
             conn.commit()
 
     minutes_taken = round((time.time() - time_start) / 60, 1)
     c.logger.info(
-        f"{minutes_taken} total minutes to run efficient copy_from(file=sio) operation!"
+        f"{minutes_taken} minutes to run efficient copy_from(file=sio) operation!"
     )
 
     # sql_get_insert_latest = f"""
     # insert into public.time_series_locf (
     #     timestamp_utc, power_unit, gateway,
-	# 	spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
+    # 	spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
     #     e3m3_d, m3pd, hp_limit, msp, mprl_max, mprl_avg, mprl_min, pprl_max, pprl_avg, pprl_min,
     #     area_max, area_avg, area_min, pf_max, pf_avg, pf_min, hpt, hp_raising_avg, hp_lowering_avg,
     #     der_dtp_vpd, der_hp_vpd, der_suc_vpd, der_dis_vpd, der_dis_temp_vpd, gvf, stroke_speed_avg,
@@ -240,7 +290,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     #     stroke_up_time, stroke_down_time,
     #     HYD_OIL_LVL, HYD_FILT_LIFE, HYD_OIL_LIFE,
     #     -- booleans below
-	# 	hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf,
+    # 	hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf,
     #     -- new slave metrics
     #     STROKE_UP_TIME_SL,
     #     STROKE_DOWN_TIME_SL,
@@ -265,7 +315,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     # )
     # select
     #     timestamp_utc, gateway,
-	# 	spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
+    # 	spm, spm_egas, cgp, cgp_uno, dgp, dtp, hpu, hpe, ht, ht_egas, agft, mgp, ngp, agfm, agfn,
     #     e3m3_d, m3pd, hp_limit, msp, mprl_max, mprl_avg, mprl_min, pprl_max, pprl_avg, pprl_min,
     #     area_max, area_avg, area_min, pf_max, pf_avg, pf_min, hpt, hp_raising_avg, hp_lowering_avg,
     #     der_dtp_vpd, der_hp_vpd, der_suc_vpd, der_dis_vpd, der_dis_temp_vpd, gvf, stroke_speed_avg,
@@ -275,7 +325,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     #     stroke_up_time, stroke_down_time,
     #     HYD_OIL_LVL, HYD_FILT_LIFE, HYD_OIL_LIFE,
     #     -- booleans below
-	# 	hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf,
+    # 	hyd, hyd_egas, warn1, warn1_egas, warn2, warn2_egas, mtr, mtr_egas, clr, clr_egas, htr, htr_egas, aux_egas, prs, sbf,
     #     -- new slave metrics
     #     STROKE_UP_TIME_SL,
     #     STROKE_DOWN_TIME_SL,
@@ -297,7 +347,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     #     suction_tmp,
     #     fl_tmp_derate_pct,
     #     lag_time_derate_pct
-	# FROM public.time_series
+    # FROM public.time_series
     # where timestamp_utc > '{datetime_string}'
     # """
     # run_query(c, sql_get_insert_latest, db="timescale", commit=True, raise_error=True)
