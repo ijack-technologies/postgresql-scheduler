@@ -31,7 +31,7 @@ SQL = """
         FROM (
             SELECT timestamp_utc_inserted,
             ROW_NUMBER() OVER ( 
-                PARTITION BY timestamp_local, gateway, abbrev, value
+                PARTITION BY timestamp_local, power_unit, abbrev, value
                 ORDER BY timestamp_utc_inserted 
             ) AS row_num
             FROM public.alarm_log 
