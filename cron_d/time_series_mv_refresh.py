@@ -8,6 +8,7 @@ from io import StringIO
 
 import psycopg2
 import pandas as pd
+
 # import numpy as np
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
@@ -180,6 +181,9 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     del df_old
     del df_new
 
+    # Filter out test data since it sometimes violates database unique constraint
+    df = df[~((df["power_unit"] == "111111") | (df["gateway"] == "lambda_access"))]
+
     # Get the gateway and power unit mapping
     gateway_power_unit_dict = get_gateway_power_unit_dict(c)
     power_unit_gateway_dict = {pu: gw for gw, pu in gateway_power_unit_dict.items()}
@@ -207,7 +211,10 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     time_start = time.time()
     df = df.apply(ensure_power_unit_and_gateway, axis=1)
     mins_taken = round((time.time() - time_start) / 60, 1)
-    c.logger.info("Minutes taken to ensure the power unit and gateway are filled in: %s", mins_taken)
+    c.logger.info(
+        "Minutes taken to ensure the power unit and gateway are filled in: %s",
+        mins_taken,
+    )
 
     # # Fill in power_unit if there's no power_unit, but there is a gateway
     # df["gateway"] = df["power_unit"].map(gateway_power_unit_dict)
@@ -216,7 +223,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     # #     gateway_power_unit_dict.get(df["gateway"], None),
     # #     df["power_unit"],
     # # )
-    # # df.loc[df["power_unit"].isna(), "power_unit"] = 
+    # # df.loc[df["power_unit"].isna(), "power_unit"] =
 
     # # Fill in gateway if there's no gateway, but there is a power unit
     # df["power_unit"] = df["gateway"].map(gateway_power_unit_dict)
@@ -267,17 +274,20 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
             # For some reason it doesn't work if you put the schema in the table name
             # table = "public.time_series_locf"
             table = "time_series_locf"
-            try:
-                cursor.copy_from(
-                    file=sio, table=table, sep=",", null="", size=8192, columns=df.columns
-                )
-                conn.commit()
-            except Exception as err:
-                if "UniqueViolation" in str(err):
-                    c.logger.error(err)
-                else:
-                    c.logger.exception("ERROR running cursor.copy_from(sio...)!")
-                    raise
+
+            # NOTE: Don't put this into a try/except because then we won't see
+            # errors that prevent ALL data from being inserted!
+            # try:
+            cursor.copy_from(
+                file=sio, table=table, sep=",", null="", size=8192, columns=df.columns
+            )
+            conn.commit()
+            # except Exception as err:
+            #     if "UniqueViolation" in str(err):
+            #         c.logger.error(err)
+            #     else:
+            #         c.logger.exception("ERROR running cursor.copy_from(sio...)!")
+            #         raise
 
     minutes_taken = round((time.time() - time_start) / 60, 1)
     c.logger.info(
