@@ -267,10 +267,17 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
             # For some reason it doesn't work if you put the schema in the table name
             # table = "public.time_series_locf"
             table = "time_series_locf"
-            cursor.copy_from(
-                file=sio, table=table, sep=",", null="", size=8192, columns=df.columns
-            )
-            conn.commit()
+            try:
+                cursor.copy_from(
+                    file=sio, table=table, sep=",", null="", size=8192, columns=df.columns
+                )
+                conn.commit()
+            except Exception as err:
+                if "UniqueViolation" in str(err):
+                    c.logger.error(err)
+                else:
+                    c.logger.exception("ERROR running cursor.copy_from(sio...)!")
+                    raise
 
     minutes_taken = round((time.time() - time_start) / 60, 1)
     c.logger.info(
