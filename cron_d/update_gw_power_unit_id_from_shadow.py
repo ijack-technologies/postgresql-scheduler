@@ -59,7 +59,7 @@ def sql_get_info(c, power_unit_id, power_unit_shadow, structure, aws_thing):
             notes_1, well_license, time_zone_id, time_zone, apn
 	    FROM public.vw_structures_joined
         where power_unit_id = {power_unit_id}
-            and customer_id != 21 --demo customer
+            and customer_id is distinct from 21 --demo customer
         limit 1;
     """
 

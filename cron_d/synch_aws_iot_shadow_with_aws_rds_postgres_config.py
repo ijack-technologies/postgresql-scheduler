@@ -59,7 +59,11 @@ def main(c):
         #     # Just for debugging. Comment out if you don't need this
         #     print("cool")
 
+        aws_thing = dict_["aws_thing"].upper()
         for key, value in dict_.items():
+            # For debugging
+            # if key == "ip_modbus" and aws_thing == "00:60:E0:84:A6:DB":
+            #     print("")
             if value is None:
                 # This way old values in the gateway's c.config dict, saved on the hard drive,
                 # get overwritten if they used to have a value like "Calgary" and now they're null.
@@ -81,15 +85,17 @@ def main(c):
             )
             customer = dict_["customer"]
 
-        aws_thing = dict_["aws_thing"].upper()
         c.logger.info(
             f"{counter + 1} of {n_rows}: Updating {customer} AWS_THING: {aws_thing}"
         )
 
         # Update the thing shadow for this gateway/AWS_THING
-        client_iot.update_thing_shadow(
-            thingName=dict_["aws_thing"], payload=json.dumps(d)
-        )
+        try:
+            client_iot.update_thing_shadow(
+                thingName=aws_thing, payload=json.dumps(d)
+            )
+        except Exception:
+            c.logger.exception("ERROR updating AWS IoT shadow for aws_thing '%s'", aws_thing)
 
     time_finish = time.time()
     c.logger.info(

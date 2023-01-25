@@ -582,7 +582,7 @@ def get_all_gateways(c) -> list:
         from public.gateways
         where aws_thing <> 'test'
             and aws_thing is not null
-            and customer_id != 21 -- demo customer
+            and customer_id is distinct from 21 -- demo customer
     """
     _, rows = run_query(c, SQL, db="ijack", fetchall=True)
 
