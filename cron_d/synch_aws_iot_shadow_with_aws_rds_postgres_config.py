@@ -51,7 +51,7 @@ def main(c):
 
     n_rows = len(rows)
     time_start = time.time()
-    for i, dict_ in enumerate(rows):
+    for counter, dict_ in enumerate(rows):
         # Initialize a new thing shadow for the data we're going to update in AWS IoT
         d = {"state": {"reported": {}}}
 
@@ -82,7 +82,9 @@ def main(c):
             customer = dict_["customer"]
 
         aws_thing = dict_["aws_thing"].upper()
-        c.logger.info(f"{i+1} of {n_rows}: Updating {customer} AWS_THING: {aws_thing}")
+        c.logger.info(
+            f"{counter + 1} of {n_rows}: Updating {customer} AWS_THING: {aws_thing}"
+        )
 
         # Update the thing shadow for this gateway/AWS_THING
         client_iot.update_thing_shadow(
