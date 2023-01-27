@@ -791,7 +791,7 @@ def main(c: Config, commit: bool = False):
             if not structure:
                 html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
             else:
-                html += f"\n<p>The structure for the current power unit '{power_unit_shadow}' is '{structure}'.</p>"
+                html += f"\n<p>The structure for new current power unit '{power_unit_shadow}' is '{structure}'.</p>"
 
             if customer:
                 html += f"\n<p>The customer for structure '{structure}' is '{customer}'.</p>"
