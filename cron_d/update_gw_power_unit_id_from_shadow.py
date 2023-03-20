@@ -9,6 +9,7 @@ from typing import Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytz
 from psycopg2 import connect as psycopg2_connect
+from numbers import Number
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -31,6 +32,7 @@ from cron_d.utils import (
     send_mailgun_email,
     utc_timestamp_to_datetime_string,
 )
+from test.fixtures.fixture_utils import save_fixture
 
 LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "update_gw_power_unit_id_from_shadow"
@@ -221,10 +223,11 @@ def compare_shadow_and_db(
     if not allow_zero and shadow_value == 0:
         return None
 
+    db_value = 0 if db_value is None else db_value
     # Convert to floats so we can compare them mathematically
     try:
         shadow_value = float(shadow_value)
-        db_value = float(db_value)
+        db_value = db_value if isinstance(db_value, Number) else float(db_value)
     except Exception:
         c.logger.error(
             f"Error converting either shadow_value '{shadow_value}' or db_value '{db_value}' to float"
@@ -346,16 +349,6 @@ def get_structure_records(c, conn) -> list:
         c, sql_structures, db="ijack", fetchall=True, conn=conn
     )
     return structure_rows
-
-
-def save_fixtures_for_testing(fixtures_to_save: dict) -> bool:
-    """Save fixtures for unit tests"""
-    fixture_folder = pathlib.Path(pythonpath).joinpath("test").joinpath("fixtures")
-    for name, fixture in fixtures_to_save.items():
-        with open(str(fixture_folder.joinpath(f"{name}.pkl")), "wb") as file:
-            pickle.dump(fixture, file)
-
-    return True
 
 
 def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
@@ -615,16 +608,21 @@ def main(c: Config, commit: bool = False):
 
         # # Do you want to save the fixtures for testing?
         # fixtures_to_save = {
-        #     "gw_rows": gw_rows,
-        #     "pu_rows": pu_rows,
-        #     "structure_rows": structure_rows,
+        #     # "gw_rows": gw_rows,
+        #     # "pu_rows": pu_rows,
+        #     # "structure_rows": structure_rows,
         #     "shadows": shadows,
         # }
-        # save_fixtures_for_testing(fixtures_to_save)
+        # for fixture_name, fixture in fixtures_to_save.items():
+        #     save_fixture(fixture_obj=fixture, name_stem=fixture_name)
 
         for gw_dict in gw_rows:
             aws_thing = gw_dict.get("aws_thing", None)
             gateway_id = gw_dict.get("gateway_id", None)
+            if aws_thing == '00:60:E0:72:66:13':
+                print('This gateway has a new latitude and longitude from the device shadow')
+            if aws_thing == '00:1D:48:31:6A:7A':
+                print('This gateway has a new latitude and longitude from the device shadow')
 
             # This "if aws_thing is None" is unnecessary since the nulls are filtered out in the query,
             # and simply not allowed in the table, but it doesn't hurt
@@ -691,7 +689,9 @@ def main(c: Config, commit: bool = False):
                 customer = row["customer"]
 
                 # GPS latitude
-                if str(latitude_shadow)[:7] != "50.1631":  # IJACK SHOP GPS
+                if (
+                    latitude_shadow and str(latitude_shadow)[:7] != "50.1631"
+                ):  # IJACK SHOP GPS
                     compare_shadow_and_db(
                         c,
                         latitude_shadow,
@@ -705,7 +705,9 @@ def main(c: Config, commit: bool = False):
                     )
 
                 # GPS longitude
-                if str(longitude_shadow)[:7] != "101.675":  # IJACK SHOP GPS
+                if (
+                    longitude_shadow and str(longitude_shadow)[:7] != "101.675"
+                ):  # IJACK SHOP GPS
                     compare_shadow_and_db(
                         c,
                         longitude_shadow,
