@@ -601,28 +601,27 @@ def main(c: Config, commit: bool = False):
     # Get DB connection since we're running several queries (might as well have just one connection)
     conn = get_conn(c, db="ijack")
 
-    gw_rows = get_gateway_records(c, conn)
-    pu_rows = get_power_unit_records(c, conn)
-    pu_dict = {row["power_unit"]: row["power_unit_id"] for row in pu_rows}
-    structure_rows = get_structure_records(c, conn)
-
-    # Get the Boto3 AWS IoT client for updating the "thing shadow"
-    client_iot = get_client_iot()
-    shadows = get_device_shadows_in_threadpool(c, gw_rows, client_iot)
-
-    # # Do you want to save the fixtures for testing?
-    # fixtures_to_save = {
-    #     "gw_rows": gw_rows,
-    #     "pu_rows": pu_rows,
-    #     "structure_rows": structure_rows,
-    #     "shadows": shadows,
-    # }
-    # save_fixtures_for_testing(fixtures_to_save)
-
-    # n_gw_rows = len(gw_rows)
     time_start = time.time()
-    # for i, gw_dict in enumerate(gw_rows):
+    # Start a try/except/finally block so we close the database connection
     try:
+        gw_rows = get_gateway_records(c, conn)
+        pu_rows = get_power_unit_records(c, conn)
+        pu_dict = {row["power_unit"]: row["power_unit_id"] for row in pu_rows}
+        structure_rows = get_structure_records(c, conn)
+
+        # Get the Boto3 AWS IoT client for updating the "thing shadow"
+        client_iot = get_client_iot()
+        shadows = get_device_shadows_in_threadpool(c, gw_rows, client_iot)
+
+        # # Do you want to save the fixtures for testing?
+        # fixtures_to_save = {
+        #     "gw_rows": gw_rows,
+        #     "pu_rows": pu_rows,
+        #     "structure_rows": structure_rows,
+        #     "shadows": shadows,
+        # }
+        # save_fixtures_for_testing(fixtures_to_save)
+
         for gw_dict in gw_rows:
             aws_thing = gw_dict.get("aws_thing", None)
             gateway_id = gw_dict.get("gateway_id", None)
