@@ -531,14 +531,22 @@ def upsert_gw_info(
             ON CONFLICT (gateway_id) DO UPDATE
                 SET {set_str}
     """
+    
+    # # For debugging only
+    # if aws_thing == "00:60:E0:86:4D:00":
+    #     print("")
+
     run_query(
         c,
         sql,
         db="ijack",
         fetchall=False,
+        # Need a new connection each time, in case the transaction fails?
+        # Or just raise_error=True?
         conn=conn,
         commit=True,
         values_dict=values_dict,
+        raise_error=True,
     )
 
     return True
