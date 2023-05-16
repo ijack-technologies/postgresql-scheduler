@@ -32,7 +32,7 @@ from cron_d.utils import (
     send_mailgun_email,
     utc_timestamp_to_datetime_string,
 )
-from test.fixtures.fixture_utils import save_fixture
+# from test.fixtures.fixture_utils import save_fixture
 
 LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "update_gw_power_unit_id_from_shadow"
