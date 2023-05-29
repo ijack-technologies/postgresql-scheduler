@@ -752,8 +752,8 @@ def main(c: Config, commit: bool = False):
             if is_power_unit_in_use:
                 # There's a problem since another gateway is already using that power unit
                 emailees_list = c.EMAIL_LIST_DEV
-                subject = f"Power unit '{power_unit_shadow}' already used by gateway '{gateway_already_linked}'"
-                html = f"Can't set gateway '{aws_thing}' power unit to '{power_unit_shadow}' because that power unit is already used by gateway '{gateway_already_linked}'"
+                subject = f"Power unit '{power_unit_shadow}' already used by gateway {gateway_already_linked}"
+                html = f"Can't set gateway {aws_thing} power unit to {power_unit_shadow} because that power unit is already used by gateway {gateway_already_linked}"
 
                 html += (
                     "\n<p><b>See which unit is already using that power unit:</b></p>"
@@ -773,8 +773,8 @@ def main(c: Config, commit: bool = False):
             elif gateway_already_has_power_unit:
                 # There's a problem since the gateway already has a power unit assigned to it
                 emailees_list = c.EMAIL_LIST_DEV
-                subject = f"Gateway '{aws_thing}' already linked to power unit '{power_unit_gw}' so can't link new power unit '{power_unit_shadow}'"
-                html = f"Can't link gateway '{aws_thing}' to power unit '{power_unit_shadow}' because the gateway is already linked to power unit '{power_unit_gw}'"
+                subject = f"Gateway {aws_thing} already linked to power unit {power_unit_gw} so can't link new power unit {power_unit_shadow}"
+                html = f"Can't link gateway {aws_thing} to power unit {power_unit_shadow} because the gateway is already linked to power unit {power_unit_gw}"
 
                 html += f"\n<p><b>See already-linked power unit '{power_unit_gw}' in action:</b></p>"
                 html += "\n<ul>"
@@ -787,8 +787,8 @@ def main(c: Config, commit: bool = False):
                 # No gateway is using that power unit, so link the two in the public.gw table
                 set_power_unit_to_gateway(c, power_unit_id_shadow, aws_thing)
                 emailees_list = c.EMAIL_LIST_SERVICE_PRODUCTION_IT
-                subject = f"Power unit '{power_unit_shadow}' now linked to gateway '{aws_thing}'"
-                html = f"<p>Power unit '{power_unit_shadow}' is now linked to gateway '{aws_thing}'."
+                subject = f"Power unit {power_unit_shadow} now linked to gateway {aws_thing}"
+                html = f"<p>Power unit {power_unit_shadow} is now linked to gateway {aws_thing}."
                 html += f' Check it out at <a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></p>'
                 html += "\n<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
                 html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
