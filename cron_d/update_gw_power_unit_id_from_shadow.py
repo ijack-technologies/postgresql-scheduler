@@ -132,7 +132,7 @@ def get_html(power_unit_shadow, sql_update, dict_):
 
         <h2>{unit_str}</h2>
         <a href="https://myijack.com/rcom?unit={power_unit_shadow}">https://myijack.com/rcom?unit={power_unit_shadow}</a>
-        <h2>Running the following SQL to update the public.structures table!</h2>
+        <h2>PostgreSQL Scheduler running the following SQL to update the public.structures table!</h2>
         <br>
         <br>
         <h3>SQL Update Text</h3>
@@ -188,7 +188,7 @@ def update_structures_table(
 
     # Just send a warning instead of auto-updating?
     if commit:
-        subject = "Updating GPS in structures table!"
+        subject = "PostgreSQL Scheduler updating GPS in structures table!"
     else:
         subject = "NOT updating GPS in structures table - just testing!"
     send_mailgun_email(
