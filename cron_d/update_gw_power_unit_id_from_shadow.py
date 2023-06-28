@@ -797,6 +797,13 @@ def main(c: Config, commit: bool = False):
                     c, gateway_id, cellular_good=True, can_bus_good=True
                 )
 
+            # Add HTML link to clear the power unit info from the gateway's shadow
+            html += "\n<p><b>Clear the power unit info from the gateway's shadow so you don't get these emails anymore:</b>"
+            html += "\n<ul>"
+            html += f'<li><a href="https://myijack.com/gateway-shadow-remove-power-unit/{aws_thing}">{aws_thing} - gateway that wants to link to power unit</a></li>'
+            html += f'<li><a href="https://myijack.com/gateway-shadow-remove-power-unit/{gateway_already_linked}">{gateway_already_linked} - gateway already linked to power unit</a></li>'
+            html += "\n</ul></p>"
+
             if not structure:
                 html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
             else:
