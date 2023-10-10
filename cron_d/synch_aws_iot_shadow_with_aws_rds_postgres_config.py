@@ -47,7 +47,7 @@ def main(c):
     # Get the Boto3 AWS IoT client for updating the "thing shadow"
     client_iot = get_client_iot()
 
-    rows = get_all_gateways(c)
+    rows: list = get_all_gateways(c)
 
     n_rows = len(rows)
     time_start = time.time()
@@ -91,11 +91,11 @@ def main(c):
 
         # Update the thing shadow for this gateway/AWS_THING
         try:
-            client_iot.update_thing_shadow(
-                thingName=aws_thing, payload=json.dumps(d)
-            )
+            client_iot.update_thing_shadow(thingName=aws_thing, payload=json.dumps(d))
         except Exception:
-            c.logger.exception("ERROR updating AWS IoT shadow for aws_thing '%s'", aws_thing)
+            c.logger.exception(
+                "ERROR updating AWS IoT shadow for aws_thing '%s'", aws_thing
+            )
 
     time_finish = time.time()
     c.logger.info(

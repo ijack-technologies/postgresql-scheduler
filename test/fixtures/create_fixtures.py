@@ -1,14 +1,6 @@
-from datetime import date, datetime, timedelta
 import logging
 import pathlib
-import time
 import sys
-import pprint
-import pickle
-from typing import Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import pytz
-from psycopg2 import connect as psycopg2_connect
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -21,15 +13,8 @@ except ValueError:
 from cron_d.utils import (
     Config,
     configure_logging,
-    error_wrapper,
-    exit_if_already_running,
     get_client_iot,
     get_conn,
-    get_iot_device_shadow,
-    run_query,
-    seconds_since_last_any_msg,
-    send_mailgun_email,
-    utc_timestamp_to_datetime_string,
 )
 from cron_d.update_gw_power_unit_id_from_shadow import (
     get_gateway_records,
@@ -47,7 +32,6 @@ c = Config()
 c.logger = configure_logging(
     __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
 )
-
 
 
 conn = get_conn(c)

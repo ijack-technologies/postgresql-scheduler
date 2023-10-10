@@ -4,7 +4,6 @@ import pathlib
 import time
 import sys
 import pprint
-import pickle
 from typing import Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytz
@@ -32,6 +31,7 @@ from cron_d.utils import (
     send_mailgun_email,
     utc_timestamp_to_datetime_string,
 )
+
 # from test.fixtures.fixture_utils import save_fixture
 
 LOG_LEVEL = logging.INFO
@@ -531,7 +531,7 @@ def upsert_gw_info(
             ON CONFLICT (gateway_id) DO UPDATE
                 SET {set_str}
     """
-    
+
     # # For debugging only
     # if aws_thing == "00:60:E0:86:4D:00":
     #     print("")
@@ -627,10 +627,14 @@ def main(c: Config, commit: bool = False):
         for gw_dict in gw_rows:
             aws_thing = gw_dict.get("aws_thing", None)
             gateway_id = gw_dict.get("gateway_id", None)
-            if aws_thing == '00:60:E0:72:66:13':
-                print('This gateway has a new latitude and longitude from the device shadow')
-            if aws_thing == '00:1D:48:31:6A:7A':
-                print('This gateway has a new latitude and longitude from the device shadow')
+            if aws_thing == "00:60:E0:72:66:13":
+                print(
+                    "This gateway has a new latitude and longitude from the device shadow"
+                )
+            if aws_thing == "00:1D:48:31:6A:7A":
+                print(
+                    "This gateway has a new latitude and longitude from the device shadow"
+                )
 
             # This "if aws_thing is None" is unnecessary since the nulls are filtered out in the query,
             # and simply not allowed in the table, but it doesn't hurt
@@ -787,7 +791,9 @@ def main(c: Config, commit: bool = False):
                 # No gateway is using that power unit, so link the two in the public.gw table
                 set_power_unit_to_gateway(c, power_unit_id_shadow, aws_thing)
                 emailees_list = c.EMAIL_LIST_SERVICE_PRODUCTION_IT
-                subject = f"Power unit {power_unit_shadow} now linked to gateway {aws_thing}"
+                subject = (
+                    f"Power unit {power_unit_shadow} now linked to gateway {aws_thing}"
+                )
                 html = f"<p>Power unit {power_unit_shadow} is now linked to gateway {aws_thing}."
                 html += f' Check it out at <a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></p>'
                 html += "\n<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
