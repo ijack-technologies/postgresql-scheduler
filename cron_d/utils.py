@@ -513,14 +513,11 @@ def error_wrapper():
                 check_dt = datetime.datetime.utcnow()
                 c.logger.info(f"The time of the error is {check_dt}")
                 try:
-                    if (
-                        is_time_between(
-                            begin_time=datetime.time(hour=9, minute=0),
-                            end_time=datetime.time(hour=9, minute=3),
-                            check_time=check_dt.time(),
-                        )
-                        and "server closed the connection" in str(err)
-                    ):
+                    if is_time_between(
+                        begin_time=datetime.time(hour=9, minute=0),
+                        end_time=datetime.time(hour=9, minute=3),
+                        check_time=check_dt.time(),
+                    ) and "server closed the connection" in str(err):
                         return None
                 except Exception as err_inner:
                     c.logger.exception(
@@ -570,15 +567,15 @@ def get_all_gateways(c) -> list:
     # These are all the metrics that will be put in the AWS IoT device shadow as "C__{METRIC}"
     SQL = """
         select aws_thing, gateway, customer, mqtt_topic, cust_sub_group_abbrev,
-            unit_type, apn, 
-            location, power_unit, model, 
+            unit_type, apn,
+            location, power_unit, model,
             time_zone,
-            heartbeat_enabled, online_hb_enabled, spm, stboxf, suction, discharge, hyd_temp, 
-            wait_time_mins, wait_time_mins_ol, wait_time_mins_spm, wait_time_mins_stboxf, 
+            heartbeat_enabled, online_hb_enabled, spm, stboxf, suction, discharge, hyd_temp,
+            wait_time_mins, wait_time_mins_ol, wait_time_mins_spm, wait_time_mins_stboxf,
             wait_time_mins_suction, wait_time_mins_discharge, wait_time_mins_hyd_temp,
             hyd_oil_lvl_thresh, hyd_filt_life_thresh, hyd_oil_life_thresh,
             wait_time_mins_hyd_oil_lvl, wait_time_mins_hyd_filt_life, wait_time_mins_hyd_oil_life,
-            ip_modbus, 
+            ip_modbus,
             wait_time_mins_chk_mtr_ovld, wait_time_mins_pwr_fail, wait_time_mins_soft_start_err, wait_time_mins_grey_wire_err
         from public.gateways
         where aws_thing <> 'test'
