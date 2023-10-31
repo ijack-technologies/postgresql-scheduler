@@ -4,6 +4,7 @@ import logging
 import pathlib
 import time
 import sys
+from decimal import Decimal
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -55,9 +56,9 @@ def main(c):
         # Initialize a new thing shadow for the data we're going to update in AWS IoT
         d = {"state": {"reported": {}}}
 
-        # if dict_["gateway"] == "1000046":
+        # if dict_["gateway"] == "00:60:E0:84:A6:C7":
         #     # Just for debugging. Comment out if you don't need this
-        #     print("cool")
+        #     print("found it")
 
         aws_thing = dict_["aws_thing"].upper()
         for key, value in dict_.items():
@@ -69,6 +70,9 @@ def main(c):
                 # get overwritten if they used to have a value like "Calgary" and now they're null.
                 # Otherwise they're just deleted from the device shadow and the gateway never sees them.
                 value = ""
+            # Convert Decimal types to floats for JSON serialization. Otherwise there will be an error!
+            if isinstance(value, Decimal):
+                value = float(value)
             if key in ("gateway", "unit_type", "aws_thing"):
                 d["state"]["reported"][f"C__{key.upper()}"] = value.upper()
             else:
@@ -78,7 +82,7 @@ def main(c):
         customer = None
         try:
             # Get a slightly shorter customer name, if available
-            customer = dict_["mqtt_topic"].title()
+            customer = str(dict_["mqtt_topic"]).title()
         except Exception:
             c.logger.exception(
                 "Trouble finding the MQTT topic. Is this the SHOP gateway? Continuing with the customer name instead..."
@@ -91,7 +95,16 @@ def main(c):
 
         # Update the thing shadow for this gateway/AWS_THING
         try:
-            client_iot.update_thing_shadow(thingName=aws_thing, payload=json.dumps(d))
+            json_payload_str: str = json.dumps(d)
+            client_iot.update_thing_shadow(
+                thingName=aws_thing, payload=json_payload_str
+            )
+        except TypeError:
+            # If there's a problem with the JSON serialization, log the error and stop the program!
+            c.logger.exception(
+                "ERROR updating AWS IoT shadow for aws_thing '%s'", aws_thing
+            )
+            raise
         except Exception:
             c.logger.exception(
                 "ERROR updating AWS IoT shadow for aws_thing '%s'", aws_thing
