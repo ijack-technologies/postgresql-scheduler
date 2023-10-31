@@ -16,16 +16,7 @@ except ValueError:
 
 # import alarm_log_mv_refresh_old_non_surface
 from cron_d import time_series_mv_refresh
-
-# local imports
 from cron_d.utils import Config, configure_logging
-
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace"
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
 
 
 LOGFILE_NAME = "test_main_programs"
@@ -38,7 +29,6 @@ c.logger = configure_logging(
 
 
 class TestAll(unittest.TestCase):
-
     # executed prior to each test below, not just when the class is initialized
     def setUp(self):
         global c
