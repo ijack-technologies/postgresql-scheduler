@@ -38,7 +38,6 @@ fixture_folder = Path(pythonpath).joinpath("test").joinpath("fixtures")
 
 
 class TestAll(unittest.TestCase):
-
     # # executed after each test
     # def tearDown(self):
     #     pass
@@ -385,6 +384,12 @@ class TestAll(unittest.TestCase):
                         "MODEM_FIRMWARE_REV": "",
                         "MODEM_DRIVERS": "",
                         "SIM_OPERATOR": "",
+                        "HYD_EGAS": 1,
+                        "WARN1_EGAS": 0,
+                        "WARN2_EGAS": 0,
+                        "connected": 1,
+                        "SERIAL_NUMBER": 200999,
+                        "HOURS": 666777.5,
                     }
                 },
                 "metadata": {

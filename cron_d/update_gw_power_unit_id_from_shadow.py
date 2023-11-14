@@ -50,14 +50,14 @@ def sql_get_info(c, power_unit_id, power_unit_shadow, structure, aws_thing):
     """Gather a bit more info for the email alert"""
 
     select_sql = f"""
-        SELECT id, structure, structure_slave_id, structure_slave, 
-            downhole, surface, location, gps_lat, gps_lon, 
-            power_unit_id, power_unit, power_unit_str, 
-            gateway_id, gateway, aws_thing, qb_sale, unit_type_id, unit_type, 
-            model_type_id, model, model_unit_type_id, model_unit_type, 
-            model_type_id_slave, model_slave, model_unit_type_id_slave, model_unit_type_slave, 
-            customer_id, customer, cust_sub_group_id, cust_sub_group, 
-            run_mfg_date, structure_install_date, slave_install_date, 
+        SELECT id, structure, structure_slave_id, structure_slave,
+            downhole, surface, location, gps_lat, gps_lon,
+            power_unit_id, power_unit, power_unit_str,
+            gateway_id, gateway, aws_thing, qb_sale, unit_type_id, unit_type,
+            model_type_id, model, model_unit_type_id, model_unit_type,
+            model_type_id_slave, model_slave, model_unit_type_id_slave, model_unit_type_slave,
+            customer_id, customer, cust_sub_group_id, cust_sub_group,
+            run_mfg_date, structure_install_date, slave_install_date,
             notes_1, well_license, time_zone_id, time_zone, apn
 	    FROM public.vw_structures_joined
         where power_unit_id = {power_unit_id}
@@ -300,14 +300,14 @@ def set_power_unit_to_gateway(c, power_unit_id_shadow: int, aws_thing: str) -> b
 def get_gateway_records(c, conn) -> list:
     """Get gateway records"""
     sql_gw = """
-        select 
+        select
             distinct on (aws_thing)
             t1.id as gateway_id,
-            t1.aws_thing, 
-            t1.power_unit_id, 
+            t1.aws_thing,
+            t1.power_unit_id,
             t2.power_unit
         from public.gw t1
-        left join public.power_units t2 
+        left join public.power_units t2
             on t2.id = t1.power_unit_id
         --where aws_thing <> 'test'
         --    and aws_thing is not null
@@ -320,8 +320,8 @@ def get_gateway_records(c, conn) -> list:
 def get_power_unit_records(c, conn) -> list:
     """Get power_unit records"""
     sql_pu = """
-        select 
-            id as power_unit_id, 
+        select
+            id as power_unit_id,
             power_unit
         from public.power_units
     """
@@ -332,7 +332,7 @@ def get_power_unit_records(c, conn) -> list:
 def get_structure_records(c, conn) -> list:
     # Get structure records for comparing GPS lat/lon by power unit
     sql_structures = """
-        select 
+        select
             structure,
             power_unit_id,
             gps_lat,
@@ -343,7 +343,7 @@ def get_structure_records(c, conn) -> list:
             on t2.structure_id = t1.id
         left join myijack.customers t3
             on t3.id = t2.customer_id
-        where power_unit_id is not null
+        where t1.power_unit_id is not null
     """
     _, structure_rows = run_query(
         c, sql_structures, db="ijack", fetchall=True, conn=conn
@@ -475,6 +475,17 @@ def upsert_gw_info(
     )
     timestamp_utc_now_str = str(timestamp_utc_now)
 
+    reported = shadow.get("state", {}).get("reported", {})
+    hyd = reported.get("HYD_EGAS", None)
+    if hyd is None:
+        hyd = reported.get("HYD", None)
+    warn1 = reported.get("WARN1_EGAS", None)
+    if warn1 is None:
+        warn1 = reported.get("WARN1", None)
+    warn2 = reported.get("WARN2_EGAS", None)
+    if warn2 is None:
+        warn2 = reported.get("WARN2", None)
+
     values_dict = {
         "gateway_id": gateway_id,
         "aws_thing": aws_thing,
@@ -482,6 +493,12 @@ def upsert_gw_info(
         "days_since_reported": days_since_reported,
         "time_since_reported": msg,
         "timestamp_utc_last_reported": timestamp_utc_last_reported,
+        "connected": True if reported.get("connected", None) == 1 else False,
+        "hours": reported.get("HOURS", 0),
+        "hyd": hyd,
+        "warn1": warn1,
+        "warn2": warn2,
+        "power_unit_str": reported.get("SERIAL_NUMBER", None),
     }
 
     # These are all capitalized in the AWS IoT device shadow.
@@ -504,7 +521,7 @@ def upsert_gw_info(
         "swv_plc": "SWV",
         "gw_type_reported": "gateway_type",
     }
-    reported = shadow.get("state", {}).get("reported", {})
+
     for db_col_name, shadow_name in metrics_to_update.items():
         value = reported.get(shadow_name, -1)
         if value != -1:
@@ -605,14 +622,14 @@ def main(c: Config, commit: bool = False):
     time_start = time.time()
     # Start a try/except/finally block so we close the database connection
     try:
-        gw_rows = get_gateway_records(c, conn)
-        pu_rows = get_power_unit_records(c, conn)
+        gw_rows: list = get_gateway_records(c, conn)
+        pu_rows: list = get_power_unit_records(c, conn)
         pu_dict = {row["power_unit"]: row["power_unit_id"] for row in pu_rows}
-        structure_rows = get_structure_records(c, conn)
+        structure_rows: list = get_structure_records(c, conn)
 
         # Get the Boto3 AWS IoT client for updating the "thing shadow"
         client_iot = get_client_iot()
-        shadows = get_device_shadows_in_threadpool(c, gw_rows, client_iot)
+        shadows: list = get_device_shadows_in_threadpool(c, gw_rows, client_iot)
 
         # # Do you want to save the fixtures for testing?
         # fixtures_to_save = {
@@ -644,7 +661,6 @@ def main(c: Config, commit: bool = False):
                 )
                 continue
 
-            # shadow = get_iot_device_shadow(c, client_iot, aws_thing)
             shadow = shadows.get(aws_thing, {})
             if not shadow or not isinstance(shadow, dict):
                 c.logger.warning(
