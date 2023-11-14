@@ -485,25 +485,25 @@ def upsert_gw_info(
         "timestamp_utc_last_reported": timestamp_utc_last_reported,
         "connected": True if reported.get("connected", None) == 1 else False,
         "hours": reported.get("HOURS", 0),
-        "power_unit_str": reported.get("SERIAL_NUMBER", ""),
+        "power_unit_str": str(reported.get("SERIAL_NUMBER", "")),
     }
 
     hyd = reported.get("HYD_EGAS", None)
     if hyd is None:
         hyd = reported.get("HYD", None)
-    if hyd is not None:
+    if isinstance(hyd, int):
         values_dict["hyd"] = hyd
 
     warn1 = reported.get("WARN1_EGAS", None)
     if warn1 is None:
         warn1 = reported.get("WARN1", None)
-    if warn1 is not None:
+    if isinstance(warn1, int):
         values_dict["warn1"] = warn1
 
     warn2 = reported.get("WARN2_EGAS", None)
     if warn2 is None:
         warn2 = reported.get("WARN2", None)
-    if warn2 is not None:
+    if isinstance(warn2, int):
         values_dict["warn2"] = warn2
 
     # These are all capitalized in the AWS IoT device shadow.
