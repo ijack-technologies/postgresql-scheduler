@@ -486,6 +486,8 @@ def upsert_gw_info(
         "connected": True if reported.get("connected", None) == 1 else False,
         "hours": reported.get("HOURS", 0),
         "power_unit_str": str(reported.get("SERIAL_NUMBER", "")),
+        "suction": reported.get("CGP", 0),
+        "discharge": reported.get("DGP", 0),
     }
 
     hyd = reported.get("HYD_EGAS", None)
@@ -505,6 +507,18 @@ def upsert_gw_info(
         warn2 = reported.get("WARN2", None)
     if isinstance(warn2, int):
         values_dict["warn2"] = warn2
+
+    warn2 = reported.get("WARN2_EGAS", None)
+    if warn2 is None:
+        warn2 = reported.get("WARN2", None)
+    if isinstance(warn2, int):
+        values_dict["warn2"] = warn2
+
+    spm = reported.get("SPM_EGAS", None)
+    if spm is None:
+        spm = reported.get("SPM", None)
+    if spm:
+        values_dict["spm"] = spm
 
     # These are all capitalized in the AWS IoT device shadow.
     # The key is the public.gw_info database column name.
