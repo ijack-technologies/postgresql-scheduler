@@ -4,7 +4,7 @@ echo "Docker container has been started"
 echo "Setting up the cron scheduler..."
 
 # To make the Docker container environment variables available to cron.
-# declare is a builtin command of the bash shell. It is used to declare 
+# declare is a builtin command of the bash shell. It is used to declare
 # shell variables and functions, set their attributes and display their values.
 # Without this step, the environment variables will not be available in cron!
 declare -p | grep -Ev 'BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID' > /container.env
@@ -24,7 +24,7 @@ BASH_ENV=/container.env
 */30 * * * * python3 /cron_d/time_series_mv_refresh.py
 31 1 * * * python3 /cron_d/timescaledb_restart_background_workers.py
 3 * * * * python3 /cron_d/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
-*/15 * * * * python3 /cron_d/update_gw_power_unit_id_from_shadow.py
+*/5 * * * * python3 /cron_d/update_gw_power_unit_id_from_shadow.py
 # Leave the last line blank for a valid cron file" > /cron_d/crontab.txt
 
 # Make the shell scripts executable
@@ -34,12 +34,12 @@ BASH_ENV=/container.env
 crontab /cron_d/crontab.txt
 
 # Run the cron process, so its logs will be visible to docker logs
-# cron -f 
+# cron -f
 
 FILE=/var/log/cron.log
 if [ -f "$FILE" ]; then
     echo "$FILE exists."
-else 
+else
     echo "$FILE does not exist. Creating it now..."
     touch /var/log/cron.log
 fi
