@@ -14,7 +14,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-from cron_d import update_gw_power_unit_id_from_shadow
+from cron_d import update_info_from_shadows
 from cron_d.utils import Config, configure_logging
 
 
@@ -39,11 +39,11 @@ class TestAll(unittest.TestCase):
         # This c.TEST_FUNC just disables SMS, email, and phone call alerts
         c.TEST_FUNC = True
 
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.exit_if_already_running")
-    def test_update_gw_power_unit_id_from_shadow(self, mock_exit_if_already_running):
+    @patch("cron_d.update_info_from_shadows.exit_if_already_running")
+    def test_update_info_from_shadows(self, mock_exit_if_already_running):
         """Test the main program"""
         global c
-        update_gw_power_unit_id_from_shadow.main(c, commit=True)
+        update_info_from_shadows.main(c, commit=True)
 
 
 if __name__ == "__main__":

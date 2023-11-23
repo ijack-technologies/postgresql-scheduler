@@ -22,7 +22,7 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from cron_d import update_gw_power_unit_id_from_shadow
+from cron_d import update_info_from_shadows
 from cron_d.utils import Config, configure_logging, run_query, get_conn
 
 
@@ -48,8 +48,8 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
 
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.send_mailgun_email")
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.run_query")
+    @patch("cron_d.update_info_from_shadows.send_mailgun_email")
+    @patch("cron_d.update_info_from_shadows.run_query")
     def test_update_structures_table(
         self,
         mock_run_query,
@@ -70,7 +70,7 @@ class TestAll(unittest.TestCase):
         aws_thing = "1000051"
         db_value = -120.09023308333333
 
-        sql_get_info_str = update_gw_power_unit_id_from_shadow.sql_get_info(
+        sql_get_info_str = update_info_from_shadows.sql_get_info(
             c, power_unit_id, power_unit_shadow, structure, aws_thing
         )
 
@@ -80,7 +80,7 @@ class TestAll(unittest.TestCase):
         mock_run_query.return_value = (["col1", "col2"], rows)
 
         # Run the main function we're testing
-        update_gw_power_unit_id_from_shadow.update_structures_table(
+        update_info_from_shadows.update_structures_table(
             c,
             power_unit_id=power_unit_id,
             power_unit_shadow=power_unit_shadow,
@@ -95,7 +95,7 @@ class TestAll(unittest.TestCase):
         )
 
         dict_ = rows[0]
-        sql_update = update_gw_power_unit_id_from_shadow.get_sql_update(
+        sql_update = update_info_from_shadows.get_sql_update(
             c,
             column,
             new_value,
@@ -107,9 +107,7 @@ class TestAll(unittest.TestCase):
             aws_thing,
         )
 
-        html = update_gw_power_unit_id_from_shadow.get_html(
-            power_unit_shadow, sql_update, dict_
-        )
+        html = update_info_from_shadows.get_html(power_unit_shadow, sql_update, dict_)
 
         # mock_send_mailgun_email.assert_called_once()
         mock_send_mailgun_email.assert_called_once_with(
@@ -120,8 +118,8 @@ class TestAll(unittest.TestCase):
             subject="NOT updating GPS in structures table - just testing!",
         )
 
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.send_mailgun_email")
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.run_query")
+    @patch("cron_d.update_info_from_shadows.send_mailgun_email")
+    @patch("cron_d.update_info_from_shadows.run_query")
     def test_compare_shadow_and_db(self, mock_run_query, mock_send_mailgun_email):
         """Test that a small change will trigger an update"""
         global c
@@ -177,7 +175,7 @@ class TestAll(unittest.TestCase):
             )
         ]
 
-        update_gw_power_unit_id_from_shadow.compare_shadow_and_db(
+        update_info_from_shadows.compare_shadow_and_db(
             c=c,
             shadow_value=-108.01001,
             db_value=-108.0,
@@ -195,7 +193,7 @@ class TestAll(unittest.TestCase):
         mock_send_mailgun_email.reset_mock()
         mock_run_query.reset_mock()
 
-        update_gw_power_unit_id_from_shadow.compare_shadow_and_db(
+        update_info_from_shadows.compare_shadow_and_db(
             c=c,
             shadow_value=-108.009,
             db_value=-108.0,
@@ -209,17 +207,15 @@ class TestAll(unittest.TestCase):
         mock_send_mailgun_email.assert_not_called()
         mock_run_query.assert_not_called()
 
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.upsert_gw_info")
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.run_query")
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.get_client_iot")
-    @patch(
-        "cron_d.update_gw_power_unit_id_from_shadow.get_device_shadows_in_threadpool"
-    )
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.get_structure_records")
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.get_power_unit_records")
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.get_gateway_records")
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.get_conn")
-    @patch("cron_d.update_gw_power_unit_id_from_shadow.exit_if_already_running")
+    @patch("cron_d.update_info_from_shadows.upsert_gw_info")
+    @patch("cron_d.update_info_from_shadows.run_query")
+    @patch("cron_d.update_info_from_shadows.get_client_iot")
+    @patch("cron_d.update_info_from_shadows.get_device_shadows_in_threadpool")
+    @patch("cron_d.update_info_from_shadows.get_structure_records")
+    @patch("cron_d.update_info_from_shadows.get_power_unit_records")
+    @patch("cron_d.update_info_from_shadows.get_gateway_records")
+    @patch("cron_d.update_info_from_shadows.get_conn")
+    @patch("cron_d.update_info_from_shadows.exit_if_already_running")
     def test_need_to_update_power_unit_for_gateway(
         self,
         mock_exit_if_already_running,
@@ -300,7 +296,7 @@ class TestAll(unittest.TestCase):
             )
         ]
 
-        update_gw_power_unit_id_from_shadow.main(c=c, commit=False)
+        update_info_from_shadows.main(c=c, commit=False)
 
         mock_exit_if_already_running.assert_called_once()
         mock_get_conn.assert_called_once()
@@ -318,7 +314,7 @@ class TestAll(unittest.TestCase):
         mock_run_query.reset_mock()
         mock_upsert_gw_info.reset_mock()
 
-        update_gw_power_unit_id_from_shadow.compare_shadow_and_db(
+        update_info_from_shadows.compare_shadow_and_db(
             c=c,
             shadow_value=-108.009,
             db_value=-108.0,
@@ -410,7 +406,7 @@ class TestAll(unittest.TestCase):
                 },
             }
 
-            bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
+            bool_return = update_info_from_shadows.upsert_gw_info(
                 c, gateway_id, aws_thing, shadow, conn
             )
 
@@ -438,12 +434,12 @@ class TestAll(unittest.TestCase):
         global c
         c.TEST_FUNC = False
 
-        bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
+        bool_return = update_info_from_shadows.upsert_gw_info(
             c, gateway_id=None, aws_thing="something", shadow={}, conn=MagicMock()
         )
         self.assertFalse(bool_return)
 
-        bool_return = update_gw_power_unit_id_from_shadow.upsert_gw_info(
+        bool_return = update_info_from_shadows.upsert_gw_info(
             c, gateway_id="something", aws_thing=None, shadow={}, conn=MagicMock()
         )
         self.assertFalse(bool_return)
@@ -499,10 +495,8 @@ class TestAll(unittest.TestCase):
         try:
             conn = get_conn(c, db="ijack")
 
-            bool_return = (
-                update_gw_power_unit_id_from_shadow.record_can_bus_cellular_test(
-                    c, gateway_id_lambda_access, cellular_good=False, can_bus_good=False
-                )
+            bool_return = update_info_from_shadows.record_can_bus_cellular_test(
+                c, gateway_id_lambda_access, cellular_good=False, can_bus_good=False
             )
             can_bus, cellular = test_gw_table(gateway_id_lambda_access)
             self.assertFalse(can_bus)
@@ -516,10 +510,8 @@ class TestAll(unittest.TestCase):
             self.assertIsNone(gateway_id)
             self.assertIsNone(network_id)
 
-            bool_return = (
-                update_gw_power_unit_id_from_shadow.record_can_bus_cellular_test(
-                    c, gateway_id_lambda_access, cellular_good=True, can_bus_good=True
-                )
+            bool_return = update_info_from_shadows.record_can_bus_cellular_test(
+                c, gateway_id_lambda_access, cellular_good=True, can_bus_good=True
             )
             can_bus, cellular = test_gw_table(gateway_id_lambda_access)
             self.assertTrue(can_bus)

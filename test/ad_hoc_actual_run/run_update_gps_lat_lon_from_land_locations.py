@@ -41,7 +41,7 @@
 #         c.DEV_TEST_PRD = "development"
 #         c.TEST_FUNC = True
 
-#     def test_update_gw_power_unit_id_from_shadow(self):
+#     def test_update_info_from_shadows(self):
 #         """Test the main program"""
 #         global c
 #         with patch(

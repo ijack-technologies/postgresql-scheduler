@@ -42,7 +42,7 @@ class TestAll(unittest.TestCase):
     @patch(
         "cron_d.synch_aws_iot_shadow_with_aws_rds_postgres_config.exit_if_already_running"
     )
-    def test_update_gw_power_unit_id_from_shadow(self, mock_exit_if_already_running):
+    def test_update_info_from_shadows(self, mock_exit_if_already_running):
         """Test the main program"""
         global c
         synch_aws_iot_shadow_with_aws_rds_postgres_config.main(c)

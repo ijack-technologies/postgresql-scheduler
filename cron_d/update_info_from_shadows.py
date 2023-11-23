@@ -35,7 +35,7 @@ from cron_d.utils import (
 # from test.fixtures.fixture_utils import save_fixture
 
 LOG_LEVEL = logging.INFO
-LOGFILE_NAME = "update_gw_power_unit_id_from_shadow"
+LOGFILE_NAME = "update_info_from_shadows"
 
 
 def convert_to_float(c, string):
