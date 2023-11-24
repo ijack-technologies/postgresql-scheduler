@@ -315,7 +315,7 @@ def get_gateway_records(c, conn) -> list:
             on t2.id = t1.power_unit_id
         left join public.structures t3
             on t3.power_unit_id = t1.power_unit_id
-        left join myijack.gw_info t4
+        left join public.gw_info t4
             on t4.gateway_id = t1.id
         --where aws_thing <> 'test'
         --    and aws_thing is not null
@@ -333,7 +333,7 @@ def get_power_unit_records(c, conn) -> list:
             power_unit
         from public.power_units
     """
-    _, pu_rows = run_query(c, sql_pu, db="ijack", fetchall=True, conn=conn)
+    _, pu_rows = run_query(c=c, sql=sql_pu, db="ijack", fetchall=True, conn=conn)
     return pu_rows
 
 
