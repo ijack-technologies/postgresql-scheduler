@@ -40,6 +40,14 @@ class Config:
         "smccarthy@myijack.com",
         "msenicar@myijack.com",
     ]
+    EMAIL_LIST_OP_HOURS = [
+        "rbarry@myijack.com",
+        "gmannle@myijack.com",
+        "smccarthy@myijack.com",
+        "msenicar@myijack.com",
+        "dmccarthy@myijack.com",
+        "tbeals@myijack.com",
+    ]
     # For returning values in the "c" config object
     TEST_DICT = {}
 

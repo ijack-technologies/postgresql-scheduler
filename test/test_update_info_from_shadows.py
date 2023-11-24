@@ -207,6 +207,7 @@ class TestAll(unittest.TestCase):
         mock_send_mailgun_email.assert_not_called()
         mock_run_query.assert_not_called()
 
+    @patch("cron_d.update_info_from_shadows.send_mailgun_email")
     @patch("cron_d.update_info_from_shadows.upsert_gw_info")
     @patch("cron_d.update_info_from_shadows.run_query")
     @patch("cron_d.update_info_from_shadows.get_client_iot")
@@ -227,6 +228,7 @@ class TestAll(unittest.TestCase):
         mock_get_client_iot,
         mock_run_query,
         mock_upsert_gw_info,
+        mock_send_mailgun_email,
     ):
         """Test that a small change will trigger an update"""
         global c
@@ -305,12 +307,13 @@ class TestAll(unittest.TestCase):
         mock_get_structure_records.assert_called_once()
         mock_get_device_shadows_in_threadpool.assert_called_once()
         mock_get_client_iot.assert_called_once()
+        self.assertEqual(mock_send_mailgun_email.call_count, 31)
 
-        self.assertEqual(mock_run_query.call_count, 2)
+        self.assertEqual(mock_run_query.call_count, 60)
         mock_upsert_gw_info.assert_called()
 
         # Run the test a second time, with a smaller change, and assert it doesn't trigger an update
-        # mock_send_mailgun_email.reset_mock()
+        mock_send_mailgun_email.reset_mock()
         mock_run_query.reset_mock()
         mock_upsert_gw_info.reset_mock()
 
@@ -325,7 +328,7 @@ class TestAll(unittest.TestCase):
             aws_thing=aws_thing_ging,
         )
 
-        # mock_send_mailgun_email.assert_not_called()
+        mock_send_mailgun_email.assert_not_called()
         mock_run_query.assert_not_called()
 
     def test_upsert_gw_info(self):
@@ -483,11 +486,16 @@ class TestAll(unittest.TestCase):
 
         def delete_test_insert(gateway_id):
             """Delete the data we test-inserted"""
+            sql = SQL(
+                """
+                delete from public.gw_tested_cellular
+                where gateway_id = {gateway_id}
+                """
+            ).format(gateway_id=Literal(gateway_id))
+            print(sql)
             run_query(
                 c,
-                SQL("delete from gw_tested_cellular where id = {gateway_id}").format(
-                    gateway_id=Literal(gateway_id)
-                ),
+                sql=sql,
                 fetchall=False,
                 commit=True,
             )
@@ -505,7 +513,11 @@ class TestAll(unittest.TestCase):
             timestamp_utc, user_id, gateway_id, network_id = test_gw_inserted_table(
                 gateway_id_lambda_access
             )
-            self.assertIsNone(timestamp_utc)
+            try:
+                self.assertIsNone(timestamp_utc)
+            except AssertionError:
+                delete_test_insert(gateway_id_lambda_access)
+                raise
             self.assertIsNone(user_id)
             self.assertIsNone(gateway_id)
             self.assertIsNone(network_id)
@@ -530,6 +542,49 @@ class TestAll(unittest.TestCase):
             conn.close()
 
         self.assertTrue(bool_return)
+
+    @patch("cron_d.update_info_from_shadows.send_mailgun_email")
+    @patch("cron_d.update_info_from_shadows.run_query")
+    def test_set_install_date_on_run_hours(
+        self, mock_run_query, mock_send_mailgun_email
+    ):
+        """Test that we can set the install date on run hours"""
+        c: Config = Config()
+        c.TEST_FUNC = False
+        c.DEV_TEST_PRD = "development"
+
+        power_unit_shadow: str = "lamda_access"
+        structure_id: int = 924
+        hours_previous: int = 99
+        gw_dict: dict = {
+            "gateway_id": "",
+            "aws_thing": "",
+            "power_unit_id": "",
+            "power_unit": power_unit_shadow,
+            "id as structure_id": structure_id,
+            "structure": 9999,
+            "structure_install_date": date(2021, 1, 1),
+            "hours": hours_previous,
+        }
+        reported: dict = {"HOURS": 100}
+        conn = get_conn(c, db="ijack")
+        try:
+            bool_return: bool = update_info_from_shadows.set_install_date_on_run_hours(
+                c=c,
+                power_unit_shadow=power_unit_shadow,
+                structure_id=structure_id,
+                gw_dict=gw_dict,
+                reported=reported,
+                conn=conn,
+            )
+        except Exception:
+            raise
+        finally:
+            conn.close()
+
+        self.assertTrue(bool_return)
+        mock_run_query.assert_called_once()
+        mock_send_mailgun_email.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,3 @@
 {
     "python.languageServer": "Pylance",
-    "python.pythonPath": "/usr/local/bin/python",
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true
 }

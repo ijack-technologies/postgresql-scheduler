@@ -305,10 +305,18 @@ def get_gateway_records(c, conn) -> list:
             t1.id as gateway_id,
             t1.aws_thing,
             t1.power_unit_id,
-            t2.power_unit
+            t2.power_unit,
+            t3.id as structure_id,
+            t3.structure,
+            t3.structure_install_date,
+            t4.hours
         from public.gw t1
         left join public.power_units t2
             on t2.id = t1.power_unit_id
+        left join public.structures t3
+            on t3.power_unit_id = t1.power_unit_id
+        left join myijack.gw_info t4
+            on t4.gateway_id = t1.id
         --where aws_thing <> 'test'
         --    and aws_thing is not null
         --    and power_unit_id is not null
@@ -623,6 +631,93 @@ def record_can_bus_cellular_test(
     return True
 
 
+def set_install_date_on_run_hours(
+    c: Config,
+    power_unit_shadow: str,
+    structure_id: int,
+    gw_dict: dict,
+    reported: dict,
+    conn: psycopg2_connect,
+) -> bool:
+    """
+    Set the install date after the operating hours pass 100
+    Check if the operating hours reported by the gateway have changed.
+
+    Parameters:
+    c (Config): The configuration object.
+    power_unit_shadow (str): The power unit shadow.
+    structure_id (int): The structure ID.
+    gw_dict (dict): The gateway dictionary.
+    reported (dict): The reported dictionary.
+    conn (psycopg2_connect): The psycopg2 connection object.
+
+    Returns:
+    bool: True if the operating hours have changed, False otherwise.
+    """
+
+    # Latest operating hours reported by the gateway
+    hours = reported.get("HOURS", None)
+    # Operating hours from the previous run, which were stored in the public.gw_info table
+    hours_previous = gw_dict.get("hours", None)
+    structure_install_date = gw_dict.get("structure_install_date", None)
+
+    if hours == hours_previous:
+        # The operating hours haven't changed, so don't do anything
+        return False
+
+    if not isinstance(hours, (float, int)):
+        c.logger.error(f"Hours '{hours}' is not a number")
+        return False
+
+    if not isinstance(hours_previous, (float, int)):
+        c.logger.error(f"Hours previous '{hours_previous}' is not a number")
+        return False
+
+    if 0 < hours_previous < 100 and hours >= 100:
+        # The operating hours just passed 100, so set the install date to "hours" hours ago
+        new_install_date: str = (datetime.utcnow() - timedelta(hours=hours)).strftime(
+            "%Y-%m-%d"
+        )
+        sql = f"""
+            update public.structures
+            set structure_install_date = '{new_install_date}'
+            where id = {structure_id}
+        """
+        run_query(c, sql, db="ijack", fetchall=False, commit=True, conn=conn)
+
+        # Send an email alert
+        days_ago: float = round(hours / 24, 1)
+        html = f"""
+            <html>
+            <body>
+
+            <p>Power unit '{power_unit_shadow}' just passed 100 operating hours! It's at {hours} now, previously {hours_previous}.</p>
+            <p>Its install date has been changed from '{structure_install_date}' to '{new_install_date}' ({hours} hours or {days_ago} days ago).</p>
+            <p>Check it out!</p>
+            <ul>
+                <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/admin/structures/?flt1_id_equals={structure_id}</a></li>
+                <li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></li>
+            </ul>
+
+            </body>
+            </html>
+        """
+        if c.DEV_TEST_PRD == "production":
+            emailees_list = c.EMAIL_LIST_OP_HOURS
+        else:
+            emailees_list = c.EMAIL_LIST_DEV
+        send_mailgun_email(
+            c,
+            text="",
+            html=html,
+            emailees_list=emailees_list,
+            subject=f"Power unit '{power_unit_shadow}' passed 100 operating hours!",
+        )
+        return True
+
+    return False
+
+
 @error_wrapper()
 def main(c: Config, commit: bool = False):
     """
@@ -722,6 +817,12 @@ def main(c: Config, commit: bool = False):
             # Get the power_unit_id already in the public.gw table
             power_unit_id_gw = gw_dict.get("power_unit_id", None)
             power_unit_gw = gw_dict.get("power_unit", None)
+            structure_id = gw_dict.get("structure_id", None)
+
+            # Set the install date once the operating hours pass 100
+            set_install_date_on_run_hours(
+                c, power_unit_shadow, structure_id, gw_dict, reported, conn
+            )
 
             # Compare the GPS first
             structure = None
