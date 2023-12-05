@@ -163,8 +163,8 @@ def run_query(
         if execute:
             try:
                 cursor.execute(sql, values_dict)
-            except Exception:
-                c.logger.exception(f"ERROR executing SQL: '{sql}'")
+            except Exception as err:
+                c.logger.error(f"ERROR executing SQL: '{sql}'\n\n Error: {err}")
                 if raise_error:
                     raise
             else:

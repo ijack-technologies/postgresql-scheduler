@@ -1,7 +1,13 @@
-version: '3.7'
+version: '3'
 services:
+  # dev_pg_scheduler:
   container1:
     # image: ubuntu:bionic
+    # https://stackoverflow.com/questions/56751565/pq-could-not-resize-shared-memory-segment-no-space-left-on-device
+    # docker by-default restricts size of shared memory to 64MB, which is not enough for PostgreSQL sometimes.
+    shm_size: 4gb
+    # # Don't ever close this container
+    # tty: true
     volumes:
       # Mount the root folder that contains .git
       - ..:/workspace
@@ -36,6 +42,7 @@ services:
       # - 0.0.0.0:3001:3000
       # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
+    # work_mem='64MB'
     # command: /bin/sh -c "while sleep 1000; do :; done"
     # links:
     #   - container-2

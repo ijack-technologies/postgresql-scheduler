@@ -81,7 +81,7 @@ def get_time_series_data(c, power_unit_str: str, is_egas_type: bool) -> pd.DataF
     #     hp_col = "hpu"
     #     ht_col = "ht"
     # Get data from LOCF table so it's filled forward
-    sql = f"""
+    sql = """
     select
         power_unit,
         date_trunc('month', timestamp_utc) as month_date,
@@ -96,11 +96,21 @@ def get_time_series_data(c, power_unit_str: str, is_egas_type: bool) -> pd.DataF
         avg(agf_dis_temp_max) as agf_dis_temp_max_avg,
         avg(agf_dis_temp) as agf_dis_temp_avg
     from public.time_series_locf
-    where power_unit = '{power_unit_str}'
-        --only recalculate the current month
-        and timestamp_utc >= date_trunc('month', now())
+    where power_unit = '{}' {}
     group by power_unit, date_trunc('month', timestamp_utc)
     """
+    if c.DEV_TEST_PRD == "development":
+        # Recalculate all months
+        sql = sql.format(
+            power_unit_str,
+            "",
+        )
+    else:
+        # Only recalculate the current month
+        sql = sql.format(
+            power_unit_str,
+            "and timestamp_utc >= date_trunc('month', now())",
+        )
     columns, rows = run_query(
         c, sql, db="timescale", fetchall=True, raise_error=True, log_query=False
     )
