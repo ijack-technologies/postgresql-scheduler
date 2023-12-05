@@ -3,17 +3,11 @@ This script recalculates some aggregated data on a daily basis, for performance 
 """
 
 import time
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import pathlib
 import sys
-from io import StringIO
-
-import psycopg2
 import pandas as pd
-
-# import numpy as np
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -28,7 +22,6 @@ from cron_d.utils import (
     configure_logging,
     error_wrapper,
     exit_if_already_running,
-    get_conn,
     run_query,
 )
 
