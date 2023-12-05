@@ -34,7 +34,8 @@
 		"ms-python.python",
 		"dbaeumer.vscode-eslint",
 		"ms-azuretools.vscode-docker",
-		"GitHub.copilot"
+		"GitHub.copilot",
+		"ms-toolsai.jupyter"
 	],
     "settings": {
         "python.pythonPath": "/app/venv/bin/python",

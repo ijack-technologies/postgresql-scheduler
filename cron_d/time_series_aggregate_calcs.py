@@ -62,19 +62,14 @@ def get_power_units_and_unit_types(c) -> dict:
     return dict_
 
 
-def get_time_series_data(c, power_unit_str: str, is_egas_type: bool) -> pd.DataFrame:
+def get_time_series_data(
+    c, power_unit_str: str, start_date_str: str, end_date_str: str
+) -> pd.DataFrame:
     """
     Get the time series data for a given power unit
     """
-    # spm_col = "stroke_speed_avg"
-    # if is_egas_type:
-    #     hp_col = "hpe"
-    #     ht_col = "ht_egas"
-    # else:
-    #     hp_col = "hpu"
-    #     ht_col = "ht"
     # Get data from LOCF table so it's filled forward
-    sql = """
+    sql = f"""
     select
         power_unit,
         date_trunc('month', timestamp_utc) as month_date,
@@ -89,21 +84,11 @@ def get_time_series_data(c, power_unit_str: str, is_egas_type: bool) -> pd.DataF
         avg(agf_dis_temp_max) as agf_dis_temp_max_avg,
         avg(agf_dis_temp) as agf_dis_temp_avg
     from public.time_series_locf
-    where power_unit = '{}' {}
+    where timestamp_utc >= '{start_date_str}'
+        and timestamp_utc < '{end_date_str}'
+        and power_unit = '{power_unit_str}'
     group by power_unit, date_trunc('month', timestamp_utc)
     """
-    if c.DEV_TEST_PRD == "development":
-        # Recalculate all months
-        sql = sql.format(
-            power_unit_str,
-            "",
-        )
-    else:
-        # Only recalculate the current month
-        sql = sql.format(
-            power_unit_str,
-            "and timestamp_utc >= date_trunc('month', now())",
-        )
     columns, rows = run_query(
         c, sql, db="timescale", fetchall=True, raise_error=True, log_query=False
     )
@@ -113,87 +98,74 @@ def get_time_series_data(c, power_unit_str: str, is_egas_type: bool) -> pd.DataF
     return df
 
 
-def upsert_time_series_agg(c, power_unit_str: str, df: pd.DataFrame) -> bool:
+def get_distinct_months_for_power_unit(c, power_unit_str: str) -> list:
+    """Get the distinct months for a given power unit"""
+    sql = f"""
+        select
+            distinct date_trunc('month', timestamp_utc) as month_date
+        from public.time_series_locf
+        where power_unit = '{power_unit_str}'
+    """
+    columns, rows = run_query(
+        c, sql, db="timescale", fetchall=True, raise_error=True, log_query=False
+    )
+    df = pd.DataFrame(rows, columns=columns)
+    df["month_date"] = pd.to_datetime(df["month_date"])
+    return df["month_date"].to_list()
+
+
+def upsert_time_series_agg(
+    c, power_unit_str: str, month_date_str: str, df_month_date: pd.DataFrame
+) -> bool:
     """
     Upsert the time series aggregate data for a given power unit
     """
-    # Group by month_date with Pandas DataFrame
-    grouped_df = df.groupby("month_date")
-    num_months = grouped_df.ngroups
-    for index, (month_date, df_month_date) in enumerate(grouped_df):
-        month_date_str = month_date.strftime("%Y-%m-%d")
-        c.logger.info(
-            "Month %s of %s: %s - %s",
-            index + 1,
-            num_months,
-            power_unit_str,
-            month_date_str,
+    timestamp_utc_modified_str: str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Upsert seems to be faster than delete and insert
+    sql_upsert = (
+        f"""
+    INSERT INTO public.time_series_agg(
+        power_unit, month_date, timestamp_utc_modified, sample_size, stroke_speed_avg, hp_limit, hp_avg, mgp_avg, dgp_avg, agf_dis_temp_max_avg, agf_dis_temp_avg
+    )
+    VALUES (
+        '{power_unit_str}',
+        '{month_date_str}',
+        '{timestamp_utc_modified_str}',
+        {df_month_date['sample_size'].iloc[0]},
+        {df_month_date['stroke_speed_avg'].iloc[0]},
+        {df_month_date['hp_limit'].iloc[0]},
+        {df_month_date['hp_avg'].iloc[0]},
+        {df_month_date['mgp_avg'].iloc[0]},
+        {df_month_date['dgp_avg'].iloc[0]},
+        {df_month_date['agf_dis_temp_max_avg'].iloc[0]},
+        {df_month_date['agf_dis_temp_avg'].iloc[0]}
+    )
+    ON CONFLICT (power_unit, month_date) DO UPDATE
+    SET
+        timestamp_utc_modified = '{timestamp_utc_modified_str}',
+        sample_size = {df_month_date['sample_size'].iloc[0]},
+        stroke_speed_avg = {df_month_date['stroke_speed_avg'].iloc[0]},
+        hp_limit = {df_month_date['hp_limit'].iloc[0]},
+        hp_avg = {df_month_date['hp_avg'].iloc[0]},
+        mgp_avg = {df_month_date['mgp_avg'].iloc[0]},
+        dgp_avg = {df_month_date['dgp_avg'].iloc[0]},
+        agf_dis_temp_max_avg = {df_month_date['agf_dis_temp_max_avg'].iloc[0]},
+        agf_dis_temp_avg = {df_month_date['agf_dis_temp_avg'].iloc[0]}
+    """.replace(
+            "\n", " "
         )
-        # Do an upsert to update the data in the database
-        timestamp_utc_modified = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        # sql_delete = (
-        #     f"""
-        # DELETE FROM public.time_series_agg
-        # WHERE power_unit = '{power_unit_str}'
-        #     AND month_date = '{month_date_str}'
-        # """.replace(
-        #         "\n", " "
-        #     )
-        #     .replace("nan", "null")
-        #     .replace("None", "null")
-        # )
-        # run_query(
-        #     c,
-        #     sql_delete,
-        #     db="timescale",
-        #     commit=True,
-        #     raise_error=True,
-        #     log_query=False,
-        # )
-        # Upsert seems to be faster than delete and insert
-        sql_upsert = (
-            f"""
-        INSERT INTO public.time_series_agg(
-            power_unit, month_date, timestamp_utc_modified, sample_size, stroke_speed_avg, hp_limit, hp_avg, mgp_avg, dgp_avg, agf_dis_temp_max_avg, agf_dis_temp_avg
-        )
-        VALUES (
-            '{power_unit_str}',
-            '{month_date}',
-            '{timestamp_utc_modified}',
-            {df_month_date['sample_size'].iloc[0]},
-            {df_month_date['stroke_speed_avg'].iloc[0]},
-            {df_month_date['hp_limit'].iloc[0]},
-            {df_month_date['hp_avg'].iloc[0]},
-            {df_month_date['mgp_avg'].iloc[0]},
-            {df_month_date['dgp_avg'].iloc[0]},
-            {df_month_date['agf_dis_temp_max_avg'].iloc[0]},
-            {df_month_date['agf_dis_temp_avg'].iloc[0]}
-        )
-        ON CONFLICT (power_unit, month_date) DO UPDATE
-        SET
-            timestamp_utc_modified = '{timestamp_utc_modified}',
-            sample_size = {df_month_date['sample_size'].iloc[0]},
-            stroke_speed_avg = {df_month_date['stroke_speed_avg'].iloc[0]},
-            hp_limit = {df_month_date['hp_limit'].iloc[0]},
-            hp_avg = {df_month_date['hp_avg'].iloc[0]},
-            mgp_avg = {df_month_date['mgp_avg'].iloc[0]},
-            dgp_avg = {df_month_date['dgp_avg'].iloc[0]},
-            agf_dis_temp_max_avg = {df_month_date['agf_dis_temp_max_avg'].iloc[0]},
-            agf_dis_temp_avg = {df_month_date['agf_dis_temp_avg'].iloc[0]}
-        """.replace(
-                "\n", " "
-            )
-            .replace("nan", "null")
-            .replace("None", "null")
-        )
-        run_query(
-            c,
-            sql_upsert,
-            db="timescale",
-            commit=True,
-            raise_error=True,
-            log_query=False,
-        )
+        .replace("nan", "null")
+        .replace("None", "null")
+    )
+    run_query(
+        c,
+        sql_upsert,
+        db="timescale",
+        commit=True,
+        raise_error=True,
+        log_query=False,
+    )
 
     return True
 
@@ -218,19 +190,42 @@ def main(c) -> bool:
             "EGAS type" if is_egas_type else "UNO type",
         )
 
-        df: pd.DataFrame = get_time_series_data(
-            c, power_unit_str=power_unit_str, is_egas_type=is_egas_type
-        )
-        if df.empty:
-            c.logger.warning(
-                "No data found for power unit '%s'",
+        month_dates: list = get_distinct_months_for_power_unit(c, power_unit_str)
+        num_months = len(month_dates)
+        for index, month_date in enumerate(month_dates):
+            month_date_str = month_date.strftime("%Y-%m-%d")
+            next_month_date = month_date + pd.DateOffset(months=1)
+            next_month_date_str = next_month_date.strftime("%Y-%m-%d")
+            c.logger.info(
+                "Month %s of %s: %s - %s",
+                index + 1,
+                num_months,
                 power_unit_str,
+                month_date_str,
             )
-            continue
 
-        upsert_time_series_agg(c=c, power_unit_str=power_unit_str, df=df)
+            df_month_date: pd.DataFrame = get_time_series_data(
+                c,
+                power_unit_str=power_unit_str,
+                start_date_str=month_date_str,
+                end_date_str=next_month_date_str,
+            )
+            if df_month_date.empty:
+                c.logger.warning(
+                    "No data found for power unit '%s'",
+                    power_unit_str,
+                )
+                continue
 
-        # Give other apps a chance to run
+            # Do an upsert to update the data in the database
+            upsert_time_series_agg(
+                c=c,
+                power_unit_str=power_unit_str,
+                month_date_str=month_date_str,
+                df_month_date=df_month_date,
+            )
+
+        # Give other apps a chance to run after each power unit
         time.sleep(0.5)
 
     c.logger.info("All done!")
