@@ -143,6 +143,7 @@ def run_query(
     execute=True,
     raise_error: bool = False,
     values_dict: dict = None,
+    log_query: bool = True,
 ) -> Tuple[List, List]:
     """Run and time the SQL query"""
 
@@ -156,7 +157,8 @@ def run_query(
 
     # with conn.cursor(cursor_factory=DictCursor) as cursor:
     with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-        c.logger.info("Running query now... SQL to run: \n%s", sql)
+        if log_query:
+            c.logger.info("Running query now... SQL to run: \n%s", sql)
         time_start = time.time()
         if execute:
             try:
@@ -173,7 +175,9 @@ def run_query(
                     rows = cursor.fetchall()
 
     time_finish = time.time()
-    c.logger.info(f"Time to execute query: {round(time_finish - time_start)} seconds")
+    execution_time = round(time_finish - time_start, 1)
+    if execution_time > 10:
+        c.logger.info(f"Time to execute query: {execution_time} seconds")
 
     if is_close_conn:
         conn.close()
