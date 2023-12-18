@@ -3,7 +3,7 @@ This script recalculates some aggregated data on a daily basis, for performance 
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, date
 import logging
 import pathlib
 import sys
@@ -199,7 +199,12 @@ def main(c) -> bool:
             "EGAS type" if is_egas_type else "UNO type",
         )
 
-        month_dates: list = get_distinct_months_for_power_unit(c, power_unit_str)
+        if c.DEV_TEST_PRD == "production":
+            # If in production, only recalculate the latest month
+            month_dates: list = [date.today().replace(day=1)]
+        else:
+            month_dates: list = get_distinct_months_for_power_unit(c, power_unit_str)
+
         num_months = len(month_dates)
         for index, month_date in enumerate(month_dates):
             month_date_str = month_date.strftime("%Y-%m-%d")
