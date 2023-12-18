@@ -30,29 +30,31 @@
     // Uncomment the next line to use a non-root user. See https://aka.ms/vscode-remote/containers/non-root-user.
     // "runArgs": [ "-u", "1000" ],
     // "runArgs": ["-u", "vscode"],
-    "extensions": [
-		"ms-python.python",
-		"dbaeumer.vscode-eslint",
-		"ms-azuretools.vscode-docker",
-		"GitHub.copilot",
-		"ms-toolsai.jupyter"
-	],
-    "settings": {
-        "python.pythonPath": "/app/venv/bin/python",
-        "python.linting.pylintEnabled": true,
-        "python.linting.enabled": true,
-        "remote.extensionKind": {
-            "ms-azuretools.vscode-docker": "workspace"
-        },
-        // "macros": {  // requires macros extension by publisher:"geddski"
-        // 	"pythonExecSelectionAndCursorDown": [
-        // 		"python.execSelectionInTerminal",
-        // 		//"vscode.window.activeTextEditor.show()",
-        // 		"cursorDown"
-        // 	]
-        // },
-        "git.enableSmartCommit": true,
-        "git.autofetch": true,
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "dbaeumer.vscode-eslint",
+                "ms-azuretools.vscode-docker",
+                "GitHub.copilot",
+                "ms-toolsai.jupyter"
+            ],
+            "settings": {
+                "python.pythonPath": "/app/venv/bin/python",
+                "remote.extensionKind": {
+                    "ms-azuretools.vscode-docker": "workspace"
+                },
+                // "macros": {  // requires macros extension by publisher:"geddski"
+                // 	"pythonExecSelectionAndCursorDown": [
+                // 		"python.execSelectionInTerminal",
+                // 		//"vscode.window.activeTextEditor.show()",
+                // 		"cursorDown"
+                // 	]
+                // },
+                "git.enableSmartCommit": true,
+                "git.autofetch": true
+            }
+        }
     },
     // Run commands after the container is created.
     // "postCreateCommand": "cd /workspaces/upload_to_aws/client && npm install && npm run build"
