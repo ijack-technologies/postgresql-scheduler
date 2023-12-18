@@ -82,7 +82,9 @@ def get_time_series_data(
         avg(dgp) as dgp_avg,
         --Max discharge temperature before derates (C)
         avg(agf_dis_temp_max) as agf_dis_temp_max_avg,
-        avg(agf_dis_temp) as agf_dis_temp_avg
+        avg(agf_dis_temp) as agf_dis_temp_avg,
+        avg(dtp) as dtp_avg,
+        avg(dtp_max) as dtp_max_avg
     from public.time_series_locf
     where timestamp_utc >= '{start_date_str}'
         and timestamp_utc < '{end_date_str}'
@@ -126,7 +128,10 @@ def upsert_time_series_agg(
     sql_upsert = (
         f"""
     INSERT INTO public.time_series_agg(
-        power_unit, month_date, timestamp_utc_modified, sample_size, stroke_speed_avg, hp_limit, hp_avg, mgp_avg, dgp_avg, agf_dis_temp_max_avg, agf_dis_temp_avg
+        power_unit, month_date, timestamp_utc_modified, sample_size,
+        stroke_speed_avg, hp_limit, hp_avg, mgp_avg, dgp_avg,
+        agf_dis_temp_max_avg, agf_dis_temp_avg,
+        dtp_avg, dtp_max_avg
     )
     VALUES (
         '{power_unit_str}',
@@ -139,7 +144,9 @@ def upsert_time_series_agg(
         {df_month_date['mgp_avg'].iloc[0]},
         {df_month_date['dgp_avg'].iloc[0]},
         {df_month_date['agf_dis_temp_max_avg'].iloc[0]},
-        {df_month_date['agf_dis_temp_avg'].iloc[0]}
+        {df_month_date['agf_dis_temp_avg'].iloc[0]},
+        {df_month_date['dtp_avg'].iloc[0]},
+        {df_month_date['dtp_max_avg'].iloc[0]}
     )
     ON CONFLICT (power_unit, month_date) DO UPDATE
     SET
@@ -151,7 +158,9 @@ def upsert_time_series_agg(
         mgp_avg = {df_month_date['mgp_avg'].iloc[0]},
         dgp_avg = {df_month_date['dgp_avg'].iloc[0]},
         agf_dis_temp_max_avg = {df_month_date['agf_dis_temp_max_avg'].iloc[0]},
-        agf_dis_temp_avg = {df_month_date['agf_dis_temp_avg'].iloc[0]}
+        agf_dis_temp_avg = {df_month_date['agf_dis_temp_avg'].iloc[0]},
+        dtp_avg = {df_month_date['dtp_avg'].iloc[0]},
+        dtp_max_avg = {df_month_date['dtp_max_avg'].iloc[0]}
     """.replace(
             "\n", " "
         )

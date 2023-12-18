@@ -4,7 +4,6 @@
     "name": "postgresql_scheduler",
     // Path that the Docker build should be run from relative to devcontainer.json.
     // For example, a value of ".." would allow you to reference content in sibling directories. Defaults to "."
-    "context": "..",
     // Use either the Dockerfile or docker-compose.yml to create the Docker container
     // "dockerFile": "Dockerfile",
     "dockerComposeFile": "docker-compose.yml",
