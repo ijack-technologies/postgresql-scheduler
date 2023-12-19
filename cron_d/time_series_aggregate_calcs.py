@@ -200,6 +200,7 @@ def main(c) -> bool:
         )
 
         if c.DEV_TEST_PRD == "production":
+            # if True:
             # If in production, only recalculate the latest month
             month_dates: list = [date.today().replace(day=1)]
         else:

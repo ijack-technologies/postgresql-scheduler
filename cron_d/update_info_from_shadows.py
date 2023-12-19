@@ -659,7 +659,7 @@ def set_install_date_on_run_hours(
     hours = reported.get("HOURS", None)
     # Operating hours from the previous run, which were stored in the public.gw_info table
     hours_previous = gw_dict.get("hours", None)
-    structure_install_date = gw_dict.get("structure_install_date", None)
+    structure_install_date: date = gw_dict.get("structure_install_date", None)
 
     if hours == hours_previous:
         # The operating hours haven't changed, so don't do anything
@@ -675,24 +675,28 @@ def set_install_date_on_run_hours(
 
     if 0 < hours_previous < 100 and hours >= 100:
         # The operating hours just passed 100, so set the install date to "hours" hours ago
-        new_install_date: str = (datetime.utcnow() - timedelta(hours=hours)).strftime(
-            "%Y-%m-%d"
-        )
+        new_install_date: date = (datetime.utcnow() - timedelta(hours=hours)).date()
+        new_install_date_str: str = new_install_date.strftime("%Y-%m-%d")
         sql = f"""
             update public.structures
-            set structure_install_date = '{new_install_date}'
+            set structure_install_date = '{new_install_date_str}'
             where id = {structure_id}
         """
         run_query(c, sql, db="ijack", fetchall=False, commit=True, conn=conn)
 
         # Send an email alert
         days_ago: float = round(hours / 24, 1)
+        if structure_install_date == new_install_date:
+            date_change_str: str = f"Its startup date is still '{structure_install_date}' ({days_ago} days ago)."
+        else:
+            date_change_str: str = f"Its startup date has been changed from '{structure_install_date}' to '{new_install_date_str}' ({hours} hours or {days_ago} days ago)."
+
         html = f"""
             <html>
             <body>
 
             <p>Power unit '{power_unit_shadow}' just passed 100 operating hours! It's at {hours} now, previously {hours_previous}.</p>
-            <p>Its install date has been changed from '{structure_install_date}' to '{new_install_date}' ({hours} hours or {days_ago} days ago).</p>
+            <p>{date_change_str}</p>
             <p>Check it out!</p>
             <ul>
                 <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/admin/structures/?flt1_id_equals={structure_id}</a></li>
