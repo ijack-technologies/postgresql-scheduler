@@ -963,6 +963,8 @@ def main(c: Config, commit: bool = False):
             html += f"\n<p><b>Edit the data in the 'Admin' site:</b></p>"
             html += "\n<ul>"
             html += f'\n<li>Structures table at <a href="https://myijack.com/admin/structures/?search={power_unit_shadow}">https://myijack.com/admin/structures/?search={power_unit_shadow}</a></li>'
+            html += f'\n<li>Power unit <b><em>new</em></b> table at <a href="https://myijack.com/admin/power_units/?search={power_unit_shadow}">https://myijack.com/admin/power_units/?search={power_unit_shadow}</a></li>'
+            html += f'\n<li>Power unit <b><em>old</em></b> table at <a href="https://myijack.com/admin/power_units/?search={power_unit_gw}">https://myijack.com/admin/power_units/?search={power_unit_gw}</a></li>'
             html += f'\n<li>Gateways table for <b><em>new</em></b> gateway "{aws_thing}" at <a href="https://myijack.com/admin/gateways/?search={aws_thing}">https://myijack.com/admin/gateways/?search={aws_thing}</a></li>'
             html += f'\n<li>Gateways table for <b><em>old</em></b> gateway "{gateway_already_linked}" at <a href="https://myijack.com/admin/gateways/?search={gateway_already_linked}">https://myijack.com/admin/gateways/?search={gateway_already_linked}</a></li>'
             html += "\n</ul>"
