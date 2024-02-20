@@ -111,13 +111,14 @@ class TestAll(unittest.TestCase):
         html = update_info_from_shadows.get_html(power_unit_shadow, sql_update, dict_)
 
         # mock_send_mailgun_email.assert_called_once()
-        mock_send_mailgun_email.assert_called_once_with(
-            c,
-            text="",
-            html=html,
-            emailees_list=["smccarthy@myijack.com"],
-            subject="NOT updating GPS in structures table - just testing!",
-        )
+        # mock_send_mailgun_email.assert_called_once_with(
+        #     c,
+        #     text="",
+        #     html=html,
+        #     emailees_list=["smccarthy@myijack.com"],
+        #     subject="NOT updating GPS in structures table - just testing!",
+        # )
+        mock_send_mailgun_email.assert_not_called()
 
     @patch("cron_d.update_info_from_shadows.send_mailgun_email")
     @patch("cron_d.update_info_from_shadows.run_query")
@@ -193,7 +194,8 @@ class TestAll(unittest.TestCase):
             aws_thing=aws_thing_ging,
         )
 
-        mock_send_mailgun_email.assert_called_once()
+        # mock_send_mailgun_email.assert_called_once()
+        mock_send_mailgun_email.assert_not_called()
         self.assertTrue(mock_run_query.call_count == 2)
 
         # Run the test a second time, with a smaller change, and assert it doesn't trigger an update
@@ -320,7 +322,9 @@ class TestAll(unittest.TestCase):
         mock_get_structure_records.assert_called_once()
         mock_get_device_shadows_in_threadpool.assert_called_once()
         mock_get_client_iot.assert_called_once()
-        self.assertEqual(mock_send_mailgun_email.call_count, 6)
+
+        # self.assertEqual(mock_send_mailgun_email.call_count, 6)
+        self.assertEqual(mock_send_mailgun_email.call_count, 2)
 
         self.assertEqual(mock_run_query.call_count, 10)
         mock_upsert_gw_info.assert_called()

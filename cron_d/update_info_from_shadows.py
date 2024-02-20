@@ -190,16 +190,16 @@ def update_structures_table_gps(
         aws_thing=aws_thing,
     )
 
-    html = get_html(power_unit_shadow, sql_update, dict_)
+    # # Just send a warning instead of auto-updating?
+    # if commit:
+    #     subject = "PostgreSQL Scheduler updating GPS in structures table!"
+    # else:
+    #     subject = "NOT updating GPS in structures table - just testing!"
+    # html = get_html(power_unit_shadow, sql_update, dict_)
+    # send_mailgun_email(
+    #     c, text="", html=html, emailees_list=c.EMAIL_LIST_DEV, subject=subject
+    # )
 
-    # Just send a warning instead of auto-updating?
-    if commit:
-        subject = "PostgreSQL Scheduler updating GPS in structures table!"
-    else:
-        subject = "NOT updating GPS in structures table - just testing!"
-    send_mailgun_email(
-        c, text="", html=html, emailees_list=c.EMAIL_LIST_DEV, subject=subject
-    )
     # Don't run this automatically since it undoes my manual updates with the
     # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
     run_query(c, sql_update, db="ijack", fetchall=False, execute=execute, commit=commit)
