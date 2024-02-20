@@ -36,7 +36,7 @@ class TestAll(unittest.TestCase):
         global c
         c.DEV_TEST_PRD = "development"
         # This c.TEST_FUNC just disables SMS, email, and phone call alerts
-        c.TEST_FUNC = True
+        c.TEST_FUNC = False
 
     @patch("cron_d.update_info_from_shadows.exit_if_already_running")
     def test_update_info_from_shadows(self, mock_exit_if_already_running):
