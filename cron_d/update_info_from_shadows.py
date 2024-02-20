@@ -1,14 +1,15 @@
-from datetime import date, datetime, timedelta
 import logging
 import pathlib
-import time
-import sys
 import pprint
-from typing import Tuple
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import date, datetime, timedelta
+from math import atan2, cos, radians, sin, sqrt
+from typing import Tuple
+
 import pytz
 from psycopg2 import connect as psycopg2_connect
-from numbers import Number
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = str(pathlib.Path(__file__).parent.parent)
@@ -82,21 +83,24 @@ aws_thing = {aws_thing}
 
 def get_sql_update(
     c,
-    column,
-    new_value,
-    db_value,
-    power_unit_id,
-    dict_,
+    gps_lat_new: float,
+    gps_lat_old: float,
+    gps_lon_new: float,
+    gps_lon_old: float,
+    power_unit_id: int,
+    dict_: dict,
     power_unit_shadow,
     structure,
-    aws_thing,
+    aws_thing: str,
 ):
     """Get the SQL for updating the structures table"""
 
     update_sql = f"""
         update public.structures
-        set {column} = {new_value}
-        -- previous value = {db_value}
+        set gps_lat = {gps_lat_new},
+            gps_lon = {gps_lon_new}
+        -- previous gps_lat = {gps_lat_old}
+        -- previous gps_lon = {gps_lon_old}
         where power_unit_id = {power_unit_id};"""
 
     # Just for logging
@@ -148,15 +152,16 @@ def get_html(power_unit_shadow, sql_update, dict_):
     return html
 
 
-def update_structures_table(
+def update_structures_table_gps(
     c,
     power_unit_id: int,
     power_unit_shadow: int,
-    column: str,
-    new_value,
+    gps_lat_new: float,
+    gps_lat_old: float,
+    gps_lon_new: float,
+    gps_lon_old: float,
     structure: int,
     aws_thing: str,
-    db_value,
     # for testing
     execute: bool = True,
     commit: bool = False,
@@ -174,14 +179,15 @@ def update_structures_table(
 
     sql_update = get_sql_update(
         c,
-        column,
-        new_value,
-        db_value,
-        power_unit_id,
-        dict_,
-        power_unit_shadow,
-        structure,
-        aws_thing,
+        gps_lat_new=gps_lat_new,
+        gps_lat_old=gps_lat_old,
+        gps_lon_new=gps_lon_new,
+        gps_lon_old=gps_lon_old,
+        power_unit_id=power_unit_id,
+        dict_=dict_,
+        power_unit_shadow=power_unit_shadow,
+        structure=structure,
+        aws_thing=aws_thing,
     )
 
     html = get_html(power_unit_shadow, sql_update, dict_)
@@ -201,51 +207,90 @@ def update_structures_table(
     return None
 
 
-def compare_shadow_and_db(
+def geodesic(
+    lat1_dec: float, lon1_dec: float, lat2_dec: float, lon2_dec: float
+) -> float:
+    """
+    Calculate the distance between two GPS coordinates.
+    The incoing lat and lon values are in decimal format.
+    They need to be converted to radians before using the Haversine formula.
+    The radians function needs positive values, so we use the abs() function.
+    https://stackoverflow.com/a/19412565/3385948
+    """
+    lat1 = radians(abs(lat1_dec))
+    lon1 = radians(abs(lon1_dec))
+    lat2 = radians(abs(lat2_dec))
+    lon2 = radians(abs(lon2_dec))
+
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    # Radius of Earth in kilometers = 6371.0
+    distance = 6371.0 * c
+
+    return distance
+
+
+def calc_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """
+    Calculate the distance between two GPS coordinates
+    https://stackoverflow.com/a/43211266/3385948
+    """
+    try:
+        km = geodesic(lat1, lon1, lat2, lon2)
+    except ValueError:
+        km = None
+
+    return km
+
+
+def compare_shadow_and_db_gps(
     c,
-    shadow_value: float,
-    db_value: float,
-    db_column: str,
+    lat_shadow_float: float,
+    lat_db_float: float,
+    lon_shadow_float: float,
+    lon_db_float: float,
     power_unit_id: int,
     power_unit_shadow: int,
     structure: int,
     aws_thing: str,
-    allow_zero: bool = False,
     commit: bool = False,
-):
+) -> None:
     """
     Compare the shadow and database values,
     and if they're significantly different, update the database
     """
-    if not shadow_value:
-        return None
 
-    if not allow_zero and shadow_value == 0:
-        return None
-
-    db_value = 0 if db_value is None else db_value
-    # Convert to floats so we can compare them mathematically
-    try:
-        shadow_value = float(shadow_value)
-        db_value = db_value if isinstance(db_value, Number) else float(db_value)
-    except Exception:
-        c.logger.error(
-            f"Error converting either shadow_value '{shadow_value}' or db_value '{db_value}' to float"
+    if (
+        lat_shadow_float
+        and lon_shadow_float
+        and str(lat_shadow_float)[:7] != "50.1631"
+        and str(lon_shadow_float)[:7] != "101.675"
+    ):
+        km: float = calc_distance(
+            lat1=lat_shadow_float,
+            lon1=lon_shadow_float,
+            lat2=lat_db_float,
+            lon2=lon_db_float,
         )
-        return None
+        if isinstance(km, float) and km > 0.01:
+            # The GPS is more than 10 meters away from the structure's GPS
+            update_structures_table_gps(
+                c=c,
+                power_unit_id=power_unit_id,
+                power_unit_shadow=power_unit_shadow,
+                gps_lat_new=lat_shadow_float,
+                gps_lat_old=lat_db_float,
+                gps_lon_new=lon_shadow_float,
+                gps_lon_old=lon_db_float,
+                structure=structure,
+                aws_thing=aws_thing,
+                commit=commit,
+            )
 
-    if abs(shadow_value - db_value) > 0.01:
-        update_structures_table(
-            c,
-            power_unit_id,
-            power_unit_shadow,
-            db_column,
-            shadow_value,
-            structure,
-            aws_thing,
-            db_value,
-            commit=commit,
-        )
+    return None
 
 
 def is_power_unit_already_in_use(c, power_unit_id: int) -> Tuple[bool, str]:
@@ -837,38 +882,18 @@ def main(c: Config, commit: bool = False):
                 if row["power_unit_id"] == power_unit_id_gw
             ]
             for row in structure_rows_relevant:
-                structure = row["structure"]
-                customer = row["customer"]
-
-                # GPS latitude
-                if (
-                    latitude_shadow and str(latitude_shadow)[:7] != "50.1631"
-                ):  # IJACK SHOP GPS
-                    compare_shadow_and_db(
+                if latitude_shadow and longitude_shadow:
+                    # There are new GPS coordinates in the shadow, even if the database is empty
+                    compare_shadow_and_db_gps(
                         c,
-                        latitude_shadow,
-                        row["gps_lat"],
-                        "gps_lat",
-                        power_unit_id_gw,
-                        power_unit_shadow,
-                        structure,
-                        aws_thing,
-                        commit=commit,
-                    )
-
-                # GPS longitude
-                if (
-                    longitude_shadow and str(longitude_shadow)[:7] != "101.675"
-                ):  # IJACK SHOP GPS
-                    compare_shadow_and_db(
-                        c,
-                        longitude_shadow,
-                        row["gps_lon"],
-                        "gps_lon",
-                        power_unit_id_gw,
-                        power_unit_shadow,
-                        structure,
-                        aws_thing,
+                        lat_shadow_float=float(latitude_shadow),
+                        lat_db_float=float(row["gps_lat"] or 0.0),
+                        lon_shadow_float=float(longitude_shadow),
+                        lon_db_float=float(row["gps_lon"] or 0.0),
+                        power_unit_id=power_unit_id_gw,
+                        power_unit_shadow=power_unit_shadow,
+                        structure=row["structure"],
+                        aws_thing=aws_thing,
                         commit=commit,
                     )
 

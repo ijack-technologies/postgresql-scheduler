@@ -62,11 +62,12 @@ class TestAll(unittest.TestCase):
 
         power_unit_id = 313
         power_unit_shadow = 200476
-        column = "gps_lon"
-        new_value = -190.01567895242
+        gps_lon_new = -121.0
+        gps_lon_old = -120.0
+        gps_lat_new = 51.0
+        gps_lat_old = 51.0
         structure = 190619
         aws_thing = "1000051"
-        db_value = -120.09023308333333
 
         sql_get_info_str = update_info_from_shadows.sql_get_info(
             c, power_unit_id, power_unit_shadow, structure, aws_thing
@@ -82,11 +83,12 @@ class TestAll(unittest.TestCase):
             c,
             power_unit_id=power_unit_id,
             power_unit_shadow=power_unit_shadow,
-            column=column,
-            new_value=new_value,
+            gps_lat_new=gps_lat_new,
+            gps_lat_old=gps_lat_old,
+            gps_lon_new=gps_lon_new,
+            gps_lon_old=gps_lon_old,
             structure=structure,
             aws_thing=aws_thing,
-            db_value=db_value,
             # Testing only
             execute=False,
             commit=False,
@@ -95,14 +97,15 @@ class TestAll(unittest.TestCase):
         dict_ = rows[0]
         sql_update = update_info_from_shadows.get_sql_update(
             c,
-            column,
-            new_value,
-            db_value,
-            power_unit_id,
-            dict_,
-            power_unit_shadow,
-            structure,
-            aws_thing,
+            gps_lat_new=gps_lat_new,
+            gps_lat_old=gps_lat_old,
+            gps_lon_new=gps_lon_new,
+            gps_lon_old=gps_lon_old,
+            power_unit_id=power_unit_id,
+            dict_=dict_,
+            power_unit_shadow=power_unit_shadow,
+            structure=structure,
+            aws_thing=aws_thing,
         )
 
         html = update_info_from_shadows.get_html(power_unit_shadow, sql_update, dict_)
@@ -118,8 +121,8 @@ class TestAll(unittest.TestCase):
 
     @patch("cron_d.update_info_from_shadows.send_mailgun_email")
     @patch("cron_d.update_info_from_shadows.run_query")
-    def test_compare_shadow_and_db(self, mock_run_query, mock_send_mailgun_email):
-        """Test that a small change will trigger an update"""
+    def test_compare_shadow_and_db_gps(self, mock_run_query, mock_send_mailgun_email):
+        """Test that a small change in GPS will trigger an update"""
         global c
         structure_ging = 10002
         power_unit_ging = 10002
@@ -173,11 +176,17 @@ class TestAll(unittest.TestCase):
             )
         ]
 
-        update_info_from_shadows.compare_shadow_and_db(
+        km = update_info_from_shadows.calc_distance(
+            lat1=51.0, lon1=-108.0, lat2=51.0, lon2=-108.01001
+        )
+        self.assertGreater(km, 0.01)
+
+        update_info_from_shadows.compare_shadow_and_db_gps(
             c=c,
-            shadow_value=-108.01001,
-            db_value=-108.0,
-            db_column="gps_lon",
+            lat_shadow_float=51.0,
+            lat_db_float=51.0,
+            lon_shadow_float=-108.01001,
+            lon_db_float=-108.0,
             power_unit_id=power_unit_ging_id,
             power_unit_shadow=power_unit_ging,
             structure=structure_ging,
@@ -191,11 +200,17 @@ class TestAll(unittest.TestCase):
         mock_send_mailgun_email.reset_mock()
         mock_run_query.reset_mock()
 
-        update_info_from_shadows.compare_shadow_and_db(
+        km = update_info_from_shadows.calc_distance(
+            lat1=51.0, lon1=-108.0, lat2=51.0, lon2=-108.00009
+        )
+        self.assertLess(km, 0.01)
+
+        update_info_from_shadows.compare_shadow_and_db_gps(
             c=c,
-            shadow_value=-108.009,
-            db_value=-108.0,
-            db_column="gps_lon",
+            lat_shadow_float=51.0,
+            lat_db_float=51.0,
+            lon_shadow_float=-108.00009,
+            lon_db_float=-108.0,
             power_unit_id=power_unit_ging_id,
             power_unit_shadow=power_unit_ging,
             structure=structure_ging,
@@ -305,9 +320,9 @@ class TestAll(unittest.TestCase):
         mock_get_structure_records.assert_called_once()
         mock_get_device_shadows_in_threadpool.assert_called_once()
         mock_get_client_iot.assert_called_once()
-        self.assertEqual(mock_send_mailgun_email.call_count, 31)
+        self.assertEqual(mock_send_mailgun_email.call_count, 6)
 
-        self.assertEqual(mock_run_query.call_count, 60)
+        self.assertEqual(mock_run_query.call_count, 10)
         mock_upsert_gw_info.assert_called()
 
         # Run the test a second time, with a smaller change, and assert it doesn't trigger an update
@@ -315,11 +330,17 @@ class TestAll(unittest.TestCase):
         mock_run_query.reset_mock()
         mock_upsert_gw_info.reset_mock()
 
-        update_info_from_shadows.compare_shadow_and_db(
+        km = update_info_from_shadows.calc_distance(
+            lat1=51.0, lon1=-108.0, lat2=51.0, lon2=-108.00009
+        )
+        self.assertLess(km, 0.01)
+
+        update_info_from_shadows.compare_shadow_and_db_gps(
             c=c,
-            shadow_value=-108.009,
-            db_value=-108.0,
-            db_column="gps_lon",
+            lat_shadow_float=51.0,
+            lat_db_float=51.0,
+            lon_shadow_float=-108.00009,
+            lon_db_float=-108.0,
             power_unit_id=power_unit_ging_id,
             power_unit_shadow=power_unit_ging,
             structure=structure_ging,
