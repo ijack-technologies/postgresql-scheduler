@@ -18,7 +18,6 @@ except ValueError:
 from cron_d import time_series_aggregate_calcs
 from cron_d.utils import Config, configure_logging
 
-
 LOGFILE_NAME = "real_time_series_aggregate_calcs"
 
 c = Config()

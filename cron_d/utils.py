@@ -1,3 +1,4 @@
+import datetime
 import functools
 import json
 import logging
@@ -8,19 +9,17 @@ import signal
 import subprocess
 import sys
 import time
-import datetime
+import traceback
 from logging.handlers import TimedRotatingFileHandler
 from subprocess import PIPE, STDOUT
-import traceback
-from typing import Tuple, List
+from typing import List, Tuple
 
 import boto3
 import psycopg2
+import pytz
 import requests
 from psycopg2.extras import RealDictCursor
 from twilio.rest import Client
-import pytz
-
 
 LOG_LEVEL = logging.INFO
 # logger = logging.getLogger(__name__)

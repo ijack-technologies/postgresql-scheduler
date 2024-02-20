@@ -2,11 +2,10 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-from datetime import datetime
 import sys
 import unittest
+from datetime import datetime
 from unittest.mock import patch
-
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -16,11 +15,12 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-from cron_d import alarm_log_delete_duplicates
-
 # import alarm_log_mv_refresh_old_non_surface
-from cron_d import alarm_log_mv_refresh
-from cron_d import time_series_mv_refresh
+from cron_d import (
+    alarm_log_delete_duplicates,
+    alarm_log_mv_refresh,
+    time_series_mv_refresh,
+)
 
 # local imports
 from cron_d.utils import Config, configure_logging
@@ -43,7 +43,6 @@ c.logger = configure_logging(
 
 
 class TestAll(unittest.TestCase):
-
     # # executed after each test
     # def tearDown(self):
     #     pass

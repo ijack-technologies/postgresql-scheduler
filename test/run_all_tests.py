@@ -1,5 +1,5 @@
-import unittest
 import sys
+import unittest
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"

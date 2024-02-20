@@ -2,11 +2,12 @@
 This script recalculates some aggregated data on a daily basis, for performance calculations.
 """
 
-import time
-from datetime import datetime, date
 import logging
 import pathlib
 import sys
+import time
+from datetime import date, datetime
+
 import pandas as pd
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy

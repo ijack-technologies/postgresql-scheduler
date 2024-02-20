@@ -15,7 +15,6 @@ except ValueError:
 
 from cron_d import timescaledb_restart_background_workers
 
-
 # local imports
 from cron_d.utils import Config, configure_logging
 
@@ -29,7 +28,6 @@ c.logger = configure_logging(
 
 
 class TestAll(unittest.TestCase):
-
     # executed prior to each test below, not just when the class is initialized
     def setUp(self):
         global c

@@ -2,18 +2,17 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-from pathlib import Path
 import pickle
 import sys
-from typing import OrderedDict
-from datetime import date
+import time
 import unittest
-from unittest.mock import patch, MagicMock
+from datetime import date
+from pathlib import Path
+from typing import OrderedDict, Tuple
+from unittest.mock import MagicMock, patch
 
 # from psycopg2.extras import DictCursor
 from psycopg2.sql import SQL, Literal
-import time
-from typing import Tuple
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -23,8 +22,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 from cron_d import update_info_from_shadows
-from cron_d.utils import Config, configure_logging, run_query, get_conn
-
+from cron_d.utils import Config, configure_logging, get_conn, run_query
 
 LOGFILE_NAME = "test_main_programs"
 
@@ -50,7 +48,7 @@ class TestAll(unittest.TestCase):
 
     @patch("cron_d.update_info_from_shadows.send_mailgun_email")
     @patch("cron_d.update_info_from_shadows.run_query")
-    def test_update_structures_table(
+    def test_update_structures_table_gps(
         self,
         mock_run_query,
         mock_send_mailgun_email,
@@ -80,7 +78,7 @@ class TestAll(unittest.TestCase):
         mock_run_query.return_value = (["col1", "col2"], rows)
 
         # Run the main function we're testing
-        update_info_from_shadows.update_structures_table(
+        update_info_from_shadows.update_structures_table_gps(
             c,
             power_unit_id=power_unit_id,
             power_unit_shadow=power_unit_shadow,

@@ -2,9 +2,9 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-from datetime import datetime, timedelta
 import sys
 import unittest
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
@@ -42,7 +42,6 @@ c.logger = configure_logging(
 
 
 class TestAll(unittest.TestCase):
-
     # # executed after each test
     # def tearDown(self):
     #     pass

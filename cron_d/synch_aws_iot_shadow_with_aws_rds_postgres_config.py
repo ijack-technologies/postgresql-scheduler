@@ -2,8 +2,8 @@
 import json
 import logging
 import pathlib
-import time
 import sys
+import time
 from decimal import Decimal
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy

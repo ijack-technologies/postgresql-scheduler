@@ -18,7 +18,6 @@ except ValueError:
 from cron_d import time_series_mv_refresh
 from cron_d.utils import Config, configure_logging
 
-
 LOGFILE_NAME = "test_main_programs"
 
 c = Config()
