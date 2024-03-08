@@ -245,6 +245,10 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         # Replace the original group with the sorted and filled group
         df.loc[df["power_unit"] == power_unit, :] = sorted_group
 
+    # Change data types to match the database table
+    # Change signal to smallint in postgres. Must be 'Int64' in pandas to allow for NaNs
+    df["signal"] = df["signal"].astype("Int64")
+
     c.logger.info("Initializing a string buffer of the CSV data...")
     time_start = time.time()
     sio = StringIO()
