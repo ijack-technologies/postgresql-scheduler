@@ -763,8 +763,8 @@ def set_install_date_on_run_hours(
             <p>{date_change_str}</p>
             <p>Check it out!</p>
             <ul>
-                <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/admin/structures/?flt1_id_equals={structure_id}</a></li>
-                <li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow_str}">https://myijack.com/rcom/?power_unit={power_unit_shadow_str}</a></li>
+                <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/<span style="background-color: yellow;">admin</span>/structures/?flt1_id_equals={structure_id}</a></li>
+                <li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow_str}">https://myijack.com/<span style="background-color: yellow;">rcom</span>/?power_unit={power_unit_shadow_str}</a></li>
             </ul>
 
             </body>
@@ -879,7 +879,7 @@ def main(c: Config, commit: bool = False):
                 )
                 continue
 
-            # Set the install date once the operating hours pass 100
+            # Set the install date once the operating hours pass 100, and inform the team
             set_install_date_on_run_hours(
                 c, power_unit_shadow_str, structure_id, gw_dict, reported, conn
             )

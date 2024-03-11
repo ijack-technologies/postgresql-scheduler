@@ -571,6 +571,9 @@ class TestAll(unittest.TestCase):
     ):
         """Test that we can set the install date on run hours"""
         c: Config = Config()
+        c.logger = configure_logging(
+            __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+        )
         c.TEST_FUNC = False
         c.DEV_TEST_PRD = "development"
 
