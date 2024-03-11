@@ -143,6 +143,8 @@ def run_query(
     raise_error: bool = False,
     values_dict: dict = None,
     log_query: bool = True,
+    # No need to convert to list of dicts, since we're using RealDictCursor
+    # as_list_of_dicts: bool = False,
 ) -> Tuple[List, List]:
     """Run and time the SQL query"""
 
@@ -171,7 +173,10 @@ def run_query(
                     conn.commit()
                 if fetchall:
                     columns = [str.lower(x[0]) for x in cursor.description]
-                    rows = cursor.fetchall()
+                    rows: list = cursor.fetchall()
+                    # No need to convert to list of dicts, since we're using RealDictCursor
+                    # if as_list_of_dicts:
+                    #     rows: list = get_list_of_dicts(columns, rows)
 
     time_finish = time.time()
     execution_time = round(time_finish - time_start, 1)
