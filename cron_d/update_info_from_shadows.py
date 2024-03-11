@@ -748,6 +748,14 @@ def set_install_date_on_run_hours(
         """
         run_query(c, sql, db="ijack", fetchall=False, commit=True, conn=conn)
 
+        customer = gw_dict.get("customer", None)
+        cust_sub_group = gw_dict.get("cust_sub_group", None)
+        surface = gw_dict.get("surface", None)
+        unit_type = gw_dict.get("unit_type", None)
+        model = gw_dict.get("model", None)
+        lat = gw_dict.get("gps_lat", None)
+        lon = gw_dict.get("gps_lon", None)
+
         # Send an email alert
         days_ago: float = round(hours / 24, 1)
         if structure_install_date == new_install_date:
@@ -755,12 +763,25 @@ def set_install_date_on_run_hours(
         else:
             date_change_str: str = f"Its startup date has been changed from '{structure_install_date}' to '{new_install_date_str}' ({hours} hours or {days_ago} days ago)."
 
+        google_maps_api_url = (
+            f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+        )
+        other_info: str = f"""
+            Customer = {customer}<br>
+            Sub group = {cust_sub_group}<br>
+            Surface location = {surface}<br>
+            Unit type = {unit_type}<br>
+            Model = {model}<br>
+            <a href="{google_maps_api_url}">Google Maps Link</a>
+        """
+
         html = f"""
             <html>
             <body>
 
             <p>Power unit '{power_unit_shadow_str}' just passed 100 operating hours! It's at {hours} now, previously {hours_previous}.</p>
             <p>{date_change_str}</p>
+            <p>{other_info}</p>
             <p>Check it out!</p>
             <ul>
                 <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/<span style="background-color: yellow;">admin</span>/structures/?flt1_id_equals={structure_id}</a></li>

@@ -587,8 +587,15 @@ class TestAll(unittest.TestCase):
             "power_unit": power_unit_shadow,
             "id as structure_id": structure_id,
             "structure": 9999,
-            "structure_install_date": date(2021, 1, 1),
             "hours": hours_previous,
+            "unit_type": "XFER",
+            "model": "TEST",
+            "customer": "IJACK",
+            "cust_sub_group": "Calgary Ging's Basement",
+            "structure_install_date": date.today(),
+            "gps_lat": 51.0,
+            "gps_lon": -114.0,
+            "surface": "10-20-9-32w4",
         }
         reported: dict = {"HOURS": 100}
         conn = get_conn(c, db="ijack")
