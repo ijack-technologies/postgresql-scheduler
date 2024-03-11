@@ -1,6 +1,7 @@
 {
     "recommendations": [
         "github.copilot",
-        "ms-toolsai.jupyter"
+        "ms-toolsai.jupyter",
+        "ms-python.black-formatter"
     ]
 }

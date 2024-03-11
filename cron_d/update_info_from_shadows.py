@@ -1,4 +1,7 @@
+import base64
+import io
 import logging
+import os
 import pathlib
 import pprint
 import sys
@@ -8,6 +11,8 @@ from datetime import date, datetime, timedelta
 from math import atan2, cos, radians, sin, sqrt
 from typing import Tuple
 
+import plotly.graph_objects as go
+import plotly.io as pio
 import pytz
 from psycopg2 import connect as psycopg2_connect
 
@@ -737,7 +742,10 @@ def set_install_date_on_run_hours(
         c.logger.error(f"Hours previous '{hours_previous}' is not a number")
         return False
 
+    send_email: bool = False
     if 0 < hours_previous < 100 and hours >= 100:
+        send_email: bool = True
+        op_hours_str: str = "100"
         # The operating hours just passed 100, so set the install date to "hours" hours ago
         new_install_date: date = (datetime.utcnow() - timedelta(hours=hours)).date()
         new_install_date_str: str = new_install_date.strftime("%Y-%m-%d")
@@ -748,63 +756,129 @@ def set_install_date_on_run_hours(
         """
         run_query(c, sql, db="ijack", fetchall=False, commit=True, conn=conn)
 
-        customer = gw_dict.get("customer", None)
-        cust_sub_group = gw_dict.get("cust_sub_group", None)
-        surface = gw_dict.get("surface", None)
-        unit_type = gw_dict.get("unit_type", None)
-        model = gw_dict.get("model", None)
-        lat = gw_dict.get("gps_lat", None)
-        lon = gw_dict.get("gps_lon", None)
-
-        # Send an email alert
         days_ago: float = round(hours / 24, 1)
         if structure_install_date == new_install_date:
             date_change_str: str = f"Its startup date is still '{structure_install_date}' ({days_ago} days ago)."
         else:
             date_change_str: str = f"Its startup date has been changed from '{structure_install_date}' to '{new_install_date_str}' ({hours} hours or {days_ago} days ago)."
 
-        google_maps_api_url = (
-            f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+    elif 900 < hours_previous < 1000 and hours >= 1000:
+        send_email: bool = True
+        op_hours_str: str = "1000"
+        date_change_str: str = ""
+
+    if not send_email:
+        return False
+
+    customer = gw_dict.get("customer", None)
+    cust_sub_group = gw_dict.get("cust_sub_group", None)
+    surface = gw_dict.get("surface", None)
+    unit_type = gw_dict.get("unit_type", None)
+    model = gw_dict.get("model", None)
+    lat = gw_dict.get("gps_lat", None)
+    lon = gw_dict.get("gps_lon", None)
+
+    # Send an email alert
+
+    google_maps_api_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+    other_info: str = f"""
+        Customer = {customer}<br>
+        Sub group = {cust_sub_group}<br>
+        Surface location = {surface}<br>
+        Unit type = {unit_type}<br>
+        Model = {model}<br>
+        <a href="{google_maps_api_url}">Google Maps Link</a>
+    """
+
+    # Create a scatter map using Plotly
+    fig = go.Figure(
+        go.Scattermapbox(
+            lat=[lat],
+            lon=[lon],
+            mode="markers",
+            marker=go.scattermapbox.Marker(size=14),
+            text=[power_unit_shadow_str],
         )
-        other_info: str = f"""
-            Customer = {customer}<br>
-            Sub group = {cust_sub_group}<br>
-            Surface location = {surface}<br>
-            Unit type = {unit_type}<br>
-            Model = {model}<br>
-            <a href="{google_maps_api_url}">Google Maps Link</a>
-        """
+    )
+    # # Create a scatter map using Plotly Express
+    # fig = px.scatter_mapbox(
+    #     lat=[lat],
+    #     lon=[lon],
+    #     zoom=12,
+    #     size_max=15,  # Adjust the marker size as needed
+    # )
 
-        html = f"""
-            <html>
-            <body>
+    # Update the layout to use the Mapbox style and set the access token
+    fig.update_layout(
+        autosize=True,
+        mapbox=dict(
+            accesstoken=os.getenv("MAPBOX_ACCESS_TOKEN"),
+            # 'streets', 'satellite', 'dark', 'light'
+            style="light",  # etc.
+            # Default center of map
+            center=go.layout.mapbox.Center(
+                lat=lat,
+                lon=lon,
+            ),
+            # The greater the zoom, the closer to earth we zoom (2-3 is good)
+            zoom=6,
+            # bearing=0,
+            # pitch=0,
+        ),
+        margin=dict(l=0, r=0, b=0, t=0),
+        width=1000,  # Set the width of the entire figure
+        # height=800,  # Set the height of the entire figure
+    )
 
-            <p>Power unit '{power_unit_shadow_str}' just passed 100 operating hours! It's at {hours} now, previously {hours_previous}.</p>
-            <p>{date_change_str}</p>
-            <p>{other_info}</p>
-            <p>Check it out!</p>
-            <ul>
-                <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/<span style="background-color: yellow;">admin</span>/structures/?flt1_id_equals={structure_id}</a></li>
-                <li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow_str}">https://myijack.com/<span style="background-color: yellow;">rcom</span>/?power_unit={power_unit_shadow_str}</a></li>
-            </ul>
+    # Create a BytesIO object to store the image
+    image_bytesio = io.BytesIO()
 
-            </body>
-            </html>
-        """
-        if c.DEV_TEST_PRD == "production":
-            emailees_list = c.EMAIL_LIST_OP_HOURS
-        else:
-            emailees_list = c.EMAIL_LIST_DEV
-        send_mailgun_email(
-            c,
-            text="",
-            html=html,
-            emailees_list=emailees_list,
-            subject=f"Power unit '{power_unit_shadow_str}' passed 100 operating hours!",
-        )
-        return True
+    # Write the figure to the BytesIO object as a PNG image.
+    pio.write_image(fig, image_bytesio, format="png")
 
-    return False
+    # Reset the BytesIO object to the beginning for reading
+    image_bytesio.seek(0)
+
+    # Encode the BytesIO content as base64
+    image_base64 = base64.b64encode(image_bytesio.read()).decode("utf-8")
+
+    html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <body>
+
+        <p>Power unit '{power_unit_shadow_str}' just passed {op_hours_str} operating hours! It's at {hours} now, previously {hours_previous}.</p>
+        <p>{date_change_str}</p>
+        <p>{other_info}</p>
+        <p>Check it out!</p>
+        <ul>
+            <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/<span style="background-color: #FFFF00;">admin</span>/structures/?flt1_id_equals={structure_id}</a></li>
+            <li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow_str}">https://myijack.com/<span style="background-color: #FFFF00;">rcom</span>/?power_unit={power_unit_shadow_str}</a></li>
+        </ul>
+
+        <!-- Inline the Plotly map image in the email -->
+        <div style="width: 90%;">
+            <a href="{google_maps_api_url}">
+                <img src="data:image/png;base64,{image_base64}" alt="Map Image" style="width: 100%; height: auto;">
+            </a>
+        </div>
+
+        </body>
+        </html>
+    """
+
+    if c.DEV_TEST_PRD == "production":
+        emailees_list = c.EMAIL_LIST_OP_HOURS
+    else:
+        emailees_list = c.EMAIL_LIST_DEV
+    send_mailgun_email(
+        c,
+        text="",
+        html=html,
+        emailees_list=emailees_list,
+        subject=f"Power unit '{power_unit_shadow_str}' passed {op_hours_str} operating hours!",
+    )
+    return True
 
 
 @error_wrapper()

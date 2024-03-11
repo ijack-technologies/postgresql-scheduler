@@ -36,7 +36,8 @@
                 "dbaeumer.vscode-eslint",
                 "ms-azuretools.vscode-docker",
                 "GitHub.copilot",
-                "ms-toolsai.jupyter"
+                "ms-toolsai.jupyter",
+                "ms-python.black-formatter"
             ],
             "settings": {
                 "python.pythonPath": "/app/venv/bin/python",

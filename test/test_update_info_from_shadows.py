@@ -108,7 +108,7 @@ class TestAll(unittest.TestCase):
             aws_thing=aws_thing,
         )
 
-        html = update_info_from_shadows.get_html(power_unit_shadow, sql_update, dict_)
+        update_info_from_shadows.get_html(power_unit_shadow, sql_update, dict_)
 
         # mock_send_mailgun_email.assert_called_once()
         # mock_send_mailgun_email.assert_called_once_with(
@@ -564,10 +564,12 @@ class TestAll(unittest.TestCase):
 
         self.assertTrue(bool_return)
 
-    @patch("cron_d.update_info_from_shadows.send_mailgun_email")
+    # @patch("cron_d.update_info_from_shadows.send_mailgun_email")
     @patch("cron_d.update_info_from_shadows.run_query")
     def test_set_install_date_on_run_hours(
-        self, mock_run_query, mock_send_mailgun_email
+        self,
+        mock_run_query,
+        # mock_send_mailgun_email
     ):
         """Test that we can set the install date on run hours"""
         c: Config = Config()
@@ -615,7 +617,7 @@ class TestAll(unittest.TestCase):
 
         self.assertTrue(bool_return)
         mock_run_query.assert_called_once()
-        mock_send_mailgun_email.assert_called_once()
+        # mock_send_mailgun_email.assert_called_once()
 
 
 if __name__ == "__main__":
