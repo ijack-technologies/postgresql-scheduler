@@ -61,7 +61,7 @@ class TestAll(unittest.TestCase):
         c.TEST_FUNC = False  # using mocks instead
 
         power_unit_id = 313
-        power_unit_shadow = 200476
+        power_unit_shadow = "200476"
         gps_lon_new = -121.0
         gps_lon_old = -120.0
         gps_lat_new = 51.0
@@ -82,7 +82,7 @@ class TestAll(unittest.TestCase):
         update_info_from_shadows.update_structures_table_gps(
             c,
             power_unit_id=power_unit_id,
-            power_unit_shadow=power_unit_shadow,
+            power_unit_shadow_str=power_unit_shadow,
             gps_lat_new=gps_lat_new,
             gps_lat_old=gps_lat_old,
             gps_lon_new=gps_lon_new,
@@ -103,7 +103,7 @@ class TestAll(unittest.TestCase):
             gps_lon_old=gps_lon_old,
             power_unit_id=power_unit_id,
             dict_=dict_,
-            power_unit_shadow=power_unit_shadow,
+            power_unit_shadow_str=power_unit_shadow,
             structure=structure,
             aws_thing=aws_thing,
         )
@@ -125,15 +125,15 @@ class TestAll(unittest.TestCase):
     def test_compare_shadow_and_db_gps(self, mock_run_query, mock_send_mailgun_email):
         """Test that a small change in GPS will trigger an update"""
         global c
-        structure_ging = 10002
-        power_unit_ging = 10002
+        structure_ging = 10009
+        power_unit_ging = 10009
         power_unit_ging_id = 316
         aws_thing_ging = "00:60:E0:84:A7:15"
         mock_run_query.return_value = None, [
             OrderedDict(
                 [
                     ("id", 660),
-                    ("structure", 10002.0),
+                    ("structure", 10009.0),
                     ("structure_slave_id", None),
                     ("structure_slave", None),
                     ("downhole", "Ging's basement July 2021"),
@@ -142,8 +142,8 @@ class TestAll(unittest.TestCase):
                     ("gps_lat", 51.008458),
                     ("gps_lon", -114.073852),
                     ("power_unit_id", 316),
-                    ("power_unit", 10002.0),
-                    ("power_unit_str", "10002"),
+                    ("power_unit", 10009.0),
+                    ("power_unit_str", "10009"),
                     ("gateway_id", 120),
                     ("gateway", "00:60:E0:84:A7:15"),
                     ("aws_thing", "00:60:E0:84:A7:15"),
@@ -189,7 +189,7 @@ class TestAll(unittest.TestCase):
             lon_shadow_float=-108.01001,
             lon_db_float=-108.0,
             power_unit_id=power_unit_ging_id,
-            power_unit_shadow=power_unit_ging,
+            power_unit_shadow_str=power_unit_ging,
             structure=structure_ging,
             aws_thing=aws_thing_ging,
         )
@@ -214,7 +214,7 @@ class TestAll(unittest.TestCase):
             lon_shadow_float=-108.00009,
             lon_db_float=-108.0,
             power_unit_id=power_unit_ging_id,
-            power_unit_shadow=power_unit_ging,
+            power_unit_shadow_str=power_unit_ging,
             structure=structure_ging,
             aws_thing=aws_thing_ging,
         )
@@ -227,8 +227,8 @@ class TestAll(unittest.TestCase):
     @patch("cron_d.update_info_from_shadows.run_query")
     @patch("cron_d.update_info_from_shadows.get_client_iot")
     @patch("cron_d.update_info_from_shadows.get_device_shadows_in_threadpool")
-    @patch("cron_d.update_info_from_shadows.get_structure_records")
-    @patch("cron_d.update_info_from_shadows.get_power_unit_records")
+    # @patch("cron_d.update_info_from_shadows.get_structure_records")
+    # @patch("cron_d.update_info_from_shadows.get_power_unit_records")
     @patch("cron_d.update_info_from_shadows.get_gateway_records")
     @patch("cron_d.update_info_from_shadows.get_conn")
     @patch("cron_d.update_info_from_shadows.exit_if_already_running")
@@ -237,8 +237,8 @@ class TestAll(unittest.TestCase):
         mock_exit_if_already_running,
         mock_get_conn,
         mock_get_gateway_records,
-        mock_get_power_unit_records,
-        mock_get_structure_records,
+        # mock_get_power_unit_records,
+        # mock_get_structure_records,
         mock_get_device_shadows_in_threadpool,
         mock_get_client_iot,
         mock_run_query,
@@ -250,15 +250,15 @@ class TestAll(unittest.TestCase):
         c.TEST_FUNC = False
         c.EMAIL_LIST_SERVICE_PRODUCTION_IT = ["smccarthy@myijack.com"]
 
-        structure_ging = 10002
-        power_unit_ging = 10002
+        structure_ging = 10009
+        power_unit_ging = 10009
         power_unit_ging_id = 316
         aws_thing_ging = "00:60:E0:84:A7:15"
 
         mocks = {
             "gw_rows.pkl": mock_get_gateway_records,
-            "pu_rows.pkl": mock_get_power_unit_records,
-            "structure_rows.pkl": mock_get_structure_records,
+            # "pu_rows.pkl": mock_get_power_unit_records,
+            # "structure_rows.pkl": mock_get_structure_records,
             "shadows.pkl": mock_get_device_shadows_in_threadpool,
         }
         for filename, mock in mocks.items():
@@ -269,17 +269,17 @@ class TestAll(unittest.TestCase):
             OrderedDict(
                 [
                     ("id", 660),
-                    ("structure", 10002.0),
+                    ("structure", 10009.0),
                     ("structure_slave_id", None),
                     ("structure_slave", None),
                     ("downhole", "Ging's basement July 2021"),
                     ("surface", "Calgary"),
                     ("location", "Ging's basement July 2021 @ Calgary"),
                     ("gps_lat", 51.008458),
-                    ("gps_lon", -114.073852),
+                    ("gps_lon", -114.22),
                     ("power_unit_id", 316),
-                    ("power_unit", 10002.0),
-                    ("power_unit_str", "10002"),
+                    ("power_unit", 200999.0),
+                    ("power_unit_str", "200999"),
                     ("gateway_id", 120),
                     ("gateway", "00:60:E0:84:A7:15"),
                     ("aws_thing", "00:60:E0:84:A7:15"),
@@ -318,15 +318,15 @@ class TestAll(unittest.TestCase):
         mock_exit_if_already_running.assert_called_once()
         mock_get_conn.assert_called_once()
         mock_get_gateway_records.assert_called_once()
-        mock_get_power_unit_records.assert_called_once()
-        mock_get_structure_records.assert_called_once()
+        # mock_get_power_unit_records.assert_called_once()
+        # mock_get_structure_records.assert_called_once()
         mock_get_device_shadows_in_threadpool.assert_called_once()
         mock_get_client_iot.assert_called_once()
 
         # self.assertEqual(mock_send_mailgun_email.call_count, 6)
-        self.assertEqual(mock_send_mailgun_email.call_count, 2)
+        self.assertEqual(mock_send_mailgun_email.call_count, 1)
 
-        self.assertEqual(mock_run_query.call_count, 10)
+        self.assertEqual(mock_run_query.call_count, 3)
         mock_upsert_gw_info.assert_called()
 
         # Run the test a second time, with a smaller change, and assert it doesn't trigger an update
@@ -346,7 +346,7 @@ class TestAll(unittest.TestCase):
             lon_shadow_float=-108.00009,
             lon_db_float=-108.0,
             power_unit_id=power_unit_ging_id,
-            power_unit_shadow=power_unit_ging,
+            power_unit_shadow_str=power_unit_ging,
             structure=structure_ging,
             aws_thing=aws_thing_ging,
         )
@@ -364,7 +364,6 @@ class TestAll(unittest.TestCase):
         gateway_id = 93
 
         conn = get_conn(c, db="ijack")
-
         try:
             # Update the record
             os_pretty_name_updated = "some pretty OS"
@@ -523,9 +522,8 @@ class TestAll(unittest.TestCase):
                 commit=True,
             )
 
+        conn = get_conn(c, db="ijack")
         try:
-            conn = get_conn(c, db="ijack")
-
             bool_return = update_info_from_shadows.record_can_bus_cellular_test(
                 c, gateway_id_lambda_access, cellular_good=False, can_bus_good=False
             )
@@ -594,7 +592,7 @@ class TestAll(unittest.TestCase):
         try:
             bool_return: bool = update_info_from_shadows.set_install_date_on_run_hours(
                 c=c,
-                power_unit_shadow=power_unit_shadow,
+                power_unit_shadow_str=power_unit_shadow,
                 structure_id=structure_id,
                 gw_dict=gw_dict,
                 reported=reported,

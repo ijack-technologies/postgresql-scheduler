@@ -47,7 +47,7 @@ def convert_to_float(c, string):
         return 0
 
 
-def sql_get_info(c, power_unit_id, power_unit_shadow, structure, aws_thing):
+def sql_get_info(c, power_unit_id, power_unit_shadow_str, structure, aws_thing):
     """Gather a bit more info for the email alert"""
 
     select_sql = f"""
@@ -69,7 +69,7 @@ def sql_get_info(c, power_unit_id, power_unit_shadow, structure, aws_thing):
     # Just for logging
     log_msg = f"""
 power unit reported in the AWS IoT device shadow:
-power_unit = {power_unit_shadow}
+power_unit = {power_unit_shadow_str}
 structure from public.structures table,
 based on power_unit_id associated with aws_thing in public.gw table
 structure = {structure}
@@ -89,7 +89,7 @@ def get_sql_update(
     gps_lon_old: float,
     power_unit_id: int,
     dict_: dict,
-    power_unit_shadow,
+    power_unit_shadow_str: str,
     structure,
     aws_thing: str,
 ):
@@ -112,7 +112,7 @@ def get_sql_update(
     log_msg = f"""
 customer = {customer}
 surface = {surface}
-power_unit = {power_unit_shadow} from AWS IoT
+power_unit = {power_unit_shadow_str} from AWS IoT
 model = {model}
 cust_sub_group = {cust_sub_group}
 structure from public.structures table,
@@ -126,16 +126,16 @@ aws_thing = {aws_thing}
     return update_sql
 
 
-def get_html(power_unit_shadow, sql_update, dict_):
+def get_html(power_unit_shadow_str: str, sql_update, dict_: dict) -> str:
     """Get HTML for the email"""
 
-    unit_str = f'{dict_["customer"]} {dict_["surface"]} {power_unit_shadow}'
+    unit_str = f'{dict_["customer"]} {dict_["surface"]} {power_unit_shadow_str}'
     html = f"""
         <html>
         <body>
 
         <h2>{unit_str}</h2>
-        <a href="https://myijack.com/rcom?unit={power_unit_shadow}">https://myijack.com/rcom?unit={power_unit_shadow}</a>
+        <a href="https://myijack.com/rcom?unit={power_unit_shadow_str}">https://myijack.com/rcom?unit={power_unit_shadow_str}</a>
         <h2>PostgreSQL Scheduler running the following SQL to update the public.structures table!</h2>
         <br>
         <br>
@@ -155,7 +155,7 @@ def get_html(power_unit_shadow, sql_update, dict_):
 def update_structures_table_gps(
     c,
     power_unit_id: int,
-    power_unit_shadow: int,
+    power_unit_shadow_str: str,
     gps_lat_new: float,
     gps_lat_old: float,
     gps_lon_new: float,
@@ -170,7 +170,7 @@ def update_structures_table_gps(
 
     # Gather a bit more info for the email alert
     sql_get_info_str = sql_get_info(
-        c, power_unit_id, power_unit_shadow, structure, aws_thing
+        c, power_unit_id, power_unit_shadow_str, structure, aws_thing
     )
     _, rows = run_query(
         c, sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
@@ -185,7 +185,7 @@ def update_structures_table_gps(
         gps_lon_old=gps_lon_old,
         power_unit_id=power_unit_id,
         dict_=dict_,
-        power_unit_shadow=power_unit_shadow,
+        power_unit_shadow_str=power_unit_shadow_str,
         structure=structure,
         aws_thing=aws_thing,
     )
@@ -195,7 +195,7 @@ def update_structures_table_gps(
     #     subject = "PostgreSQL Scheduler updating GPS in structures table!"
     # else:
     #     subject = "NOT updating GPS in structures table - just testing!"
-    # html = get_html(power_unit_shadow, sql_update, dict_)
+    # html = get_html(power_unit_shadow_str, sql_update, dict_)
     # send_mailgun_email(
     #     c, text="", html=html, emailees_list=c.EMAIL_LIST_DEV, subject=subject
     # )
@@ -253,7 +253,7 @@ def compare_shadow_and_db_gps(
     lon_shadow_float: float,
     lon_db_float: float,
     power_unit_id: int,
-    power_unit_shadow: int,
+    power_unit_shadow_str: str,
     structure: int,
     aws_thing: str,
     commit: bool = False,
@@ -280,7 +280,7 @@ def compare_shadow_and_db_gps(
             update_structures_table_gps(
                 c=c,
                 power_unit_id=power_unit_id,
-                power_unit_shadow=power_unit_shadow,
+                power_unit_shadow_str=power_unit_shadow_str,
                 gps_lat_new=lat_shadow_float,
                 gps_lat_old=lat_db_float,
                 gps_lon_new=lon_shadow_float,
@@ -346,62 +346,81 @@ def get_gateway_records(c, conn) -> list:
     """Get gateway records"""
     sql_gw = """
         select
-            distinct on (aws_thing)
-            t1.id as gateway_id,
+            distinct on (t1.aws_thing)
+            t1.gateway_id,
             t1.aws_thing,
             t1.power_unit_id,
-            t2.power_unit,
-            t3.id as structure_id,
-            t3.structure,
-            t3.structure_install_date,
-            t4.hours
-        from public.gw t1
-        left join public.power_units t2
-            on t2.id = t1.power_unit_id
-        left join public.structures t3
-            on t3.power_unit_id = t1.power_unit_id
-        left join public.gw_info t4
-            on t4.gateway_id = t1.id
+            t1.power_unit_str,
+            t1.id as structure_id,
+            t1.structure_str,
+            t1.structure_install_date,
+            t1.op_hours as hours,
+            t1.gps_lat,
+            t1.gps_lon,
+            t1.customer,
+            t1.cust_sub_group,
+            t1.model,
+            t1.unit_type,
+            t1.structure_install_date,
+            t1.surface
+        --from public.gw t1
+        from public.vw_structures_joined t1
+        --left join public.power_units t2
+        --    on t2.id = t1.power_unit_id
+        --left join public.structures t3
+        --    on t3.power_unit_id = t1.power_unit_id
+        --left join public.gw_info t4
+        --    on t4.gateway_id = t1.id
         --where aws_thing <> 'test'
         --    and aws_thing is not null
         --    and power_unit_id is not null
+        order by
+            t1.aws_thing,
+            t1.id
     """
     _, gw_rows = run_query(c, sql_gw, db="ijack", fetchall=True, conn=conn)
     return gw_rows
 
 
-def get_power_unit_records(c, conn) -> list:
-    """Get power_unit records"""
-    sql_pu = """
-        select
-            id as power_unit_id,
-            power_unit
-        from public.power_units
-    """
-    _, pu_rows = run_query(c=c, sql=sql_pu, db="ijack", fetchall=True, conn=conn)
-    return pu_rows
+# def get_power_unit_records(c, conn) -> list:
+#     """Get power_unit records"""
+#     sql_pu = """
+#         select
+#             id as power_unit_id,
+#             power_unit
+#         from public.power_units
+#     """
+#     _, pu_rows = run_query(c=c, sql=sql_pu, db="ijack", fetchall=True, conn=conn)
+#     return pu_rows
 
 
-def get_structure_records(c, conn) -> list:
-    # Get structure records for comparing GPS lat/lon by power unit
-    sql_structures = """
-        select
-            structure,
-            power_unit_id,
-            gps_lat,
-            gps_lon,
-            t3.customer
-        from public.structures t1
-        left join myijack.structure_customer_rel t2
-            on t2.structure_id = t1.id
-        left join myijack.customers t3
-            on t3.id = t2.customer_id
-        where t1.power_unit_id is not null
-    """
-    _, structure_rows = run_query(
-        c, sql_structures, db="ijack", fetchall=True, conn=conn
-    )
-    return structure_rows
+# def get_structure_records(c, conn) -> list:
+#     # Get structure records for comparing GPS lat/lon by power unit
+#     sql_structures = """
+#         select
+#             id as structure_id,
+#             structure,
+#             power_unit_id,
+#             power_unit_str,
+#             surface,
+#             gps_lat,
+#             gps_lon,
+#             customer,
+#             cust_sub_group,
+#             model,
+#             unit_type,
+#             structure_install_date
+#         from public.vw_structures_joined t1
+#         --left join myijack.structure_customer_rel t2
+#         --    on t2.structure_id = t1.id
+#         --left join myijack.customers t3
+#         --    on t3.id = t2.customer_id
+#         where t1.power_unit_id is not null
+#     """
+#     _, structure_rows = run_query(
+#         c, sql_structures, db="ijack", fetchall=True, conn=conn
+#     )
+#     return structure_rows
 
 
 def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
@@ -678,7 +697,7 @@ def record_can_bus_cellular_test(
 
 def set_install_date_on_run_hours(
     c: Config,
-    power_unit_shadow: str,
+    power_unit_shadow_str: str,
     structure_id: int,
     gw_dict: dict,
     reported: dict,
@@ -690,7 +709,7 @@ def set_install_date_on_run_hours(
 
     Parameters:
     c (Config): The configuration object.
-    power_unit_shadow (str): The power unit shadow.
+    power_unit_shadow_str (str): The power unit shadow.
     structure_id (int): The structure ID.
     gw_dict (dict): The gateway dictionary.
     reported (dict): The reported dictionary.
@@ -740,12 +759,12 @@ def set_install_date_on_run_hours(
             <html>
             <body>
 
-            <p>Power unit '{power_unit_shadow}' just passed 100 operating hours! It's at {hours} now, previously {hours_previous}.</p>
+            <p>Power unit '{power_unit_shadow_str}' just passed 100 operating hours! It's at {hours} now, previously {hours_previous}.</p>
             <p>{date_change_str}</p>
             <p>Check it out!</p>
             <ul>
                 <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/admin/structures/?flt1_id_equals={structure_id}</a></li>
-                <li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></li>
+                <li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow_str}">https://myijack.com/rcom/?power_unit={power_unit_shadow_str}</a></li>
             </ul>
 
             </body>
@@ -760,7 +779,7 @@ def set_install_date_on_run_hours(
             text="",
             html=html,
             emailees_list=emailees_list,
-            subject=f"Power unit '{power_unit_shadow}' passed 100 operating hours!",
+            subject=f"Power unit '{power_unit_shadow_str}' passed 100 operating hours!",
         )
         return True
 
@@ -786,9 +805,9 @@ def main(c: Config, commit: bool = False):
     # Start a try/except/finally block so we close the database connection
     try:
         gw_rows: list = get_gateway_records(c, conn)
-        pu_rows: list = get_power_unit_records(c, conn)
-        pu_dict = {row["power_unit"]: row["power_unit_id"] for row in pu_rows}
-        structure_rows: list = get_structure_records(c, conn)
+        # pu_rows: list = get_power_unit_records(c, conn)
+        pu_dict = {row["power_unit_str"]: row["power_unit_id"] for row in gw_rows}
+        # structure_rows: list = get_structure_records(c, conn)
 
         # Get the Boto3 AWS IoT client for updating the "thing shadow"
         client_iot = get_client_iot()
@@ -807,14 +826,20 @@ def main(c: Config, commit: bool = False):
         for gw_dict in gw_rows:
             aws_thing = gw_dict.get("aws_thing", None)
             gateway_id = gw_dict.get("gateway_id", None)
-            if aws_thing == "00:60:E0:72:66:13":
-                print(
-                    "This gateway has a new latitude and longitude from the device shadow"
-                )
-            if aws_thing == "00:1D:48:31:6A:7A":
-                print(
-                    "This gateway has a new latitude and longitude from the device shadow"
-                )
+            # Get the power_unit_id already in the public.gw table
+            power_unit_id_gw = gw_dict.get("power_unit_id", None)
+            power_unit_gw = gw_dict.get("power_unit_str", None)
+            structure_id = gw_dict.get("structure_id", None)
+
+            # # For debugging only
+            # if aws_thing == "00:60:E0:72:66:13":
+            #     print(
+            #         "This gateway has a new latitude and longitude from the device shadow"
+            #     )
+            # if aws_thing == "00:1D:48:31:6A:7A":
+            #     print(
+            #         "This gateway has a new latitude and longitude from the device shadow"
+            #     )
 
             # This "if aws_thing is None" is unnecessary since the nulls are filtered out in the query,
             # and simply not allowed in the table, but it doesn't hurt
@@ -835,51 +860,35 @@ def main(c: Config, commit: bool = False):
             upsert_gw_info(c, gateway_id, aws_thing, shadow, conn)
 
             reported = shadow.get("state", {}).get("reported", {})
-
-            power_unit_shadow = reported.get("SERIAL_NUMBER", None)
             latitude_shadow = reported.get("LATITUDE", None)
             longitude_shadow = reported.get("LONGITUDE", None)
 
+            power_unit_shadow = reported.get("SERIAL_NUMBER", None)
             if power_unit_shadow is None:
                 c.logger.warning(
                     f'Power unit "SERIAL_NUMBER" not in shadow for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...'
                 )
                 continue
 
-            try:
-                power_unit_shadow = int(power_unit_shadow)
-            except Exception:
-                c.logger.exception(
-                    f"Can't convert the '{aws_thing}' device shadow's power_unit of '{power_unit_shadow}' to an integer. \
-    Continuing with next AWS_THING in public.gw table..."
-                )
-                continue
-
-            power_unit_id_shadow = pu_dict.get(power_unit_shadow, None)
+            power_unit_shadow_str = str(power_unit_shadow).strip().replace(".0", "")
+            power_unit_id_shadow = pu_dict.get(power_unit_shadow_str, None)
             if power_unit_id_shadow is None:
                 c.logger.warning(
-                    f"Can't find the power unit ID for the shadow's reported power unit of '{power_unit_shadow}'. \
+                    f"Can't find the power unit ID for the shadow's reported power unit of '{power_unit_shadow_str}'. \
     Continuing with next AWS_THING in public.gw table..."
                 )
                 continue
-
-            # Get the power_unit_id already in the public.gw table
-            power_unit_id_gw = gw_dict.get("power_unit_id", None)
-            power_unit_gw = gw_dict.get("power_unit", None)
-            structure_id = gw_dict.get("structure_id", None)
 
             # Set the install date once the operating hours pass 100
             set_install_date_on_run_hours(
-                c, power_unit_shadow, structure_id, gw_dict, reported, conn
+                c, power_unit_shadow_str, structure_id, gw_dict, reported, conn
             )
 
             # Compare the GPS first
             structure = None
             customer = None
             structure_rows_relevant = [
-                row
-                for row in structure_rows
-                if row["power_unit_id"] == power_unit_id_gw
+                row for row in gw_rows if row["power_unit_id"] == power_unit_id_gw
             ]
             for row in structure_rows_relevant:
                 if latitude_shadow and longitude_shadow:
@@ -891,19 +900,19 @@ def main(c: Config, commit: bool = False):
                         lon_shadow_float=float(longitude_shadow),
                         lon_db_float=float(row["gps_lon"] or 0.0),
                         power_unit_id=power_unit_id_gw,
-                        power_unit_shadow=power_unit_shadow,
-                        structure=row["structure"],
+                        power_unit_shadow_str=power_unit_shadow_str,
+                        structure=row["structure_str"],
                         aws_thing=aws_thing,
                         commit=commit,
                     )
 
             if power_unit_id_shadow == power_unit_id_gw:
                 c.logger.info(
-                    f"Power unit '{power_unit_shadow}' in the public.gw table matches the one reported in the device shadow. Continuing with next..."
+                    f"Power unit '{power_unit_shadow_str}' in the public.gw table matches the one reported in the device shadow. Continuing with next..."
                 )
                 continue
 
-            if aws_thing == "00:60:E0:86:4C:DA" and str(power_unit_shadow) == "200442":
+            if aws_thing == "00:60:E0:86:4C:DA" and power_unit_shadow_str == "200442":
                 # Richie needs to fix this on on-site, so it uses the correct 200408 power unit
                 continue
 
@@ -921,19 +930,19 @@ def main(c: Config, commit: bool = False):
             if is_power_unit_in_use:
                 # There's a problem since another gateway is already using that power unit
                 emailees_list = c.EMAIL_LIST_DEV
-                subject = f"Power unit '{power_unit_shadow}' already used by gateway {gateway_already_linked}"
-                html = f"Can't set gateway {aws_thing} power unit to {power_unit_shadow} because that power unit is already used by gateway {gateway_already_linked}"
+                subject = f"Power unit '{power_unit_shadow_str}' already used by gateway {gateway_already_linked}"
+                html = f"Can't set gateway {aws_thing} power unit to {power_unit_shadow_str} because that power unit is already used by gateway {gateway_already_linked}"
 
                 html += (
                     "\n<p><b>See which unit is already using that power unit:</b></p>"
                 )
                 html += "\n<ul>"
-                html += f'\n<li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></li>'
+                html += f'\n<li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow_str}">https://myijack.com/rcom/?power_unit={power_unit_shadow_str}</a></li>'
                 html += f'\n<li><a href="https://myijack.com/rcom/?gateway={gateway_already_linked}">https://myijack.com/rcom/?gateway={gateway_already_linked}</a></li>'
                 html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{gateway_already_linked}/namedShadow/Classic%20Shadow</a></li>'
                 html += "\n</ul>"
 
-                html += f"\n<p><b>New gateway that also wants to use power unit '{power_unit_shadow}':</b></p>"
+                html += f"\n<p><b>New gateway that also wants to use power unit '{power_unit_shadow_str}':</b></p>"
                 html += "\n<ul>"
                 html += f'\n<li><a href="https://myijack.com/rcom/?gateway={aws_thing}">https://myijack.com/rcom/?gateway={aws_thing}</a></li>'
                 html += f'\n<li><a href="https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow">https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/thing/{aws_thing}/namedShadow/Classic%20Shadow</a></li>'
@@ -942,8 +951,8 @@ def main(c: Config, commit: bool = False):
             elif gateway_already_has_power_unit:
                 # There's a problem since the gateway already has a power unit assigned to it
                 emailees_list = c.EMAIL_LIST_DEV
-                subject = f"Gateway {aws_thing} already linked to power unit {power_unit_gw} so can't link new power unit {power_unit_shadow}"
-                html = f"Can't link gateway {aws_thing} to power unit {power_unit_shadow} because the gateway is already linked to power unit {power_unit_gw}"
+                subject = f"Gateway {aws_thing} already linked to power unit {power_unit_gw} so can't link new power unit {power_unit_shadow_str}"
+                html = f"Can't link gateway {aws_thing} to power unit {power_unit_shadow_str} because the gateway is already linked to power unit {power_unit_gw}"
 
                 html += f"\n<p><b>See already-linked power unit '{power_unit_gw}' in action:</b></p>"
                 html += "\n<ul>"
@@ -956,11 +965,9 @@ def main(c: Config, commit: bool = False):
                 # No gateway is using that power unit, so link the two in the public.gw table
                 set_power_unit_to_gateway(c, power_unit_id_shadow, aws_thing)
                 emailees_list = c.EMAIL_LIST_SERVICE_PRODUCTION_IT
-                subject = (
-                    f"Power unit {power_unit_shadow} now linked to gateway {aws_thing}"
-                )
-                html = f"<p>Power unit {power_unit_shadow} is now linked to gateway {aws_thing}."
-                html += f' Check it out at <a href="https://myijack.com/rcom/?power_unit={power_unit_shadow}">https://myijack.com/rcom/?power_unit={power_unit_shadow}</a></p>'
+                subject = f"Power unit {power_unit_shadow_str} now linked to gateway {aws_thing}"
+                html = f"<p>Power unit {power_unit_shadow_str} is now linked to gateway {aws_thing}."
+                html += f' Check it out at <a href="https://myijack.com/rcom/?power_unit={power_unit_shadow_str}">https://myijack.com/rcom/?power_unit={power_unit_shadow_str}</a></p>'
                 html += "\n<p>This gateway just noticed this new power unit on the CAN bus, and the power unit is not used by any other gateway.</p>"
                 html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
 
@@ -976,19 +983,19 @@ def main(c: Config, commit: bool = False):
             html += "\n</ul></p>"
 
             if not structure:
-                html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow}'.</p>"
+                html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow_str}'.</p>"
             else:
-                html += f"\n<p>The structure for new current power unit '{power_unit_shadow}' is '{structure}'.</p>"
+                html += f"\n<p>The structure for new current power unit '{power_unit_shadow_str}' is '{structure}'.</p>"
 
             if customer:
                 html += f"\n<p>The customer for structure '{structure}' is '{customer}'.</p>"
             else:
-                html += f"\n<p>There is no customer for power unit '{power_unit_shadow}'.</p>"
+                html += f"\n<p>There is no customer for power unit '{power_unit_shadow_str}'.</p>"
 
             html += f"\n<p><b>Edit the data in the 'Admin' site:</b></p>"
             html += "\n<ul>"
-            html += f'\n<li>Structures table at <a href="https://myijack.com/admin/structures/?search={power_unit_shadow}">https://myijack.com/admin/structures/?search={power_unit_shadow}</a></li>'
-            html += f'\n<li>Power unit <b><em>new</em></b> table at <a href="https://myijack.com/admin/power_units/?search={power_unit_shadow}">https://myijack.com/admin/power_units/?search={power_unit_shadow}</a></li>'
+            html += f'\n<li>Structures table at <a href="https://myijack.com/admin/structures/?search={power_unit_shadow_str}">https://myijack.com/admin/structures/?search={power_unit_shadow_str}</a></li>'
+            html += f'\n<li>Power unit <b><em>new</em></b> table at <a href="https://myijack.com/admin/power_units/?search={power_unit_shadow_str}">https://myijack.com/admin/power_units/?search={power_unit_shadow_str}</a></li>'
             html += f'\n<li>Power unit <b><em>old</em></b> table at <a href="https://myijack.com/admin/power_units/?search={power_unit_gw}">https://myijack.com/admin/power_units/?search={power_unit_gw}</a></li>'
             html += f'\n<li>Gateways table for <b><em>new</em></b> gateway "{aws_thing}" at <a href="https://myijack.com/admin/gateways/?search={aws_thing}">https://myijack.com/admin/gateways/?search={aws_thing}</a></li>'
             html += f'\n<li>Gateways table for <b><em>old</em></b> gateway "{gateway_already_linked}" at <a href="https://myijack.com/admin/gateways/?search={gateway_already_linked}">https://myijack.com/admin/gateways/?search={gateway_already_linked}</a></li>'
