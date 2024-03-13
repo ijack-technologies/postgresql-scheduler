@@ -610,14 +610,30 @@ class TestAll(unittest.TestCase):
                 reported=reported,
                 conn=conn,
             )
+
+            self.assertTrue(bool_return)
+            mock_run_query.assert_called_once()
+            # mock_send_mailgun_email.assert_called_once()
+
+            # Now test a second time, with no GPS
+            mock_run_query.reset_mock()
+            gw_dict["gps_lat"] = None
+            gw_dict["gps_lon"] = None
+            bool_return: bool = update_info_from_shadows.set_install_date_on_run_hours(
+                c=c,
+                power_unit_shadow_str=power_unit_shadow,
+                structure_id=structure_id,
+                gw_dict=gw_dict,
+                reported=reported,
+                conn=conn,
+            )
+
+            self.assertTrue(bool_return)
+            mock_run_query.assert_called_once()
         except Exception:
             raise
         finally:
             conn.close()
-
-        self.assertTrue(bool_return)
-        mock_run_query.assert_called_once()
-        # mock_send_mailgun_email.assert_called_once()
 
 
 if __name__ == "__main__":

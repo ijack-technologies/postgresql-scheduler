@@ -770,6 +770,7 @@ def set_install_date_on_run_hours(
     if not send_email:
         return False
 
+    # Send an email alert
     customer = gw_dict.get("customer", None)
     cust_sub_group = gw_dict.get("cust_sub_group", None)
     surface = gw_dict.get("surface", None)
@@ -778,69 +779,75 @@ def set_install_date_on_run_hours(
     lat = gw_dict.get("gps_lat", None)
     lon = gw_dict.get("gps_lon", None)
 
-    # Send an email alert
+    if lat and lon:
+        google_maps_api_url = (
+            f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+        )
+        google_maps_link = f'<a href="{google_maps_api_url}">Google Maps</a>'
 
-    google_maps_api_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+        # Create a scatter map using Plotly
+        fig = go.Figure(
+            data=go.Scattermapbox(
+                lat=[lat],
+                lon=[lon],
+                mode="markers",
+                marker=go.scattermapbox.Marker(size=14),
+                text=[power_unit_shadow_str],
+            ),
+            layout=go.Layout(
+                autosize=True,
+                margin=dict(l=0, r=0, b=0, t=0),
+                width=1000,  # Set the width of the entire figure
+                # height=800,  # Set the height of the entire figure
+                mapbox=dict(
+                    accesstoken=os.getenv("MAPBOX_ACCESS_TOKEN"),
+                    # 'streets', 'satellite', 'dark', 'light'
+                    style="light",  # etc.
+                    # Default center of map
+                    center=go.layout.mapbox.Center(
+                        lat=lat,
+                        lon=lon,
+                    ),
+                    # The greater the zoom, the closer to earth we zoom (2-3 is good)
+                    zoom=6,
+                    # bearing=0,
+                    # pitch=0,
+                ),
+            ),
+        )
+
+        # Create a BytesIO object to store the image
+        image_bytesio = io.BytesIO()
+
+        # Write the figure to the BytesIO object as a PNG image.
+        pio.write_image(fig, image_bytesio, format="png")
+
+        # Reset the BytesIO object to the beginning for reading
+        image_bytesio.seek(0)
+
+        # Encode the BytesIO content as base64
+        image_base64 = base64.b64encode(image_bytesio.read()).decode("utf-8")
+
+        google_map_image_html = f"""
+            <!-- Inline the Plotly map image in the email -->
+            <div style="width: 90%;">
+                <a href="{google_maps_api_url}">
+                    <img src="data:image/png;base64,{image_base64}" alt="Map Image" style="width: 100%; height: auto;">
+                </a>
+            </div>
+        """
+    else:
+        google_maps_link = "No GPS info yet"
+        google_map_image_html = ""
+
     other_info: str = f"""
         Customer = {customer}<br>
         Sub group = {cust_sub_group}<br>
         Surface location = {surface}<br>
         Unit type = {unit_type}<br>
         Model = {model}<br>
-        <a href="{google_maps_api_url}">Google Maps Link</a>
+        {google_maps_link}
     """
-
-    # Create a scatter map using Plotly
-    fig = go.Figure(
-        go.Scattermapbox(
-            lat=[lat],
-            lon=[lon],
-            mode="markers",
-            marker=go.scattermapbox.Marker(size=14),
-            text=[power_unit_shadow_str],
-        )
-    )
-    # # Create a scatter map using Plotly Express
-    # fig = px.scatter_mapbox(
-    #     lat=[lat],
-    #     lon=[lon],
-    #     zoom=12,
-    #     size_max=15,  # Adjust the marker size as needed
-    # )
-
-    # Update the layout to use the Mapbox style and set the access token
-    fig.update_layout(
-        autosize=True,
-        mapbox=dict(
-            accesstoken=os.getenv("MAPBOX_ACCESS_TOKEN"),
-            # 'streets', 'satellite', 'dark', 'light'
-            style="light",  # etc.
-            # Default center of map
-            center=go.layout.mapbox.Center(
-                lat=lat,
-                lon=lon,
-            ),
-            # The greater the zoom, the closer to earth we zoom (2-3 is good)
-            zoom=6,
-            # bearing=0,
-            # pitch=0,
-        ),
-        margin=dict(l=0, r=0, b=0, t=0),
-        width=1000,  # Set the width of the entire figure
-        # height=800,  # Set the height of the entire figure
-    )
-
-    # Create a BytesIO object to store the image
-    image_bytesio = io.BytesIO()
-
-    # Write the figure to the BytesIO object as a PNG image.
-    pio.write_image(fig, image_bytesio, format="png")
-
-    # Reset the BytesIO object to the beginning for reading
-    image_bytesio.seek(0)
-
-    # Encode the BytesIO content as base64
-    image_base64 = base64.b64encode(image_bytesio.read()).decode("utf-8")
 
     html = f"""
         <!DOCTYPE html>
@@ -852,17 +859,10 @@ def set_install_date_on_run_hours(
         <p>{other_info}</p>
         <p>Check it out!</p>
         <ul>
-            <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/<span style="background-color: #FFFF00;">admin</span>/structures/?flt1_id_equals={structure_id}</a></li>
             <li><a href="https://myijack.com/rcom/?power_unit={power_unit_shadow_str}">https://myijack.com/<span style="background-color: #FFFF00;">rcom</span>/?power_unit={power_unit_shadow_str}</a></li>
+            <li><a href="https://myijack.com/admin/structures/?flt1_id_equals={structure_id}">https://myijack.com/<span style="background-color: #FFFF00;">admin</span>/structures/?flt1_id_equals={structure_id}</a></li>
         </ul>
-
-        <!-- Inline the Plotly map image in the email -->
-        <div style="width: 90%;">
-            <a href="{google_maps_api_url}">
-                <img src="data:image/png;base64,{image_base64}" alt="Map Image" style="width: 100%; height: auto;">
-            </a>
-        </div>
-
+        {google_map_image_html}
         </body>
         </html>
     """
