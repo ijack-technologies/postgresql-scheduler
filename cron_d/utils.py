@@ -40,7 +40,8 @@ class Config:
         "msenicar@myijack.com",
     ]
     EMAIL_LIST_OP_HOURS = [
-        "everyone@myijack.com",
+        "public@myijack.com",
+        # "everyone@myijack.com",
         "smccarthy@myijack.com",
         # "rbarry@myijack.com",
         # "gmannle@myijack.com",
