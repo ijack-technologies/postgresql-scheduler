@@ -19,7 +19,7 @@ from cron_d.utils import (
     configure_logging,
     error_wrapper,
     exit_if_already_running,
-    get_all_gateways,
+    get_all_gateways_config_metrics,
     get_client_iot,
 )
 
@@ -48,7 +48,9 @@ def main(c):
     # Get the Boto3 AWS IoT client for updating the "thing shadow"
     client_iot = get_client_iot()
 
-    rows: list = get_all_gateways(c)
+    # Get all gateways from database, and all the fields we're going
+    # to update in the AWS IoT device shadow with C__{METRIC}
+    rows: list = get_all_gateways_config_metrics(c)
 
     n_rows = len(rows)
     time_start = time.time()

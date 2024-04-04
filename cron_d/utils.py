@@ -579,8 +579,11 @@ def error_wrapper():
     return wrapper_outer
 
 
-def get_all_gateways(c) -> list:
-    """Get all gateways from database"""
+def get_all_gateways_config_metrics(c) -> list:
+    """
+    Get all gateways from database, and all the fields we're going
+    to update in the AWS IoT device shadow with C__{METRIC}
+    """
 
     # These are all the metrics that will be put in the AWS IoT device shadow as "C__{METRIC}"
     SQL = """
@@ -593,7 +596,7 @@ def get_all_gateways(c) -> list:
             wait_time_mins_suction, wait_time_mins_discharge, wait_time_mins_hyd_temp,
             hyd_oil_lvl_thresh, hyd_filt_life_thresh, hyd_oil_life_thresh,
             wait_time_mins_hyd_oil_lvl, wait_time_mins_hyd_filt_life, wait_time_mins_hyd_oil_life,
-            ip_modbus,
+            ip_modbus, subnet_modbus,
             wait_time_mins_chk_mtr_ovld, wait_time_mins_pwr_fail, wait_time_mins_soft_start_err, wait_time_mins_grey_wire_err,
             wait_time_mins_ae011
         from public.gateways
