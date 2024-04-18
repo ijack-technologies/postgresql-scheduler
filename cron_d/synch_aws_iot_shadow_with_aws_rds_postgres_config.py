@@ -62,11 +62,11 @@ def update_device_shadows_in_threadpool(
         success_dict = {}
         errors_dict = {}
         for index, future in enumerate(as_completed(future_to_aws_thing_dict)):
-            c.logger.info(f"{index + 1} of {n_gateways} shadows updated")
+            aws_thing = future_to_aws_thing_dict[future]
+            c.logger.info(f"{index + 1} of {n_gateways} shadows updated: {aws_thing}")
             status_code: int = None
             response_payload: str = None
             try:
-                aws_thing = future_to_aws_thing_dict[future]
                 response: dict = future.result()
                 streamingBody: StreamingBody = response["payload"]
                 response_payload = json.loads(streamingBody.read())
@@ -75,9 +75,11 @@ def update_device_shadows_in_threadpool(
                     "HTTPStatusCode", None
                 )
             except ClientError as err:
-                assert err.response["Error"]["Code"] == "ResourceNotFoundException"
+                # This is the most common error, when the AWS IoT thing doesn't exist.
+                # It's always true but we shouldn't have asserts in production code.
+                # assert err.response["Error"]["Code"] == "ResourceNotFoundException"
                 status_code = 404
-                response_payload = "ResourceNotFoundException"
+                response_payload = f"ResourceNotFoundException: {err}"
                 errors_dict[aws_thing] = response_payload
             except Exception as exc:
                 status_code = 500
@@ -130,7 +132,7 @@ def main(c: Config) -> None:
     # which we'll then update efficiently in a thread pool
     gateways_to_update: dict = {}
 
-    n_rows = len(rows)
+    # n_rows = len(rows)
     time_start = time.time()
     for dict_ in rows:
         # Logger info
