@@ -561,7 +561,8 @@ def upsert_gw_info(
         "time_since_reported": msg,
         "timestamp_utc_last_reported": timestamp_utc_last_reported,
         "connected": True if reported.get("connected", None) == 1 else False,
-        "hours": reported.get("HOURS", 0),
+        # This is now updated in the alerts Docker container with the hourly emails
+        # "hours": reported.get("HOURS", 0),
         "power_unit_str": str(reported.get("SERIAL_NUMBER", "")),
         "suction": reported.get("CGP", 0),
         "discharge": reported.get("DGP", 0),
