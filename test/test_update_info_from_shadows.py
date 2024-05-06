@@ -222,6 +222,8 @@ class TestAll(unittest.TestCase):
         mock_send_mailgun_email.assert_not_called()
         mock_run_query.assert_not_called()
 
+    @patch("cron_d.update_info_from_shadows.already_emailed_recently")
+    @patch("cron_d.update_info_from_shadows.record_email_sent")
     @patch("cron_d.update_info_from_shadows.send_mailgun_email")
     @patch("cron_d.update_info_from_shadows.upsert_gw_info")
     @patch("cron_d.update_info_from_shadows.run_query")
@@ -244,6 +246,8 @@ class TestAll(unittest.TestCase):
         mock_run_query,
         mock_upsert_gw_info,
         mock_send_mailgun_email,
+        mock_record_email_sent,
+        mock_already_emailed_recently,
     ):
         """Test that a small change will trigger an update"""
         global c
@@ -254,6 +258,7 @@ class TestAll(unittest.TestCase):
         power_unit_ging = 10009
         power_unit_ging_id = 316
         aws_thing_ging = "00:60:E0:84:A7:15"
+        mock_already_emailed_recently.return_value = False
 
         mocks = {
             "gw_rows.pkl": mock_get_gateway_records,
@@ -322,6 +327,9 @@ class TestAll(unittest.TestCase):
         # mock_get_structure_records.assert_called_once()
         mock_get_device_shadows_in_threadpool.assert_called_once()
         mock_get_client_iot.assert_called_once()
+        # These get called if something else is updated
+        mock_already_emailed_recently.assert_not_called()
+        mock_record_email_sent.assert_not_called()
 
         # self.assertEqual(mock_send_mailgun_email.call_count, 6)
         self.assertEqual(mock_send_mailgun_email.call_count, 1)
@@ -333,6 +341,8 @@ class TestAll(unittest.TestCase):
         mock_send_mailgun_email.reset_mock()
         mock_run_query.reset_mock()
         mock_upsert_gw_info.reset_mock()
+        mock_already_emailed_recently.reset_mock()
+        mock_record_email_sent.reset_mock()
 
         km = update_info_from_shadows.calc_distance(
             lat1=51.0, lon1=-108.0, lat2=51.0, lon2=-108.00009
@@ -353,6 +363,8 @@ class TestAll(unittest.TestCase):
 
         mock_send_mailgun_email.assert_not_called()
         mock_run_query.assert_not_called()
+        mock_record_email_sent.assert_not_called()
+        mock_already_emailed_recently.assert_not_called()
 
     def test_upsert_gw_info(self):
         """Test the 'upsert_gw_info' function"""

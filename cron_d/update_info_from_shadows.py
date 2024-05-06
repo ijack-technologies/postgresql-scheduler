@@ -322,6 +322,42 @@ def is_power_unit_already_in_use(c, power_unit_id: int) -> Tuple[bool, str]:
     return False, ""
 
 
+def already_emailed_recently(
+    c, alert_type: str, power_unit_str: str, aws_thing: str
+) -> bool:
+    """Check if we've already sent an email about this power unit and gateway today"""
+    SQL = f"""
+        select count(*)
+        from public.alerts_sent_other
+        where alert_type = '{alert_type}'
+            and timestamp_utc_sent > now() - interval '12 hours'
+            and power_unit_str = '{power_unit_str}'
+            and aws_thing = '{aws_thing}'
+    """
+    _, rows = run_query(c, SQL, db="ijack", fetchall=True)
+
+    if isinstance(rows, list) and len(rows) > 0:
+        count = rows[0]["count"]
+        if count > 0:
+            c.logger.warning(
+                f"Already emailed today about this gateway '{aws_thing}' wanting to match with power unit '{power_unit_str}'..."
+            )
+            return True
+
+    return False
+
+
+def record_email_sent(c, alert_type: str, power_unit_str: str, aws_thing: str) -> None:
+    """Record that we've sent an email about this power unit and gateway today"""
+    SQL = f"""
+        insert into public.alerts_sent_other
+        (alert_type, power_unit_str, aws_thing)
+        values ('{alert_type}', '{power_unit_str}', '{aws_thing}')
+    """
+    run_query(c, SQL, db="ijack", fetchall=False, commit=True)
+    return None
+
+
 def set_power_unit_to_gateway(c, power_unit_id_shadow: int, aws_thing: str) -> bool:
     """
     Update the public.gw record for 'aws_thing' to use the 'power_unit_id_shadow' from now on
@@ -844,6 +880,22 @@ def main(c: Config, commit: bool = False):
                 c, power_unit_id_shadow
             )
             if is_power_unit_in_use:
+                if already_emailed_recently(
+                    c,
+                    alert_type="gw_pu_already_matched",
+                    power_unit_str=power_unit_shadow_str,
+                    aws_thing=aws_thing,
+                ):
+                    # Don't send the same email too often
+                    continue
+                else:
+                    record_email_sent(
+                        c,
+                        alert_type="gw_pu_already_matched",
+                        power_unit_str=power_unit_shadow_str,
+                        aws_thing=aws_thing,
+                    )
+
                 # There's a problem since another gateway is already using that power unit
                 emailees_list = c.EMAIL_LIST_DEV
                 subject = f"Power unit '{power_unit_shadow_str}' already used by gateway {gateway_already_linked}"
@@ -865,6 +917,22 @@ def main(c: Config, commit: bool = False):
                 html += "\n</ul>"
 
             elif gateway_already_has_power_unit:
+                if already_emailed_recently(
+                    c,
+                    alert_type="gw_pu_already_matched",
+                    power_unit_str=power_unit_shadow_str,
+                    aws_thing=aws_thing,
+                ):
+                    # Don't send the same email too often
+                    continue
+                else:
+                    record_email_sent(
+                        c,
+                        alert_type="gw_pu_already_matched",
+                        power_unit_str=power_unit_shadow_str,
+                        aws_thing=aws_thing,
+                    )
+
                 # There's a problem since the gateway already has a power unit assigned to it
                 emailees_list = c.EMAIL_LIST_DEV
                 subject = f"Gateway {aws_thing} already linked to power unit {power_unit_gw} so can't link new power unit {power_unit_shadow_str}"
