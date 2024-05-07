@@ -234,7 +234,7 @@ class TestAll(unittest.TestCase):
     @patch("cron_d.update_info_from_shadows.get_gateway_records")
     @patch("cron_d.update_info_from_shadows.get_conn")
     @patch("cron_d.update_info_from_shadows.exit_if_already_running")
-    def test_need_to_update_power_unit_for_gateway(
+    def test_must_update_gps_for_unit(
         self,
         mock_exit_if_already_running,
         mock_get_conn,
@@ -249,7 +249,7 @@ class TestAll(unittest.TestCase):
         mock_record_email_sent,
         mock_already_emailed_recently,
     ):
-        """Test that a small change will trigger an update"""
+        """Test that a small change will trigger an update for the unit's GPS location"""
         global c
         c.TEST_FUNC = False
         c.EMAIL_LIST_SERVICE_PRODUCTION_IT = ["smccarthy@myijack.com"]
@@ -320,6 +320,9 @@ class TestAll(unittest.TestCase):
 
         update_info_from_shadows.main(c=c, commit=False)
 
+        # The info from AWS RDS is updated in the gateway's AWS IoT thing shadow,
+        # so the gateway can update its config
+        mock_upsert_gw_info.assert_called()
         mock_exit_if_already_running.assert_called_once()
         mock_get_conn.assert_called_once()
         mock_get_gateway_records.assert_called_once()
@@ -331,13 +334,16 @@ class TestAll(unittest.TestCase):
         mock_already_emailed_recently.assert_not_called()
         mock_record_email_sent.assert_not_called()
 
-        # self.assertEqual(mock_send_mailgun_email.call_count, 6)
-        self.assertEqual(mock_send_mailgun_email.call_count, 1)
+        # The power unit and gateway are already matched
+        # power_unit_id_shadow == power_unit_id_gw
+        mock_send_mailgun_email.assert_not_called()
 
-        self.assertEqual(mock_run_query.call_count, 3)
-        mock_upsert_gw_info.assert_called()
+        # 1. query vw_structures_joined for structure info
+        # 2. update_structures_table_gps
+        self.assertEqual(mock_run_query.call_count, 2)
 
-        # Run the test a second time, with a smaller change, and assert it doesn't trigger an update
+        # Run the test a second time, with a smaller change,
+        # and assert it doesn't trigger a GPS update
         mock_send_mailgun_email.reset_mock()
         mock_run_query.reset_mock()
         mock_upsert_gw_info.reset_mock()
@@ -575,77 +581,6 @@ class TestAll(unittest.TestCase):
             conn.close()
 
         self.assertTrue(bool_return)
-
-    # @patch("cron_d.update_info_from_shadows.send_mailgun_email")
-    @patch("cron_d.update_info_from_shadows.run_query")
-    def test_set_install_date_on_run_hours(
-        self,
-        mock_run_query,
-        # mock_send_mailgun_email
-    ):
-        """Test that we can set the install date on run hours"""
-        c: Config = Config()
-        c.logger = configure_logging(
-            __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
-        )
-        c.TEST_FUNC = False
-        c.DEV_TEST_PRD = "development"
-
-        power_unit_shadow: str = "lamda_access"
-        structure_id: int = 924
-        hours_previous: int = 99
-        gw_dict: dict = {
-            "gateway_id": "",
-            "aws_thing": "",
-            "power_unit_id": "",
-            "power_unit": power_unit_shadow,
-            "id as structure_id": structure_id,
-            "structure": 9999,
-            "hours": hours_previous,
-            "unit_type": "XFER",
-            "model": "TEST",
-            "customer": "IJACK",
-            "cust_sub_group": "Calgary Ging's Basement",
-            "structure_install_date": date.today(),
-            "gps_lat": 51.0,
-            "gps_lon": -114.0,
-            "surface": "10-20-9-32w4",
-        }
-        reported: dict = {"HOURS": 100}
-        conn = get_conn(c, db="ijack")
-        try:
-            bool_return: bool = update_info_from_shadows.set_install_date_on_run_hours(
-                c=c,
-                power_unit_shadow_str=power_unit_shadow,
-                structure_id=structure_id,
-                gw_dict=gw_dict,
-                reported=reported,
-                conn=conn,
-            )
-
-            self.assertTrue(bool_return)
-            mock_run_query.assert_called_once()
-            # mock_send_mailgun_email.assert_called_once()
-
-            # Now test a second time, with no GPS
-            mock_run_query.reset_mock()
-            gw_dict["gps_lat"] = None
-            gw_dict["gps_lon"] = None
-            bool_return: bool = update_info_from_shadows.set_install_date_on_run_hours(
-                c=c,
-                power_unit_shadow_str=power_unit_shadow,
-                structure_id=structure_id,
-                gw_dict=gw_dict,
-                reported=reported,
-                conn=conn,
-            )
-
-            self.assertTrue(bool_return)
-            mock_run_query.assert_called_once()
-        except Exception:
-            raise
-        finally:
-            conn.close()
 
 
 if __name__ == "__main__":

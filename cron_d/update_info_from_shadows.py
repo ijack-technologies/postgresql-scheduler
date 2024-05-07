@@ -780,7 +780,7 @@ def main(c: Config, commit: bool = False):
             # Get the power_unit_id already in the public.gw table
             power_unit_id_gw = gw_dict.get("power_unit_id", None)
             power_unit_gw = gw_dict.get("power_unit_str", None)
-            structure_id = gw_dict.get("structure_id", None)
+            # structure_id = gw_dict.get("structure_id", None)
 
             # # For debugging only
             # if aws_thing == "00:60:E0:72:66:13":
@@ -829,12 +829,6 @@ def main(c: Config, commit: bool = False):
     Continuing with next AWS_THING in public.gw table..."
                 )
                 continue
-
-            # NOTE: This has now moved to the alerts Docker container with the hourly emails, since it's an alert email
-            # # Set the install date once the operating hours pass 100, and inform the team
-            # set_install_date_on_run_hours(
-            #     c, power_unit_shadow_str, structure_id, gw_dict, reported, conn
-            # )
 
             # Compare the GPS first
             structure = None
