@@ -154,7 +154,7 @@ def main(c: Config) -> None:
         # Initialize a new thing shadow for the data we're going to update in AWS IoT
         shadow_new = {"state": {"reported": {}}}
 
-        # if dict_["gateway"] == "00:60:E0:84:A6:C7":
+        # if dict_["gateway"] == "00:60:E0:84:A7:15":
         #     # Just for debugging. Comment out if you don't need this
         #     print("found it")
 

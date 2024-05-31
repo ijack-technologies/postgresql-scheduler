@@ -781,6 +781,8 @@ def main(c: Config, commit: bool = False):
             power_unit_id_gw = gw_dict.get("power_unit_id", None)
             power_unit_gw = gw_dict.get("power_unit_str", None)
             # structure_id = gw_dict.get("structure_id", None)
+            structure = gw_dict.get("structure_str", None)
+            customer = gw_dict.get("customer", None)
 
             # # For debugging only
             # if aws_thing == "00:60:E0:72:66:13":
@@ -831,8 +833,6 @@ def main(c: Config, commit: bool = False):
                 continue
 
             # Compare the GPS first
-            structure = None
-            customer = None
             structure_rows_relevant = [
                 row for row in gw_rows if row["power_unit_id"] == power_unit_id_gw
             ]
@@ -961,14 +961,16 @@ def main(c: Config, commit: bool = False):
             html += "\n</ul></p>"
 
             if not structure:
-                html += f"\n<p>There is no structure matched to power unit '{power_unit_shadow_str}'.</p>"
+                html += f"\n<p>There is no structure matched to power unit '{power_unit_gw}'.</p>"
             else:
-                html += f"\n<p>The structure for new current power unit '{power_unit_shadow_str}' is '{structure}'.</p>"
+                html += f"\n<p>The structure for power unit '{power_unit_gw}' is '{structure}'.</p>"
 
             if customer:
-                html += f"\n<p>The customer for structure '{structure}' is '{customer}'.</p>"
+                html += f"\n<p>The customer for structure '{structure}' (power unit '{power_unit_gw}') is '{customer}'.</p>"
             else:
-                html += f"\n<p>There is no customer for power unit '{power_unit_shadow_str}'.</p>"
+                html += (
+                    f"\n<p>There is no customer for power unit '{power_unit_gw}'.</p>"
+                )
 
             html += f"\n<p><b>Edit the data in the 'Admin' site:</b></p>"
             html += "\n<ul>"
