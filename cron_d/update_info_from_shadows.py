@@ -653,6 +653,10 @@ def upsert_gw_info(
         "swv_canpy": "SWV_PYTHON",
         "swv_plc": "SWV",
         "gw_type_reported": "gateway_type",
+        "drive_size_gb": "DRIVE_SIZE_GB",
+        "drive_used_gb": "DRIVE_USED_GB",
+        "memory_size_gb": "MEMORY_SIZE_GB",
+        "memory_used_gb": "MEMORY_USED_GB",
     }
 
     for db_col_name, shadow_name in metrics_to_update.items():
