@@ -1,7 +1,4 @@
-import base64
-import io
 import logging
-import os
 import pathlib
 import pprint
 import sys
@@ -11,8 +8,6 @@ from datetime import date, datetime, timedelta
 from math import atan2, cos, radians, sin, sqrt
 from typing import Tuple
 
-import plotly.graph_objects as go
-import plotly.io as pio
 import pytz
 from psycopg2 import connect as psycopg2_connect
 
@@ -976,7 +971,7 @@ def main(c: Config, commit: bool = False):
                     f"\n<p>There is no customer for power unit '{power_unit_gw}'.</p>"
                 )
 
-            html += f"\n<p><b>Edit the data in the 'Admin' site:</b></p>"
+            html += "\n<p><b>Edit the data in the 'Admin' site:</b></p>"
             html += "\n<ul>"
             html += f'\n<li>Structures table at <a href="https://myijack.com/admin/structures/?search={power_unit_shadow_str}">https://myijack.com/admin/structures/?search={power_unit_shadow_str}</a></li>'
             html += f'\n<li>Power unit <b><em>new</em></b> table at <a href="https://myijack.com/admin/power_units/?search={power_unit_shadow_str}">https://myijack.com/admin/power_units/?search={power_unit_shadow_str}</a></li>'
