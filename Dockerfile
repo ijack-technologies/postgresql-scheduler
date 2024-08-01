@@ -2,7 +2,7 @@ FROM python:3.8-slim-buster
 
 # Install cron for scheduled jobs and procps for "ps" tool to check running procs
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install cron nano procps
+    apt-get -y --no-install-recommends install cron nano procps iputils-ping
 
 COPY requirements.txt /
 RUN pip3 install --upgrade pip && \

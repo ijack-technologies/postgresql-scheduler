@@ -15,8 +15,21 @@ services:
     networks:
       - traefik-public
     deploy:
+      # Either global (exactly one container per physical node) or
+      # replicated (a specified number of containers). The default is replicated
+      mode: replicated
+      # For stateless applications using "replicated" mode,
+      # the total number of replicas to create
+      replicas: 1
+      # Don't use a restart policy. Let Docker Swarm handle it.
       restart_policy:
-        condition: on-failure
+        # condition: on-failure
+        condition: any
+    healthcheck:
+      test: [ "CMD", "ping", "-c", "1", "https://google.com" ]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
 
 networks:
   # Use the previously created public network "traefik-public", shared with other services
