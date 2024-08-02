@@ -170,7 +170,9 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     max_date_str: str = max_date.strftime("%Y-%m-%d %H:%M:%S")
     after_this_date_str: str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
-    # First get data from LOCF table so we almost certainly have something to fill forward
+    c.logger.info(
+        "Getting data from LOCF table so we almost certainly have something to fill forward..."
+    )
     SQL_OLD_DATA = f"""
     select *
     from public.time_series_locf
@@ -183,8 +185,9 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     df_old = pd.DataFrame(rows_old, columns=columns_old)
     del rows_old
 
-    # Now get new data from the regular time_series table (which contains nulls),
-    # to be efficiently inserted into the LOCF table we previously queried above.
+    c.logger.info(
+        "Getting new data from the regular time_series table (which contains nulls), to be efficiently inserted into the LOCF table we previously queried above..."
+    )
     SQL_LATEST_DATA = f"""
     select *
     from public.time_series
@@ -433,7 +436,7 @@ def main(c):
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
-    timestamp = get_latest_timestamp_in_table(c, table="time_series_locf")
+    timestamp = get_latest_timestamp_in_table(c, table="time_series_locf", raise_error=False)
     get_and_insert_latest_values(c, after_this_date=timestamp)
 
     # Force the continuous aggregates to refresh, including the latest data
