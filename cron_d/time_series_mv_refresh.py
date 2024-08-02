@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from io import StringIO
 
 import pandas as pd
+import numpy as np
 import psycopg2
 
 # import numpy as np
@@ -210,30 +211,39 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
 
     # Get the gateway and power unit mapping
     gateway_power_unit_dict = get_gateway_power_unit_dict(c)
-    # power_unit_gateway_dict = {pu: gw for gw, pu in gateway_power_unit_dict.items()}
 
+    c.logger.info("Ensuring the power unit is filled in (this takes way too long)...")
+
+    # def ensure_power_unit_and_gateway(series: pd.Series) -> pd.Series:
+    #     """Ensure there's a power unit for each record"""
+
+    #     series.power_unit = str(series.power_unit).replace(".0", "")
+
+    #     if series.gateway and not series.power_unit:
+    #         series.power_unit = gateway_power_unit_dict.get(series.gateway, None)
+
+    #     return series
+
+    # If there's a gateway and no power unit, fill in the power unit
+    # Show the records that are missing a power unit
+    df_missing_power_unit = df[df["power_unit"].isnull()]
+    n_records_missing_power_unit = len(df_missing_power_unit)
+    if n_records_missing_power_unit > 0:
+        c.logger.info(
+            "Number of records missing a power unit: %s", n_records_missing_power_unit
+        )
+        c.logger.info("Ensuring the power unit is filled in...")
+        df["power_unit"] = np.where(
+            df["gateway"] & ~df["power_unit"],
+            df["gateway"].map(gateway_power_unit_dict),
+        )
+    # df = df.apply(ensure_power_unit_and_gateway, axis=1)
+    # For the power unit, convert to string and remove the ".0" if it's there
     c.logger.info(
-        "Ensuring the power unit and gateway are filled in (this takes way too long)..."
+        "Converting the power unit to a string and removing the '.0' if it's there..."
     )
-    # # Fill in power unit if there's not power unit, but there is a gateway
-    # def get_power_unit_by_gateway(gateway: str) -> str:
-    #     power_unit = gateway_power_unit_dict.get(gateway, None)
-    #     return power_unit
-
-    def ensure_power_unit_and_gateway(series: pd.Series) -> pd.Series:
-        """Ensure there's a power unit for each record"""
-
-        series.power_unit = str(series.power_unit).replace(".0", "")
-
-        if series.gateway and not series.power_unit:
-            series.power_unit = gateway_power_unit_dict.get(series.gateway, None)
-        # if series.power_unit and not series.gateway:
-        #     series.gateway = power_unit_gateway_dict.get(series.power_unit, None)
-
-        return series
-
     time_start = time.time()
-    df = df.apply(ensure_power_unit_and_gateway, axis=1)
+    df["power_unit"] = df["power_unit"].astype(str).str.rstrip(".0")
     mins_taken = round((time.time() - time_start) / 60, 1)
     c.logger.info(
         "Minutes taken to ensure the power unit and gateway are filled in: %s",
