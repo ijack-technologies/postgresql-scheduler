@@ -436,7 +436,9 @@ def main(c):
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
-    timestamp = get_latest_timestamp_in_table(c, table="time_series_locf", raise_error=False)
+    timestamp = get_latest_timestamp_in_table(
+        c, table="time_series_locf", raise_error=False
+    )
     get_and_insert_latest_values(c, after_this_date=timestamp)
 
     # Force the continuous aggregates to refresh, including the latest data
