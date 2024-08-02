@@ -27,8 +27,8 @@ services:
         condition: any
     healthcheck:
       test: [ "CMD", "ping", "-c", "1", "google.com" ]
-      interval: 1m30s
-      timeout: 10s
+      interval: 3m
+      timeout: 60s
       retries: 3
 
 networks:
