@@ -65,7 +65,9 @@ def get_latest_timestamp_in_table(
             from public.{table}
             where timestamp_utc >= (now() - interval '{interval}')
         """
-        _, rows = run_query(c, sql, db="timescale", fetchall=True, raise_error=raise_error)
+        _, rows = run_query(
+            c, sql, db="timescale", fetchall=True, raise_error=raise_error
+        )
 
         timestamp = rows[0]["timestamp_utc"]
         if timestamp:
