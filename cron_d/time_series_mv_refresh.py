@@ -59,7 +59,16 @@ def get_latest_timestamp_in_table(
 ) -> datetime:
     """Get the most recent timestamp in public.time_series_locf"""
 
-    for interval in ["7 days", "14 days", "90 days", "180 days", "365 days"]:
+    for interval in [
+        "2 hours",
+        "12 hours",
+        "2 days",
+        "7 days",
+        "14 days",
+        "90 days",
+        "180 days",
+        "365 days",
+    ]:
         sql = f"""
             select max(timestamp_utc) as timestamp_utc
             from public.{table}
