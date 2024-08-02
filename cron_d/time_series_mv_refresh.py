@@ -210,7 +210,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
 
     # Get the gateway and power unit mapping
     gateway_power_unit_dict = get_gateway_power_unit_dict(c)
-    power_unit_gateway_dict = {pu: gw for gw, pu in gateway_power_unit_dict.items()}
+    # power_unit_gateway_dict = {pu: gw for gw, pu in gateway_power_unit_dict.items()}
 
     c.logger.info(
         "Ensuring the power unit and gateway are filled in (this takes way too long)..."
@@ -221,14 +221,14 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     #     return power_unit
 
     def ensure_power_unit_and_gateway(series: pd.Series) -> pd.Series:
-        """Ensure there's both a power unit and a gateway"""
+        """Ensure there's a power unit for each record"""
 
         series.power_unit = str(series.power_unit).replace(".0", "")
 
-        if series.power_unit and not series.gateway:
-            series.gateway = power_unit_gateway_dict.get(series.power_unit, None)
-        elif series.gateway and not series.power_unit:
+        if series.gateway and not series.power_unit:
             series.power_unit = gateway_power_unit_dict.get(series.gateway, None)
+        # if series.power_unit and not series.gateway:
+        #     series.gateway = power_unit_gateway_dict.get(series.power_unit, None)
 
         return series
 
