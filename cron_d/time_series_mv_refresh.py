@@ -240,23 +240,6 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         mins_taken,
     )
 
-    # # Fill in power_unit if there's no power_unit, but there is a gateway
-    # df["gateway"] = df["power_unit"].map(gateway_power_unit_dict)
-    # # df["power_unit"] = np.where(
-    # #     (df["power_unit"].isna()) & (~df["gateway"].isna()),
-    # #     gateway_power_unit_dict.get(df["gateway"], None),
-    # #     df["power_unit"],
-    # # )
-    # # df.loc[df["power_unit"].isna(), "power_unit"] =
-
-    # # Fill in gateway if there's no gateway, but there is a power unit
-    # df["power_unit"] = df["gateway"].map(gateway_power_unit_dict)
-    # # df["gateway"] = np.where(
-    # #     (df["gateway"].isna()) & (~df["power_unit"].isna()),
-    # #     power_unit_gateway_dict.get(df["power_unit"], None),
-    # #     df["gateway"],
-    # # )
-
     # If values are missing, it's because they were the same as the previous values so they weren't sent
     c.logger.info("Sorting and filling in missing values...")
     # df = df.sort_values(["gateway", "timestamp_utc"], ascending=True).groupby("gateway").ffill().bfill()
