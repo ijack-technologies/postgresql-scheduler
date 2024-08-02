@@ -162,7 +162,9 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     This should allow us to run continuous aggregates on the "regular copied table".
     """
     dt_x_days_back_to_fill_forward: datetime = after_this_date - timedelta(days=1)
-    dt_x_days_back_str: str = dt_x_days_back_to_fill_forward.strftime("%Y-%m-%d %H:%M:%S")
+    dt_x_days_back_str: str = dt_x_days_back_to_fill_forward.strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
     # Only grab a 12-hour window of data to fill forward, at the most. Otherwise we'll overload the system.
     max_date: datetime = after_this_date + timedelta(hours=12)
     max_date_str: str = max_date.strftime("%Y-%m-%d %H:%M:%S")
