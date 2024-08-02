@@ -212,18 +212,6 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     # Get the gateway and power unit mapping
     gateway_power_unit_dict = get_gateway_power_unit_dict(c)
 
-    c.logger.info("Ensuring the power unit is filled in (this takes way too long)...")
-
-    # def ensure_power_unit_and_gateway(series: pd.Series) -> pd.Series:
-    #     """Ensure there's a power unit for each record"""
-
-    #     series.power_unit = str(series.power_unit).replace(".0", "")
-
-    #     if series.gateway and not series.power_unit:
-    #         series.power_unit = gateway_power_unit_dict.get(series.gateway, None)
-
-    #     return series
-
     # If there's a gateway and no power unit, fill in the power unit
     # Show the records that are missing a power unit
     df_missing_power_unit = df[df["power_unit"].isnull()]
@@ -237,7 +225,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
             df["gateway"] & ~df["power_unit"],
             df["gateway"].map(gateway_power_unit_dict),
         )
-    # df = df.apply(ensure_power_unit_and_gateway, axis=1)
+
     # For the power unit, convert to string and remove the ".0" if it's there
     c.logger.info(
         "Converting the power unit to a string and removing the '.0' if it's there..."
@@ -252,7 +240,6 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
 
     # If values are missing, it's because they were the same as the previous values so they weren't sent
     c.logger.info("Sorting and filling in missing values...")
-    # df = df.sort_values(["gateway", "timestamp_utc"], ascending=True).groupby("gateway").ffill().bfill()
     for power_unit, group in df.groupby("power_unit"):
         c.logger.info(
             "Sorting and filling... Group size for power_unit %s: %s",
