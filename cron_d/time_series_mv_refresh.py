@@ -261,7 +261,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     c.logger.info("Sorting and filling in missing values...")
     # df = df.sort_values(["gateway", "timestamp_utc"], ascending=True).groupby("gateway").ffill().bfill()
     for power_unit, group in df.groupby("power_unit"):
-        c.logger.info("Group size for power_unit %s: %s", power_unit, len(group))
+        c.logger.info("Sorting and filling... Group size for power_unit %s: %s", power_unit, len(group))
         # Sort by timestamp_utc, then fill in missing values
         sorted_group = (
             group.sort_values("timestamp_utc", ascending=True).ffill().bfill()
