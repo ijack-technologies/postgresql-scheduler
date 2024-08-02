@@ -161,9 +161,12 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     which are not already in the regular "copied" table, and insert them.
     This should allow us to run continuous aggregates on the "regular copied table".
     """
-    dt_x_days_back_to_fill_forward = after_this_date - timedelta(days=1)
-    dt_x_days_back_str = dt_x_days_back_to_fill_forward.strftime("%Y-%m-%d %H:%M:%S")
-    after_this_date_str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
+    dt_x_days_back_to_fill_forward: datetime = after_this_date - timedelta(days=1)
+    dt_x_days_back_str: str = dt_x_days_back_to_fill_forward.strftime("%Y-%m-%d %H:%M:%S")
+    # Only grab a 12-hour window of data to fill forward, at the most. Otherwise we'll overload the system.
+    max_date: datetime = after_this_date + timedelta(hours=12)
+    max_date_str: str = max_date.strftime("%Y-%m-%d %H:%M:%S")
+    after_this_date_str: str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
     # First get data from LOCF table so we almost certainly have something to fill forward
     SQL_OLD_DATA = f"""
@@ -184,6 +187,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     select *
     from public.time_series
     where timestamp_utc > '{after_this_date_str}'
+        and timestamp_utc <= '{max_date_str}'
     """
     columns_new, rows_new = run_query(
         c, SQL_LATEST_DATA, db="timescale", fetchall=True, raise_error=True
