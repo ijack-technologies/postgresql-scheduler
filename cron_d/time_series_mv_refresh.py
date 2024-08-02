@@ -59,17 +59,21 @@ def get_latest_timestamp_in_table(
 ) -> datetime:
     """Get the most recent timestamp in public.time_series_locf"""
 
-    sql = f"""
-        select max(timestamp_utc) as timestamp_utc
-        from public.{table}
-        where timestamp_utc >= (now() - interval '7 days')
-    """
-    _, rows = run_query(c, sql, db="timescale", fetchall=True, raise_error=raise_error)
+    for interval in ["7 days", "14 days", "90 days", "180 days", "365 days"]:
+        sql = f"""
+            select max(timestamp_utc) as timestamp_utc
+            from public.{table}
+            where timestamp_utc >= (now() - interval '{interval}')
+        """
+        _, rows = run_query(c, sql, db="timescale", fetchall=True, raise_error=raise_error)
 
-    timestamp = rows[0]["timestamp_utc"]
+        timestamp = rows[0]["timestamp_utc"]
+        if timestamp:
+            break
+
     if not timestamp:
         raise ValueError(
-            f"'rows' type = {type(rows)} with value = '{rows}' after the following query on table '{table}': \n'{sql}'"
+            f"Couldn't find max(timestamp_utc) from table '{table}'. rows = {rows} after the following query: '''{sql}'''"
         )
 
     if threshold:
