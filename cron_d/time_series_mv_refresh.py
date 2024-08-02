@@ -240,9 +240,15 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
 
     # If values are missing, it's because they were the same as the previous values so they weren't sent
     c.logger.info("Sorting and filling in missing values...")
+    n_power_units = len(df["power_unit"].unique())
+    power_unit_counter = 0
+    time_start = time.time()
     for power_unit, group in df.groupby("power_unit"):
+        power_unit_counter += 1
         c.logger.info(
-            "Sorting and filling... Group size for power_unit %s: %s",
+            "Sorting and filling %s of %s... Group size for power_unit %s: %s",
+            power_unit_counter,
+            n_power_units,
             power_unit,
             len(group),
         )
@@ -252,6 +258,10 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         )
         # Replace the original group with the sorted and filled group
         df.loc[df["power_unit"] == power_unit, :] = sorted_group
+    mins_taken = round((time.time() - time_start) / 60, 1)
+    c.logger.info(
+        "Minutes taken to sort and fill in missing values: %s", mins_taken,
+    )
 
     # Change data types to match the database table
     # Change signal to smallint in postgres. Must be 'Int64' in pandas to allow for NaNs
