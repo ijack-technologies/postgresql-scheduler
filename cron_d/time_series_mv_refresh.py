@@ -260,7 +260,8 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         df.loc[df["power_unit"] == power_unit, :] = sorted_group
     mins_taken = round((time.time() - time_start) / 60, 1)
     c.logger.info(
-        "Minutes taken to sort and fill in missing values: %s", mins_taken,
+        "Minutes taken to sort and fill in missing values: %s",
+        mins_taken,
     )
 
     # Change data types to match the database table
