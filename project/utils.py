@@ -535,14 +535,11 @@ def error_wrapper():
                 check_dt = datetime.datetime.utcnow()
                 c.logger.info(f"The time of the error is {check_dt}")
                 try:
-                    if (
-                        is_time_between(
-                            begin_time=datetime.time(hour=9, minute=0),
-                            end_time=datetime.time(hour=9, minute=3),
-                            check_time=check_dt.time(),
-                        )
-                        and "server closed the connection" in str(err)
-                    ):
+                    if is_time_between(
+                        begin_time=datetime.time(hour=9, minute=0),
+                        end_time=datetime.time(hour=9, minute=3),
+                        check_time=check_dt.time(),
+                    ) and "server closed the connection" in str(err):
                         return None
                 except Exception as err_inner:
                     c.logger.exception(
