@@ -67,6 +67,7 @@ def configure_logging(name, logfile_name, path_to_log_directory="/project/logs/"
     # date_for_log_filename = datetime.datetime.now().strftime('%Y-%m-%d')
     # log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filename = f"{logfile_name}.log"
+    path_to_log_directory = Path(path_to_log_directory)
     log_filepath = path_to_log_directory.joinpath(log_filename)
 
     if platform.system() == "Linux":
