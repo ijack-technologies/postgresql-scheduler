@@ -49,7 +49,7 @@ services:
     volumes:
       - type: volume
         source: postgresql_scheduler_logs_prod
-        target: /project/app/logs
+        target: /project/logs
         read_only: false
         volume:
           nocopy: true
