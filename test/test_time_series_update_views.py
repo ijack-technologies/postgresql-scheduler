@@ -95,9 +95,10 @@ class TestAll(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            get_latest_timestamp_in_table(c)
+            _: datetime = get_latest_timestamp_in_table(c)
 
-        mock_run_query.assert_called_once()
+        # The function should have been called 8 times
+        self.assertEqual(mock_run_query.call_count, 8)
 
     @patch("cron_d.time_series_mv_refresh.run_query")
     def test_get_latest_timestamp_in_table_threshold(
@@ -173,7 +174,21 @@ class TestAll(unittest.TestCase):
         self.assertEqual(mock_run_query.call_count, 1)
 
     @patch("time.sleep")
-    @patch("cron_d.time_series_mv_refresh.run_query")
+    @patch(
+        "cron_d.time_series_mv_refresh.run_query",
+        return_value=(
+            ["power_unit", "power_unit_str", "gateway", "timestamp_utc", "signal"],
+            [
+                {
+                    "power_unit": "1",
+                    "power_unit_str": "1",
+                    "gateway": "1",
+                    "timestamp_utc": datetime.utcnow(),
+                    "signal": 1,
+                }
+            ],
+        ),
+    )
     def test_get_and_insert_latest_values(
         self,
         mock_run_query,
@@ -182,9 +197,14 @@ class TestAll(unittest.TestCase):
         """Test the get_and_insert_latest_values() function"""
         global c
 
-        boolean = get_and_insert_latest_values(c, after_this_date=datetime.utcnow())
+        try:
+            boolean = get_and_insert_latest_values(c, after_this_date=datetime.utcnow())
+        except Exception as err:
+            print(err)
+            raise
+
         assert boolean is True
-        mock_run_query.assert_called_once()
+        self.assertTrue(mock_run_query.call_count, 4)
 
     @patch("cron_d.time_series_mv_refresh.run_query")
     def test_force_refresh_continuous_aggregates(
