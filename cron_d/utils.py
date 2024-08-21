@@ -169,8 +169,7 @@ def run_query(
                 if copy_from_kwargs:
                     cursor.copy_from(**copy_from_kwargs)
                 else:
-                    cursor.execute(sql, values_dict
-                                   )
+                    cursor.execute(sql, values_dict)
             except Exception as err:
                 c.logger.error(f"ERROR executing SQL: '{sql}'\n\n Error: {err}")
                 if raise_error:
