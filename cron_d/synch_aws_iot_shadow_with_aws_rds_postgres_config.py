@@ -18,7 +18,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 # local imports
-from cron_d.utils import (
+from project.utils import (
     Config,
     configure_logging,
     error_wrapper,
@@ -31,7 +31,7 @@ LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "synch_aws_iot_shadow_with_aws_rds_postgres_config"
 c = Config()
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 

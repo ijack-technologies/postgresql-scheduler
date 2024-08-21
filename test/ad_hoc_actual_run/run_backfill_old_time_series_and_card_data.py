@@ -14,10 +14,10 @@
 #         sys.path.insert(0, pythonpath)
 
 # insert_path("/workspace/ad_hoc")
-# insert_path("/workspace/cron_d")
+# insert_path("/workspace/project")
 
 # # local imports
-# from cron_d.utils import Config, configure_logging
+# from project.utils import Config, configure_logging
 # import backfill_old_time_series_and_card_data
 
 # LOGFILE_NAME = "test_backfill_old_time_series_and_card_data"
@@ -25,7 +25,7 @@
 # c = Config()
 # c.DEV_TEST_PRD = "development"
 # c.logger = configure_logging(
-#     __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+#     __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 # )
 
 

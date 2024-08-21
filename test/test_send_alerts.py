@@ -14,7 +14,7 @@ except ValueError:
 
 
 # local imports
-from cron_d.utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
+from project.utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -29,7 +29,7 @@ LOGFILE_NAME = "test_send_alerts"
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 

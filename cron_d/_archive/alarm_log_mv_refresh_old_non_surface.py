@@ -16,7 +16,7 @@
 #     sys.path.insert(0, pythonpath)
 
 # # local imports
-# from cron_d.utils import (
+# from project.utils import (
 #     Config, configure_logging, run_query, error_wrapper, send_mailgun_email, send_twilio_phone, send_twilio_sms,
 #     exit_if_already_running,
 # )
@@ -51,6 +51,6 @@
 #     c.logger = configure_logging(
 #         __name__,
 #         logfile_name = LOGFILE_NAME,
-#         path_to_log_directory='/var/log/'
+#         path_to_log_directory='/project/logs/'
 #     )
 #     main(c)

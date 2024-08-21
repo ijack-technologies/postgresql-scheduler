@@ -15,15 +15,15 @@ except ValueError:
 
 
 # import alarm_log_mv_refresh_old_non_surface
-from cron_d import time_series_aggregate_calcs
-from cron_d.utils import Config, configure_logging
+from project import time_series_aggregate_calcs
+from project.utils import Config, configure_logging
 
 LOGFILE_NAME = "real_time_series_aggregate_calcs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 
@@ -35,7 +35,7 @@ class TestAll(unittest.TestCase):
         # This c.TEST_FUNC just disables SMS, email, and phone call alerts
         c.TEST_FUNC = True
 
-    @patch("cron_d.time_series_aggregate_calcs.exit_if_already_running")
+    @patch("project.time_series_aggregate_calcs.exit_if_already_running")
     def test_time_series_aggregate_calcs(self, mock_exit_if_already_running):
         """Test the main program"""
         global c

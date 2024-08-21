@@ -14,10 +14,10 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-from cron_d._archive import db_remove_old_connections
+from project._archive import db_remove_old_connections
 
 # local imports
-from cron_d.utils import Config, configure_logging
+from project.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -32,7 +32,7 @@ LOGFILE_NAME = "test_db_remove_old_connections"
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 
@@ -53,7 +53,7 @@ class TestAll(unittest.TestCase):
         global c
 
         # This is no longer a materialized view--just a regular view
-        with patch("cron_d.db_remove_old_connections.exit_if_already_running") as _:
+        with patch("project.db_remove_old_connections.exit_if_already_running") as _:
             db_remove_old_connections.main(c)
 
 

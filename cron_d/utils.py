@@ -53,7 +53,7 @@ class Config:
     TEST_DICT = {}
 
 
-def configure_logging(name, logfile_name, path_to_log_directory="/var/log/"):
+def configure_logging(name, logfile_name, path_to_log_directory="/project/logs/"):
     """Configure logger"""
     global LOG_LEVEL
 
@@ -67,7 +67,7 @@ def configure_logging(name, logfile_name, path_to_log_directory="/var/log/"):
     # date_for_log_filename = datetime.datetime.now().strftime('%Y-%m-%d')
     # log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filename = f"{logfile_name}.log"
-    log_filepath = os.path.join(path_to_log_directory, log_filename)
+    log_filepath = path_to_log_directory.joinpath(log_filename)
 
     if platform.system() == "Linux":
         # fh = logging.FileHandler(filename=log_filepath)
@@ -490,7 +490,7 @@ def check_if_c_in_args(args):
         c.logger = configure_logging(
             __name__,
             logfile_name=pathlib.Path(__file__).stem,
-            path_to_log_directory="/var/log/",
+            path_to_log_directory="/project/logs/",
         )
     return c
 
@@ -514,7 +514,7 @@ def error_wrapper():
             c.logger = configure_logging(
                 __name__,
                 logfile_name=pathlib.Path(__file__).stem,
-                path_to_log_directory="/var/log/",
+                path_to_log_directory="/project/logs/",
             )
             try:
                 # Do something before

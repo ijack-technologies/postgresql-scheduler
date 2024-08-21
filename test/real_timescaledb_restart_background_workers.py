@@ -13,17 +13,17 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from cron_d import timescaledb_restart_background_workers
+from project import timescaledb_restart_background_workers
 
 # local imports
-from cron_d.utils import Config, configure_logging
+from project.utils import Config, configure_logging
 
 LOGFILE_NAME = "really_run_timescaledb_restart_background_workers"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 
@@ -34,7 +34,7 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = False
 
-    @patch("cron_d.utils.find_pids")
+    @patch("project.utils.find_pids")
     def test_timescaledb_restart_background_workers(self, mock_find_pids):
         """Really run the timescaledb_restart_background_workers.py file"""
         global c

@@ -21,15 +21,15 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from cron_d import update_info_from_shadows
-from cron_d.utils import Config, configure_logging, get_conn, run_query
+from project import update_info_from_shadows
+from project.utils import Config, configure_logging, get_conn, run_query
 
 LOGFILE_NAME = "test_main_programs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 fixture_folder = Path(pythonpath).joinpath("test").joinpath("fixtures")
@@ -46,8 +46,8 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
 
-    @patch("cron_d.update_info_from_shadows.send_mailgun_email")
-    @patch("cron_d.update_info_from_shadows.run_query")
+    @patch("project.update_info_from_shadows.send_mailgun_email")
+    @patch("project.update_info_from_shadows.run_query")
     def test_update_structures_table_gps(
         self,
         mock_run_query,
@@ -120,8 +120,8 @@ class TestAll(unittest.TestCase):
         # )
         mock_send_mailgun_email.assert_not_called()
 
-    @patch("cron_d.update_info_from_shadows.send_mailgun_email")
-    @patch("cron_d.update_info_from_shadows.run_query")
+    @patch("project.update_info_from_shadows.send_mailgun_email")
+    @patch("project.update_info_from_shadows.run_query")
     def test_compare_shadow_and_db_gps(self, mock_run_query, mock_send_mailgun_email):
         """Test that a small change in GPS will trigger an update"""
         global c
@@ -222,18 +222,18 @@ class TestAll(unittest.TestCase):
         mock_send_mailgun_email.assert_not_called()
         mock_run_query.assert_not_called()
 
-    @patch("cron_d.update_info_from_shadows.already_emailed_recently")
-    @patch("cron_d.update_info_from_shadows.record_email_sent")
-    @patch("cron_d.update_info_from_shadows.send_mailgun_email")
-    @patch("cron_d.update_info_from_shadows.upsert_gw_info")
-    @patch("cron_d.update_info_from_shadows.run_query")
-    @patch("cron_d.update_info_from_shadows.get_client_iot")
-    @patch("cron_d.update_info_from_shadows.get_device_shadows_in_threadpool")
-    # @patch("cron_d.update_info_from_shadows.get_structure_records")
-    # @patch("cron_d.update_info_from_shadows.get_power_unit_records")
-    @patch("cron_d.update_info_from_shadows.get_gateway_records")
-    @patch("cron_d.update_info_from_shadows.get_conn")
-    @patch("cron_d.update_info_from_shadows.exit_if_already_running")
+    @patch("project.update_info_from_shadows.already_emailed_recently")
+    @patch("project.update_info_from_shadows.record_email_sent")
+    @patch("project.update_info_from_shadows.send_mailgun_email")
+    @patch("project.update_info_from_shadows.upsert_gw_info")
+    @patch("project.update_info_from_shadows.run_query")
+    @patch("project.update_info_from_shadows.get_client_iot")
+    @patch("project.update_info_from_shadows.get_device_shadows_in_threadpool")
+    # @patch("project.update_info_from_shadows.get_structure_records")
+    # @patch("project.update_info_from_shadows.get_power_unit_records")
+    @patch("project.update_info_from_shadows.get_gateway_records")
+    @patch("project.update_info_from_shadows.get_conn")
+    @patch("project.update_info_from_shadows.exit_if_already_running")
     def test_must_update_gps_for_unit(
         self,
         mock_exit_if_already_running,

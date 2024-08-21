@@ -15,15 +15,15 @@ except ValueError:
 
 
 # import alarm_log_mv_refresh_old_non_surface
-from cron_d import time_series_mv_refresh
-from cron_d.utils import Config, configure_logging
+from project import time_series_mv_refresh
+from project.utils import Config, configure_logging
 
 LOGFILE_NAME = "test_main_programs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 
@@ -36,7 +36,7 @@ class TestAll(unittest.TestCase):
         c.TEST_FUNC = True
 
     @patch("time.sleep", return_value=None)
-    @patch("cron_d.time_series_mv_refresh.exit_if_already_running")
+    @patch("project.time_series_mv_refresh.exit_if_already_running")
     def test_time_series_mv_refresh(
         self, mock_exit_if_already_running, mock_time_sleep
     ):

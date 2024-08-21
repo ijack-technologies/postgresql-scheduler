@@ -14,7 +14,7 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from cron_d.time_series_mv_refresh import (
+from project.time_series_mv_refresh import (
     check_table_timestamps,
     force_refresh_continuous_aggregates,
     get_and_insert_latest_values,
@@ -30,14 +30,14 @@ except ValueError:
 
 
 # local imports
-from cron_d.utils import Config, configure_logging
+from project.utils import Config, configure_logging
 
 LOGFILE_NAME = "test_time_series_update_views"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 
@@ -60,7 +60,7 @@ class TestAll(unittest.TestCase):
     #     with self.assertRaises(psycopg2.errors.WrongObjectType):
     #         gateways_mv_refresh.main(c)
 
-    @patch("cron_d.time_series_mv_refresh.run_query")
+    @patch("project.time_series_mv_refresh.run_query")
     def test_get_latest_timestamp_in_table(
         self,
         mock_run_query,
@@ -80,7 +80,7 @@ class TestAll(unittest.TestCase):
         assert timestamp < datetime.utcnow()
         mock_run_query.assert_called_once()
 
-    @patch("cron_d.time_series_mv_refresh.run_query")
+    @patch("project.time_series_mv_refresh.run_query")
     def test_get_latest_timestamp_in_table_raises_error(
         self,
         mock_run_query,
@@ -100,7 +100,7 @@ class TestAll(unittest.TestCase):
         # The function should have been called 8 times
         self.assertEqual(mock_run_query.call_count, 8)
 
-    @patch("cron_d.time_series_mv_refresh.run_query")
+    @patch("project.time_series_mv_refresh.run_query")
     def test_get_latest_timestamp_in_table_threshold(
         self,
         mock_run_query,
@@ -126,7 +126,7 @@ class TestAll(unittest.TestCase):
         )
         self.assertIn("which is before the threshold timedelta '1:00:00'", error_msg)
 
-    @patch("cron_d.time_series_mv_refresh.run_query")
+    @patch("project.time_series_mv_refresh.run_query")
     def test_check_table_timestamps_threshold(
         self,
         mock_run_query,
@@ -175,7 +175,7 @@ class TestAll(unittest.TestCase):
 
     @patch("time.sleep")
     @patch(
-        "cron_d.time_series_mv_refresh.run_query",
+        "project.time_series_mv_refresh.run_query",
         return_value=(
             ["power_unit", "power_unit_str", "gateway", "timestamp_utc", "signal"],
             [
@@ -206,7 +206,7 @@ class TestAll(unittest.TestCase):
         assert boolean is True
         self.assertTrue(mock_run_query.call_count, 4)
 
-    @patch("cron_d.time_series_mv_refresh.run_query")
+    @patch("project.time_series_mv_refresh.run_query")
     def test_force_refresh_continuous_aggregates(
         self,
         mock_run_query,

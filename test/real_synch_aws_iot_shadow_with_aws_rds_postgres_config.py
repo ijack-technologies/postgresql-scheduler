@@ -14,15 +14,15 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-from cron_d import synch_aws_iot_shadow_with_aws_rds_postgres_config
-from cron_d.utils import Config, configure_logging
+from project import synch_aws_iot_shadow_with_aws_rds_postgres_config
+from project.utils import Config, configure_logging
 
 LOGFILE_NAME = "test_synch_aws_iot_shadow_with_aws_rds_postgres_config"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 
@@ -39,7 +39,7 @@ class TestAll(unittest.TestCase):
         c.TEST_FUNC = True
 
     @patch(
-        "cron_d.synch_aws_iot_shadow_with_aws_rds_postgres_config.exit_if_already_running"
+        "project.synch_aws_iot_shadow_with_aws_rds_postgres_config.exit_if_already_running"
     )
     def test_update_info_from_shadows(self, mock_exit_if_already_running):
         """Test the main program"""

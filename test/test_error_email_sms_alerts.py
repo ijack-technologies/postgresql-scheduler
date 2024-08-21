@@ -16,14 +16,14 @@ except ValueError:
 
 
 # import alarm_log_mv_refresh_old_non_surface
-from cron_d import (
+from project import (
     alarm_log_delete_duplicates,
     alarm_log_mv_refresh,
     time_series_mv_refresh,
 )
 
 # local imports
-from cron_d.utils import Config, configure_logging
+from project.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -38,7 +38,7 @@ LOGFILE_NAME = "test_error_email_sms_alerts"
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 
@@ -54,9 +54,9 @@ class TestAll(unittest.TestCase):
         c.TEST_FUNC = True
         c.TEST_DICT = {}
 
-    @patch("cron_d.utils.send_twilio_sms")
-    @patch("cron_d.utils.send_mailgun_email")
-    @patch("cron_d.utils.check_if_c_in_args")
+    @patch("project.utils.send_twilio_sms")
+    @patch("project.utils.send_mailgun_email")
+    @patch("project.utils.check_if_c_in_args")
     def test_raise_error_email_time_series(self, mock_check, mock_mail, mock_twil):
         """Should send me an email and SMS if there's an error in the program"""
         global c
@@ -73,9 +73,9 @@ class TestAll(unittest.TestCase):
         # self.assertEqual(c.TEST_DICT["rc"], "")
         # self.assertEqual(c.TEST_DICT["message"], "")
 
-    @patch("cron_d.utils.send_twilio_sms")
-    @patch("cron_d.utils.send_mailgun_email")
-    @patch("cron_d.utils.check_if_c_in_args")
+    @patch("project.utils.send_twilio_sms")
+    @patch("project.utils.send_mailgun_email")
+    @patch("project.utils.check_if_c_in_args")
     def test_raise_error_email_delete_duplicates(
         self, mock_check, mock_mail, mock_twil
     ):
@@ -94,9 +94,9 @@ class TestAll(unittest.TestCase):
         # self.assertEqual(c.TEST_DICT["rc"], "")
         # self.assertEqual(c.TEST_DICT["message"], "")
 
-    @patch("cron_d.utils.send_twilio_sms")
-    @patch("cron_d.utils.send_mailgun_email")
-    @patch("cron_d.utils.check_if_c_in_args")
+    @patch("project.utils.send_twilio_sms")
+    @patch("project.utils.send_mailgun_email")
+    @patch("project.utils.check_if_c_in_args")
     def test_raise_error_email_mv_refresh_new(self, mock_check, mock_mail, mock_twil):
         """Should send me an email and SMS if there's an error in the program"""
         global c
@@ -114,7 +114,7 @@ class TestAll(unittest.TestCase):
         # self.assertEqual(c.TEST_DICT["rc"], "")
         # self.assertEqual(c.TEST_DICT["message"], "")
 
-    # @patch("cron_d.utils.check_if_c_in_args")
+    # @patch("project.utils.check_if_c_in_args")
     # def test_raise_error_email_mv_refresh_old(self, mock_check):
     #     """Should send me an email and SMS if there's an error in the program"""
     #     global c
@@ -129,7 +129,7 @@ class TestAll(unittest.TestCase):
     #     self.assertEqual(c.TEST_DICT['rc'], '')
     #     self.assertEqual(c.TEST_DICT['message'], '')
 
-    # @patch("cron_d.utils.check_if_c_in_args")
+    # @patch("project.utils.check_if_c_in_args")
     # def test_raise_error_email_gateways_mv_refresh(self, mock_check):
     #     """Should send me an email and SMS if there's an error in the program"""
     #     global c
@@ -144,10 +144,10 @@ class TestAll(unittest.TestCase):
     #     self.assertEqual(c.TEST_DICT["rc"], "")
     #     self.assertEqual(c.TEST_DICT["message"], "")
 
-    @patch("cron_d.utils.send_twilio_sms")
-    @patch("cron_d.utils.send_mailgun_email")
-    @patch("cron_d.utils.check_if_c_in_args")
-    @patch("cron_d.utils.datetime.datetime")
+    @patch("project.utils.send_twilio_sms")
+    @patch("project.utils.send_mailgun_email")
+    @patch("project.utils.check_if_c_in_args")
+    @patch("project.utils.datetime.datetime")
     def test_its_8_am_UTC_time_error_every_night(
         self, mock_dt, mock_check, mock_mail, mock_twil
     ):

@@ -12,15 +12,15 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-# from cron_d import alarm_log_mv_refresh_old_non_surface
-from cron_d import (
+# from project import alarm_log_mv_refresh_old_non_surface
+from project import (
     alarm_log_delete_duplicates,
     alarm_log_mv_refresh,
     time_series_mv_refresh,
 )
 
 # local imports
-from cron_d.utils import Config, configure_logging
+from project.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -35,7 +35,7 @@ LOGFILE_NAME = "test_main_programs"
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 

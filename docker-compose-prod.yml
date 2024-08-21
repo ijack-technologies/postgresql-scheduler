@@ -46,7 +46,18 @@ services:
       timeout: 5m
       retries: 3
 
+    volumes:
+      - type: volume
+        source: postgresql_scheduler_logs_prod
+        target: /project/app/logs
+        read_only: false
+        volume:
+          nocopy: true
+
 networks:
   # Use the previously created public network "traefik-public", shared with other services
   traefik-public:
     external: true
+
+volumes:
+  postgresql_scheduler_logs_prod:

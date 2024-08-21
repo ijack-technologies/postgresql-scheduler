@@ -12,10 +12,10 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from cron_d import synch_aws_iot_shadow_with_aws_rds_postgres_config
+from project import synch_aws_iot_shadow_with_aws_rds_postgres_config
 
 # local imports
-from cron_d.utils import Config, configure_logging
+from project.utils import Config, configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -30,7 +30,7 @@ LOGFILE_NAME = "test_synch_aws_iot_shadow_with_aws_rds_postgres_config"
 c = Config()
 c.DEV_TEST_PRD = "development"
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 

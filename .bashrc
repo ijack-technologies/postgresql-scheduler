@@ -147,7 +147,7 @@ alias pip=pip3
 # . $VIRTUAL_ENV/bin/activate
 
 # # Add project directory to PYTHONPATH so Python can find my files
-# export PYTHONPATH=$PATH:/workspace/cron_d
+# export PYTHONPATH=$PATH:/workspace/project
 
 # # The following is also done when NMV and NodeJS are installed, but it must be done each time a Bash terminal is loaded
 # export NVM_DIR="$HOME/.nvm"

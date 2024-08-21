@@ -8,16 +8,12 @@ COPY requirements.txt /
 RUN pip3 install --upgrade pip && \
     pip3 install -r requirements.txt
 
-# ENV FLASK_APP wsgi.py
-# EXPOSE 5005
+WORKDIR /project
 
-# COPY app app 
-COPY cron_d cron_d
-# COPY ad_hoc ad_hoc
+COPY project .env entrypoint.sh ./
+RUN chmod +x /project/entrypoint.sh && mkdir -p /project/logs
+
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /root/
-# The main Docker entrypoint when the container starts
-COPY .env entrypoint.sh /
-RUN chmod +x /entrypoint.sh
 
-CMD ["/bin/bash", "/entrypoint.sh"]
+CMD ["/bin/bash", "/project/entrypoint.sh"]

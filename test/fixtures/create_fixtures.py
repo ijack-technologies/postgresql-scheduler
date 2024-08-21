@@ -11,13 +11,13 @@ except ValueError:
 
 from test.fixtures.fixture_utils import save_fixture
 
-from cron_d.update_info_from_shadows import (  # get_power_unit_records,; get_structure_records,
+from project.update_info_from_shadows import (  # get_power_unit_records,; get_structure_records,
     get_device_shadows_in_threadpool,
     get_gateway_records,
 )
 
 # local imports
-from cron_d.utils import Config, configure_logging, get_client_iot, get_conn
+from project.utils import Config, configure_logging, get_client_iot, get_conn
 
 LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "update_info_from_shadows"
@@ -25,7 +25,7 @@ LOGFILE_NAME = "update_info_from_shadows"
 
 c = Config()
 c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/var/log/"
+    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
 )
 
 
