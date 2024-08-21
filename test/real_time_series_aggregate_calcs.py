@@ -14,7 +14,6 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-# import alarm_log_mv_refresh_old_non_surface
 from project import time_series_aggregate_calcs
 from project.utils import Config, configure_logging
 

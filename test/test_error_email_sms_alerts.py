@@ -15,10 +15,8 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-# import alarm_log_mv_refresh_old_non_surface
 from project import (
     alarm_log_delete_duplicates,
-    alarm_log_mv_refresh,
     time_series_mv_refresh,
 )
 
@@ -57,15 +55,15 @@ class TestAll(unittest.TestCase):
     @patch("project.utils.send_twilio_sms")
     @patch("project.utils.send_mailgun_email")
     @patch("project.utils.check_if_c_in_args")
-    def test_raise_error_email_time_series(self, mock_check, mock_mail, mock_twil):
+    def test_raise_error_email_time_series(self, mock_check_if_c_in_args, mock_mail, mock_twil):
         """Should send me an email and SMS if there's an error in the program"""
         global c
         c.TEST_FUNC = True
         # c.TEST_ERROR = True
-        mock_check.side_effect = Exception("server closed the connection unexpectedly")
+        mock_check_if_c_in_args.side_effect = Exception("server closed the connection unexpectedly")
         with self.assertRaises(Exception):
             time_series_mv_refresh.main(c)
-        mock_check.assert_called_once()
+        mock_check_if_c_in_args.assert_called_once()
         mock_mail.assert_called_once()
         mock_twil.assert_called_once()
         # self.assertIn("Sean, check ", c.TEST_DICT["msg_sms"])
@@ -77,36 +75,16 @@ class TestAll(unittest.TestCase):
     @patch("project.utils.send_mailgun_email")
     @patch("project.utils.check_if_c_in_args")
     def test_raise_error_email_delete_duplicates(
-        self, mock_check, mock_mail, mock_twil
+        self, mock_check_if_c_in_args, mock_mail, mock_twil
     ):
         """Should send me an email and SMS if there's an error in the program"""
         global c
         c.TEST_FUNC = True
         # c.TEST_ERROR = True
-        mock_check.side_effect = Exception("server closed the connection unexpectedly")
+        mock_check_if_c_in_args.side_effect = Exception("server closed the connection unexpectedly")
         with self.assertRaises(Exception):
             alarm_log_delete_duplicates.main(c)
-        mock_check.assert_called_once()
-        mock_mail.assert_called_once()
-        mock_twil.assert_called_once()
-        # self.assertIn("Sean, check ", c.TEST_DICT["msg_sms"])
-        # self.assertIn("There has been an error!", c.TEST_DICT["msg_sms"])
-        # self.assertEqual(c.TEST_DICT["rc"], "")
-        # self.assertEqual(c.TEST_DICT["message"], "")
-
-    @patch("project.utils.send_twilio_sms")
-    @patch("project.utils.send_mailgun_email")
-    @patch("project.utils.check_if_c_in_args")
-    def test_raise_error_email_mv_refresh_new(self, mock_check, mock_mail, mock_twil):
-        """Should send me an email and SMS if there's an error in the program"""
-        global c
-        c.TEST_DICT = {}
-        c.TEST_FUNC = True
-        # c.TEST_ERROR = False
-        mock_check.side_effect = Exception("server closed the connection unexpectedly")
-        with self.assertRaises(Exception):
-            alarm_log_mv_refresh.main(c)
-        mock_check.assert_called_once()
+        mock_check_if_c_in_args.assert_called_once()
         mock_mail.assert_called_once()
         mock_twil.assert_called_once()
         # self.assertIn("Sean, check ", c.TEST_DICT["msg_sms"])
@@ -115,30 +93,15 @@ class TestAll(unittest.TestCase):
         # self.assertEqual(c.TEST_DICT["message"], "")
 
     # @patch("project.utils.check_if_c_in_args")
-    # def test_raise_error_email_mv_refresh_old(self, mock_check):
+    # def test_raise_error_email_gateways_mv_refresh(self, mock_check_if_c_in_args):
     #     """Should send me an email and SMS if there's an error in the program"""
     #     global c
     #     c.TEST_FUNC = True
     #     c.TEST_ERROR = True
-    # mock_check.side_effect = Exception("server closed the connection unexpectedly")
-    #     with self.assertRaises(Exception):
-    #         alarm_log_mv_refresh_old_non_surface.main(c)
-    # mock_check.assert_called_once()
-    #     self.assertIn('Sean, check ', c.TEST_DICT['msg_sms'])
-    #     self.assertIn('There has been an error!', c.TEST_DICT['msg_sms'])
-    #     self.assertEqual(c.TEST_DICT['rc'], '')
-    #     self.assertEqual(c.TEST_DICT['message'], '')
-
-    # @patch("project.utils.check_if_c_in_args")
-    # def test_raise_error_email_gateways_mv_refresh(self, mock_check):
-    #     """Should send me an email and SMS if there's an error in the program"""
-    #     global c
-    #     c.TEST_FUNC = True
-    #     c.TEST_ERROR = True
-    # mock_check.side_effect = Exception("server closed the connection unexpectedly")
+    # mock_check_if_c_in_args.side_effect = Exception("server closed the connection unexpectedly")
     #     with self.assertRaises(Exception):
     #         gateways_mv_refresh.main(c)
-    # mock_check.assert_called_once()
+    # mock_check_if_c_in_args.assert_called_once()
     #     self.assertIn("Sean, check ", c.TEST_DICT["msg_sms"])
     #     self.assertIn("There has been an error!", c.TEST_DICT["msg_sms"])
     #     self.assertEqual(c.TEST_DICT["rc"], "")
@@ -149,19 +112,19 @@ class TestAll(unittest.TestCase):
     @patch("project.utils.check_if_c_in_args")
     @patch("project.utils.datetime.datetime")
     def test_its_8_am_UTC_time_error_every_night(
-        self, mock_dt, mock_check, mock_mail, mock_twil
+        self, mock_dt, mock_check_if_c_in_args, mock_mail, mock_twil
     ):
         """Test we ignore the 2-3am local time (8:00 UTC time) error every night"""
 
-        mock_check.side_effect = Exception("server closed the connection unexpectedly")
+        mock_check_if_c_in_args.side_effect = Exception("server closed the connection unexpectedly")
         mock_dt.utcnow.return_value = datetime(2021, 1, 1, 9, 1)
         global c
         c.TEST_FUNC = True
         # c.TEST_ERROR = False
 
-        alarm_log_mv_refresh.main(c)
+        alarm_log_delete_duplicates.main(c)
 
-        mock_check.assert_called_once()
+        mock_check_if_c_in_args.assert_called_once()
         mock_mail.assert_not_called()
         mock_twil.assert_not_called()
         # No error is raised!

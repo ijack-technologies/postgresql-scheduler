@@ -22,7 +22,6 @@ BASH_ENV=/container.env
 1 1 * * * python3 /project/alarm_log_delete_duplicates.py
 # Recalculate aggregated time series records once daily
 11 1 * * * python3 /project/time_series_aggregate_calcs.py
-*/1 * * * * python3 /project/alarm_log_mv_refresh.py
 */30 * * * * python3 /project/time_series_mv_refresh.py
 31 1 * * * python3 /project/timescaledb_restart_background_workers.py
 3 * * * * python3 /project/synch_aws_iot_shadow_with_aws_rds_postgres_config.py

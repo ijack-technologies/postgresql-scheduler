@@ -12,10 +12,8 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-# from project import alarm_log_mv_refresh_old_non_surface
 from project import (
     alarm_log_delete_duplicates,
-    alarm_log_mv_refresh,
     time_series_mv_refresh,
 )
 
@@ -54,16 +52,6 @@ class TestAll(unittest.TestCase):
         """Test the main program"""
         global c
         time_series_mv_refresh.main(c)
-
-    # def test_alarm_log_refresh_old(self):
-    #     """Test the main program"""
-    #     global c
-    #     alarm_log_mv_refresh_old_non_surface.main(c)
-
-    def test_alarm_log_refresh_new(self):
-        """Test the main program"""
-        global c
-        alarm_log_mv_refresh.main(c)
 
     def test_alarm_log_delete_duplicates(self):
         """Test the main program"""
