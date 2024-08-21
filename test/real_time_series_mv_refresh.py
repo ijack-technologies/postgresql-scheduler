@@ -28,8 +28,8 @@ c.logger = configure_logging(
 
 
 class TestAll(unittest.TestCase):
-    # executed prior to each test below, not just when the class is initialized
     def setUp(self):
+        """Executed prior to each test below, not just when the class is initialized"""
         global c
         c.DEV_TEST_PRD = "development"
         # This c.TEST_FUNC just disables SMS, email, and phone call alerts
