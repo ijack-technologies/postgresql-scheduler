@@ -143,22 +143,6 @@ def get_gateway_power_unit_dict(c) -> dict:
     return dict_
 
 
-# OPTIONS_DICT = {
-#     "connect_timeout": 5,
-#     "cursor_factory": DictCursor,
-#     # whether client-side TCP keepalives are used
-#     "keepalives": 1,
-#     # seconds of inactivity after which TCP should send a keepalive message to the server
-#     "keepalives_idle": 20,
-#     # seconds after which a TCP keepalive message that is not acknowledged by the server should be retransmitted
-#     "keepalives_interval": 10,
-#     # TCP keepalives that can be lost before the client's connection to the server is considered dead
-#     "keepalives_count": 5,
-#     # milliseconds that transmitted data may remain unacknowledged before a connection is forcibly closed
-#     "tcp_user_timeout": 0,
-# }
-
-
 def get_and_insert_latest_values(c, after_this_date: datetime):
     """
     Get the latest values from the "last one carried forward" materialized view,
@@ -170,7 +154,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         "%Y-%m-%d %H:%M:%S"
     )
     # Only grab a ~small window of data to fill forward, at the most. Otherwise we'll overload the system.
-    max_date: datetime = after_this_date + timedelta(days=1)
+    max_date: datetime = after_this_date + timedelta(days=7)
     max_date_str: str = max_date.strftime("%Y-%m-%d %H:%M:%S")
     after_this_date_str: str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -295,34 +279,17 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     )
 
     time_start = time.time()
-    # with psycopg2.connect(
-    #     host=os.getenv("HOST_TS"),
-    #     port=os.getenv("PORT_TS"),
-    #     dbname="ijack",
-    #     user=os.getenv("USER_TS"),
-    #     password=os.getenv("PASS_TS"),
-    #     # **OPTIONS_DICT
-    # ) as conn:
-    #     with conn.cursor() as cursor:
-    #         # For some reason it doesn't work if you put the schema in the table name
-    #         # table = "public.time_series_locf"
-    #         table = "time_series_locf"
-
-    #         # NOTE: Don't put this into a try/except because then we won't see
-    #         # errors that prevent ALL data from being inserted!
     try:
-        # cursor.copy_from(
-        #     file=sio, table=table, sep=",", null="", size=8192, columns=df.columns
-        # )
-        # conn.commit()
         run_query(
             c,
             sql=None,
             db="timescale",
             commit=True,
+            # Need to see the errors if they occur!
             raise_error=True,
             copy_from_kwargs={
                 "file": sio,
+                # For some reason it doesn't work if you put the schema in the table name
                 "table": "time_series_locf",
                 "sep": ",",
                 "null": "",
