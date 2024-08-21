@@ -129,53 +129,56 @@ class TestAll(unittest.TestCase):
         power_unit_ging = 10009
         power_unit_ging_id = 316
         aws_thing_ging = "00:60:E0:84:A7:15"
-        mock_run_query.return_value = None, [
-            OrderedDict(
-                [
-                    ("id", 660),
-                    ("structure", 10009.0),
-                    ("structure_slave_id", None),
-                    ("structure_slave", None),
-                    ("downhole", "Ging's basement July 2021"),
-                    ("surface", "Calgary"),
-                    ("location", "Ging's basement July 2021 @ Calgary"),
-                    ("gps_lat", 51.008458),
-                    ("gps_lon", -114.073852),
-                    ("power_unit_id", 316),
-                    ("power_unit", 10009.0),
-                    ("power_unit_str", "10009"),
-                    ("gateway_id", 120),
-                    ("gateway", "00:60:E0:84:A7:15"),
-                    ("aws_thing", "00:60:E0:84:A7:15"),
-                    ("qb_sale", None),
-                    ("unit_type_id", 2),
-                    ("unit_type", "XFER"),
-                    ("model_type_id", 44),
-                    ("model", "TEST"),
-                    ("model_unit_type_id", 8),
-                    ("model_unit_type", "TEST"),
-                    ("model_type_id_slave", None),
-                    ("model_slave", None),
-                    ("model_unit_type_id_slave", None),
-                    ("model_unit_type_slave", None),
-                    ("customer_id", 1),
-                    ("customer", "IJACK"),
-                    ("cust_sub_group_id", 45),
-                    ("cust_sub_group", "Calgary Ging's Basement"),
-                    ("run_mfg_date", date(2022, 1, 1)),
-                    ("structure_install_date", date(2021, 1, 28)),
-                    ("slave_install_date", None),
-                    (
-                        "notes_1",
-                        "For testing new gateways that don't have a structure or power unit yet",
-                    ),
-                    ("well_license", ""),
-                    ("time_zone_id", 3),
-                    ("time_zone", "America/Edmonton"),
-                    ("apn", ""),
-                ]
-            )
-        ]
+        mock_run_query.return_value = (
+            None,
+            [
+                OrderedDict(
+                    [
+                        ("id", 660),
+                        ("structure", 10009.0),
+                        ("structure_slave_id", None),
+                        ("structure_slave", None),
+                        ("downhole", "Ging's basement July 2021"),
+                        ("surface", "Calgary"),
+                        ("location", "Ging's basement July 2021 @ Calgary"),
+                        ("gps_lat", 51.008458),
+                        ("gps_lon", -114.073852),
+                        ("power_unit_id", 316),
+                        ("power_unit", 10009.0),
+                        ("power_unit_str", "10009"),
+                        ("gateway_id", 120),
+                        ("gateway", "00:60:E0:84:A7:15"),
+                        ("aws_thing", "00:60:E0:84:A7:15"),
+                        ("qb_sale", None),
+                        ("unit_type_id", 2),
+                        ("unit_type", "XFER"),
+                        ("model_type_id", 44),
+                        ("model", "TEST"),
+                        ("model_unit_type_id", 8),
+                        ("model_unit_type", "TEST"),
+                        ("model_type_id_slave", None),
+                        ("model_slave", None),
+                        ("model_unit_type_id_slave", None),
+                        ("model_unit_type_slave", None),
+                        ("customer_id", 1),
+                        ("customer", "IJACK"),
+                        ("cust_sub_group_id", 45),
+                        ("cust_sub_group", "Calgary Ging's Basement"),
+                        ("run_mfg_date", date(2022, 1, 1)),
+                        ("structure_install_date", date(2021, 1, 28)),
+                        ("slave_install_date", None),
+                        (
+                            "notes_1",
+                            "For testing new gateways that don't have a structure or power unit yet",
+                        ),
+                        ("well_license", ""),
+                        ("time_zone_id", 3),
+                        ("time_zone", "America/Edmonton"),
+                        ("apn", ""),
+                    ]
+                )
+            ],
+        )
 
         km = update_info_from_shadows.calc_distance(
             lat1=51.0, lon1=-108.0, lat2=51.0, lon2=-108.01001
@@ -270,53 +273,56 @@ class TestAll(unittest.TestCase):
             with open(str(fixture_folder.joinpath(filename)), "rb") as file:
                 mock.return_value = pickle.load(file)
 
-        mock_run_query.return_value = None, [
-            OrderedDict(
-                [
-                    ("id", 660),
-                    ("structure", 10009.0),
-                    ("structure_slave_id", None),
-                    ("structure_slave", None),
-                    ("downhole", "Ging's basement July 2021"),
-                    ("surface", "Calgary"),
-                    ("location", "Ging's basement July 2021 @ Calgary"),
-                    ("gps_lat", 51.008458),
-                    ("gps_lon", -114.22),
-                    ("power_unit_id", 316),
-                    ("power_unit", 200999.0),
-                    ("power_unit_str", "200999"),
-                    ("gateway_id", 120),
-                    ("gateway", "00:60:E0:84:A7:15"),
-                    ("aws_thing", "00:60:E0:84:A7:15"),
-                    ("qb_sale", None),
-                    ("unit_type_id", 2),
-                    ("unit_type", "XFER"),
-                    ("model_type_id", 44),
-                    ("model", "TEST"),
-                    ("model_unit_type_id", 8),
-                    ("model_unit_type", "TEST"),
-                    ("model_type_id_slave", None),
-                    ("model_slave", None),
-                    ("model_unit_type_id_slave", None),
-                    ("model_unit_type_slave", None),
-                    ("customer_id", 1),
-                    ("customer", "IJACK"),
-                    ("cust_sub_group_id", 45),
-                    ("cust_sub_group", "Calgary Ging's Basement"),
-                    ("run_mfg_date", date(2022, 1, 1)),
-                    ("structure_install_date", date(2021, 1, 28)),
-                    ("slave_install_date", None),
-                    (
-                        "notes_1",
-                        "For testing new gateways that don't have a structure or power unit yet",
-                    ),
-                    ("well_license", ""),
-                    ("time_zone_id", 3),
-                    ("time_zone", "America/Edmonton"),
-                    ("apn", ""),
-                ]
-            )
-        ]
+        mock_run_query.return_value = (
+            None,
+            [
+                OrderedDict(
+                    [
+                        ("id", 660),
+                        ("structure", 10009.0),
+                        ("structure_slave_id", None),
+                        ("structure_slave", None),
+                        ("downhole", "Ging's basement July 2021"),
+                        ("surface", "Calgary"),
+                        ("location", "Ging's basement July 2021 @ Calgary"),
+                        ("gps_lat", 51.008458),
+                        ("gps_lon", -114.22),
+                        ("power_unit_id", 316),
+                        ("power_unit", 200999.0),
+                        ("power_unit_str", "200999"),
+                        ("gateway_id", 120),
+                        ("gateway", "00:60:E0:84:A7:15"),
+                        ("aws_thing", "00:60:E0:84:A7:15"),
+                        ("qb_sale", None),
+                        ("unit_type_id", 2),
+                        ("unit_type", "XFER"),
+                        ("model_type_id", 44),
+                        ("model", "TEST"),
+                        ("model_unit_type_id", 8),
+                        ("model_unit_type", "TEST"),
+                        ("model_type_id_slave", None),
+                        ("model_slave", None),
+                        ("model_unit_type_id_slave", None),
+                        ("model_unit_type_slave", None),
+                        ("customer_id", 1),
+                        ("customer", "IJACK"),
+                        ("cust_sub_group_id", 45),
+                        ("cust_sub_group", "Calgary Ging's Basement"),
+                        ("run_mfg_date", date(2022, 1, 1)),
+                        ("structure_install_date", date(2021, 1, 28)),
+                        ("slave_install_date", None),
+                        (
+                            "notes_1",
+                            "For testing new gateways that don't have a structure or power unit yet",
+                        ),
+                        ("well_license", ""),
+                        ("time_zone_id", 3),
+                        ("time_zone", "America/Edmonton"),
+                        ("apn", ""),
+                    ]
+                )
+            ],
+        )
 
         update_info_from_shadows.main(c=c, commit=False)
 

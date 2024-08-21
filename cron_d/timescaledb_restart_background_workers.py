@@ -1,5 +1,5 @@
 """
-This just restarts the TimescaleDB background workers once a day, 
+This just restarts the TimescaleDB background workers once a day,
 in case they've stopped, for whatever reason
 """
 

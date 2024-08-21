@@ -34,7 +34,6 @@ c.logger = configure_logging(
 
 
 class TestAll(unittest.TestCase):
-
     # # executed after each test
     # def tearDown(self):
     #     pass
@@ -83,7 +82,7 @@ class TestAll(unittest.TestCase):
         """Test if mailgun html-only email works"""
         global c
         c.TEST_FUNC = False
-        html = f"""<html><body><p>
+        html = """<html><body><p>
                 Customer: Whitecap Resources<br>
                 Model: XFER 2270<br>
                 Location: Gull Lake<br><br>

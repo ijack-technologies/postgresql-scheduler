@@ -35,7 +35,6 @@ c.logger = configure_logging(
 
 
 class TestAll(unittest.TestCase):
-
     # # executed after each test
     # def tearDown(self):
     #     pass

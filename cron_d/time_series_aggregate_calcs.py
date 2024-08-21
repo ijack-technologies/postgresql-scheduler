@@ -162,9 +162,7 @@ def upsert_time_series_agg(
         agf_dis_temp_avg = {df_month_date['agf_dis_temp_avg'].iloc[0]},
         dtp_avg = {df_month_date['dtp_avg'].iloc[0]},
         dtp_max_avg = {df_month_date['dtp_max_avg'].iloc[0]}
-    """.replace(
-            "\n", " "
-        )
+    """.replace("\n", " ")
         .replace("nan", "null")
         .replace("None", "null")
     )
