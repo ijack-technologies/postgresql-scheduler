@@ -172,10 +172,12 @@ class TestAll(unittest.TestCase):
         # The first table causes the error
         self.assertEqual(mock_run_query.call_count, 1)
 
+    @patch("time.sleep")
     @patch("cron_d.time_series_mv_refresh.run_query")
     def test_get_and_insert_latest_values(
         self,
         mock_run_query,
+        mock_sleep,
     ):
         """Test the get_and_insert_latest_values() function"""
         global c

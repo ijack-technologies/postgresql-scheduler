@@ -37,7 +37,8 @@
                 "ms-azuretools.vscode-docker",
                 "GitHub.copilot",
                 "ms-toolsai.jupyter",
-                "ms-python.black-formatter"
+                "ms-python.black-formatter",
+                "ms-toolsai.datawrangler"
             ],
             "settings": {
                 "python.pythonPath": "/app/venv/bin/python",

@@ -136,15 +136,16 @@ def get_conn(c, db="ijack", cursor_factory=None):
 
 def run_query(
     c,
-    sql,
-    db="ijack",
-    fetchall=False,
-    commit=False,
+    sql: str = None,
+    db: str = "ijack",
+    fetchall: bool = False,
+    commit: bool = False,
     conn=None,
-    execute=True,
+    execute: bool = True,
     raise_error: bool = False,
     values_dict: dict = None,
     log_query: bool = True,
+    copy_from_kwargs: dict = None,
     # No need to convert to list of dicts, since we're using RealDictCursor
     # as_list_of_dicts: bool = False,
 ) -> Tuple[List, List]:
@@ -165,7 +166,11 @@ def run_query(
         time_start = time.time()
         if execute:
             try:
-                cursor.execute(sql, values_dict)
+                if copy_from_kwargs:
+                    cursor.copy_from(**copy_from_kwargs)
+                else:
+                    cursor.execute(sql, values_dict
+                                   )
             except Exception as err:
                 c.logger.error(f"ERROR executing SQL: '{sql}'\n\n Error: {err}")
                 if raise_error:
@@ -252,7 +257,7 @@ def send_twilio_phone(c, phone_list, body):
             to=phone_num,
             # from_="+13067003245",
             from_="+13069884140",  # new number Apr 20, 2021
-            twiml=f"<Response><Say>Hello. The {body}</Say></Response>"
+            twiml=f"<Response><Say>Hello. The {body}</Say></Response>",
             # url=twiml_instructions_url
         )
         c.logger.info(f"Phone call sent to {phone_num}")

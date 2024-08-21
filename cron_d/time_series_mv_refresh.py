@@ -129,10 +129,14 @@ def check_table_timestamps(
 def get_gateway_power_unit_dict(c) -> dict:
     """Get the gateway and power unit mapping"""
     SQL_GW_PU = """
-        select gateway, power_unit_str
-        from public.gateways
-        where power_unit_str is not null
-            and gateway is not null
+        select 
+            t2.aws_thing as gateway,
+            t1.power_unit_str
+        from public.power_units t1
+        left join public.gw t2
+            on t2.power_unit_id = t1.id
+        where t1.power_unit_str is not null
+            and t2.gateway is not null
     """
     columns, rows = run_query(c, SQL_GW_PU, db="ijack", fetchall=True, raise_error=True)
     df = pd.DataFrame(rows, columns=columns)
@@ -183,6 +187,8 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     columns_old, rows_old = run_query(
         c, SQL_OLD_DATA, db="timescale", fetchall=True, raise_error=True
     )
+    c.logger.info("Sleeping for 3 seconds to allow the server to catch up...")
+    time.sleep(3)
     df_old = pd.DataFrame(rows_old, columns=columns_old)
     del rows_old
 
@@ -198,7 +204,10 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     columns_new, rows_new = run_query(
         c, SQL_LATEST_DATA, db="timescale", fetchall=True, raise_error=True
     )
+    c.logger.info("Sleeping for 3 seconds to allow the server to catch up...")
+    time.sleep(3)
     df_new = pd.DataFrame(rows_new, columns=columns_new)
+    time.sleep(0.5)
     del rows_new
 
     # Join the old and new dataframes together
@@ -230,13 +239,13 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     c.logger.info(
         "Converting the power unit to a string and removing the '.0' if it's there..."
     )
-    time_start = time.time()
+    # time_start = time.time()
     df["power_unit"] = df["power_unit"].astype(str).str.rstrip(".0")
-    mins_taken = round((time.time() - time_start) / 60, 1)
-    c.logger.info(
-        "Minutes taken to ensure the power unit and gateway are filled in: %s",
-        mins_taken,
-    )
+    # mins_taken = round((time.time() - time_start) / 60, 1)
+    # c.logger.info(
+    #     "Minutes taken to ensure the power unit and gateway are filled in: %s",
+    #     mins_taken,
+    # )
 
     # If values are missing, it's because they were the same as the previous values so they weren't sent
     c.logger.info("Sorting and filling in missing values...")
@@ -258,6 +267,8 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         )
         # Replace the original group with the sorted and filled group
         df.loc[df["power_unit"] == power_unit, :] = sorted_group
+        time.sleep(0.1)
+
     mins_taken = round((time.time() - time_start) / 60, 1)
     c.logger.info(
         "Minutes taken to sort and fill in missing values: %s",
@@ -285,32 +296,47 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     )
 
     time_start = time.time()
-    with psycopg2.connect(
-        host=os.getenv("HOST_TS"),
-        port=os.getenv("PORT_TS"),
-        dbname="ijack",
-        user=os.getenv("USER_TS"),
-        password=os.getenv("PASS_TS"),
-        # **OPTIONS_DICT
-    ) as conn:
-        with conn.cursor() as cursor:
-            # For some reason it doesn't work if you put the schema in the table name
-            # table = "public.time_series_locf"
-            table = "time_series_locf"
+    # with psycopg2.connect(
+    #     host=os.getenv("HOST_TS"),
+    #     port=os.getenv("PORT_TS"),
+    #     dbname="ijack",
+    #     user=os.getenv("USER_TS"),
+    #     password=os.getenv("PASS_TS"),
+    #     # **OPTIONS_DICT
+    # ) as conn:
+    #     with conn.cursor() as cursor:
+    #         # For some reason it doesn't work if you put the schema in the table name
+    #         # table = "public.time_series_locf"
+    #         table = "time_series_locf"
 
-            # NOTE: Don't put this into a try/except because then we won't see
-            # errors that prevent ALL data from being inserted!
-            # try:
-            cursor.copy_from(
-                file=sio, table=table, sep=",", null="", size=8192, columns=df.columns
-            )
-            conn.commit()
-            # except Exception as err:
-            #     if "UniqueViolation" in str(err):
-            #         c.logger.error(err)
-            #     else:
-            #         c.logger.exception("ERROR running cursor.copy_from(sio...)!")
-            #         raise
+    #         # NOTE: Don't put this into a try/except because then we won't see
+    #         # errors that prevent ALL data from being inserted!
+    try:
+        # cursor.copy_from(
+        #     file=sio, table=table, sep=",", null="", size=8192, columns=df.columns
+        # )
+        # conn.commit()
+        run_query(
+            c,
+            sql=None,
+            db="timescale",
+            commit=True,
+            raise_error=True,
+            copy_from_kwargs={
+                "file": sio,
+                "table": "time_series_locf",
+                "sep": ",",
+                "null": "",
+                "size": 8192,
+                "columns": df.columns,
+            },
+        )
+    except Exception as err:
+        if "UniqueViolation" in str(err):
+            c.logger.error(err)
+        else:
+            c.logger.exception("ERROR running cursor.copy_from(sio...)!")
+            raise
 
     minutes_taken = round((time.time() - time_start) / 60, 1)
     c.logger.info(
@@ -372,6 +398,7 @@ def force_refresh_continuous_aggregates(
             )
             # AUTOCOMMIT is set, so commit is irrelevant
             run_query(c, sql, db="timescale", commit=False, conn=conn, raise_error=True)
+            time.sleep(0.5)
         except psycopg2.errors.InvalidParameterValue:
             c.logger.exception(
                 "ERROR force-refreshing continuously-aggregating materialized view '%s'",
@@ -432,8 +459,7 @@ def main(c):
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
     timestamp = get_latest_timestamp_in_table(
-        c, table="time_series_locf", raise_error=False
-    )
+        c, table="time_series_locf", raise_error=False    )
     get_and_insert_latest_values(c, after_this_date=timestamp)
 
     # Force the continuous aggregates to refresh, including the latest data

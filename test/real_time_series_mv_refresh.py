@@ -35,8 +35,11 @@ class TestAll(unittest.TestCase):
         # This c.TEST_FUNC just disables SMS, email, and phone call alerts
         c.TEST_FUNC = True
 
+    @patch("time.sleep", return_value=None)
     @patch("cron_d.time_series_mv_refresh.exit_if_already_running")
-    def test_time_series_mv_refresh(self, mock_exit_if_already_running):
+    def test_time_series_mv_refresh(
+        self, mock_exit_if_already_running, mock_time_sleep
+    ):
         """Test the main program"""
         global c
         time_series_mv_refresh.main(c)
