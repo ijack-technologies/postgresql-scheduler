@@ -1,18 +1,18 @@
 import logging
-import pathlib
 import sys
 import time
 from datetime import datetime, timedelta
 from io import StringIO
+from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import psycopg2
 
 # import numpy as np
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(pathlib.Path(__file__).parent.parent)
+pythonpath = str(Path(__file__).parent.parent)
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -412,7 +412,7 @@ def ad_hoc_maybe_refresh_continuous_aggs() -> None:
 def main(c):
     """Main entrypoint function"""
 
-    exit_if_already_running(c, pathlib.Path(__file__).name)
+    exit_if_already_running(c, Path(__file__).name)
 
     # # NOTE the following is only for ad hoc purposes;
     # # it only runs if the date is before a certain date!

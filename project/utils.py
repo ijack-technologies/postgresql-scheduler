@@ -3,7 +3,6 @@ import functools
 import json
 import logging
 import os
-import pathlib
 import platform
 import signal
 import subprocess
@@ -11,6 +10,7 @@ import sys
 import time
 import traceback
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import List, Tuple
 
@@ -489,7 +489,7 @@ def check_if_c_in_args(args):
         c = Config()
         c.logger = configure_logging(
             __name__,
-            logfile_name=pathlib.Path(__file__).stem,
+            logfile_name=Path(__file__).stem,
             path_to_log_directory="/project/logs/",
         )
     return c
@@ -513,7 +513,7 @@ def error_wrapper():
             c = Config()
             c.logger = configure_logging(
                 __name__,
-                logfile_name=pathlib.Path(__file__).stem,
+                logfile_name=Path(__file__).stem,
                 path_to_log_directory="/project/logs/",
             )
             try:
@@ -535,11 +535,14 @@ def error_wrapper():
                 check_dt = datetime.datetime.utcnow()
                 c.logger.info(f"The time of the error is {check_dt}")
                 try:
-                    if is_time_between(
-                        begin_time=datetime.time(hour=9, minute=0),
-                        end_time=datetime.time(hour=9, minute=3),
-                        check_time=check_dt.time(),
-                    ) and "server closed the connection" in str(err):
+                    if (
+                        is_time_between(
+                            begin_time=datetime.time(hour=9, minute=0),
+                            end_time=datetime.time(hour=9, minute=3),
+                            check_time=check_dt.time(),
+                        )
+                        and "server closed the connection" in str(err)
+                    ):
                         return None
                 except Exception as err_inner:
                     c.logger.exception(
@@ -547,7 +550,7 @@ def error_wrapper():
                     )
                     err += f"\n\nWhile processing the initial error, another error happened while checking the time of the error: \n\n{err_inner}"
 
-                filename = pathlib.Path(__file__).name
+                filename = Path(__file__).name
                 c.logger.exception(
                     f"ERROR running program! Closing now... \nError msg: {err}"
                 )

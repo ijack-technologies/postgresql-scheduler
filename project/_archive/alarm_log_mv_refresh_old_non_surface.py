@@ -5,11 +5,11 @@
 # from datetime import datetime
 # import psycopg2
 # from psycopg2.extras import RealDictCursor
-# import pathlib
+# from pathlib import Path
 # import sys
 
 # # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-# pythonpath = str(pathlib.Path(__file__).parent.parent)
+# pythonpath = str(Path(__file__).parent.parent)
 # try:
 #     sys.path.index(pythonpath)
 # except ValueError:
@@ -39,7 +39,7 @@
 #     """Main entrypoint function"""
 #     global SQL
 
-#     exit_if_already_running(c, pathlib.Path(__file__).name)
+#     exit_if_already_running(c, Path(__file__).name)
 
 #     run_query(c, SQL, commit=True)
 

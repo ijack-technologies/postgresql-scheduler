@@ -1,18 +1,18 @@
 import logging
-import pathlib
 import pprint
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from math import atan2, cos, radians, sin, sqrt
+from pathlib import Path
 from typing import Tuple
 
 import pytz
 from psycopg2 import connect as psycopg2_connect
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(pathlib.Path(__file__).parent.parent)
+pythonpath = str(Path(__file__).parent.parent)
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -746,7 +746,7 @@ def main(c: Config, commit: bool = False):
     The AWS IoT thing shadow is more robust, and AWS IoT can accept almost infinite connections at once.
     """
 
-    exit_if_already_running(c, pathlib.Path(__file__).name)
+    exit_if_already_running(c, Path(__file__).name)
 
     # Get DB connection since we're running several queries (might as well have just one connection)
     conn = get_conn(c, db="ijack")

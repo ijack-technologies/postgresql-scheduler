@@ -3,15 +3,15 @@ This script recalculates some aggregated data on a daily basis, for performance 
 """
 
 import logging
-import pathlib
 import sys
 import time
 from datetime import date, datetime
+from pathlib import Path
 
 import pandas as pd
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(pathlib.Path(__file__).parent.parent)
+pythonpath = str(Path(__file__).parent.parent)
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -162,7 +162,9 @@ def upsert_time_series_agg(
         agf_dis_temp_avg = {df_month_date['agf_dis_temp_avg'].iloc[0]},
         dtp_avg = {df_month_date['dtp_avg'].iloc[0]},
         dtp_max_avg = {df_month_date['dtp_max_avg'].iloc[0]}
-    """.replace("\n", " ")
+    """.replace(
+            "\n", " "
+        )
         .replace("nan", "null")
         .replace("None", "null")
     )
@@ -182,7 +184,7 @@ def upsert_time_series_agg(
 def main(c) -> bool:
     """Main entrypoint function"""
 
-    exit_if_already_running(c, pathlib.Path(__file__).name)
+    exit_if_already_running(c, Path(__file__).name)
 
     power_unit_uno_egas_dict: dict = get_power_units_and_unit_types(c)
 

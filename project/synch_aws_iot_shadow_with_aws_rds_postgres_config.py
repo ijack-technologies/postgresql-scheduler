@@ -1,17 +1,18 @@
 # import pandas as pd
 import json
 import logging
-import pathlib
 import sys
 import time
-from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from decimal import Decimal
+from pathlib import Path
+
 import boto3
-from botocore.response import StreamingBody
 from botocore.exceptions import ClientError
+from botocore.response import StreamingBody
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(pathlib.Path(__file__).parent.parent)
+pythonpath = str(Path(__file__).parent.parent)
 try:
     sys.path.index(pythonpath)
 except ValueError:
@@ -117,7 +118,7 @@ def main(c: Config) -> None:
     The AWS IoT thing shadow is more robust, and AWS IoT can accept almost infinite connections at once.
     """
 
-    exit_if_already_running(c, pathlib.Path(__file__).name)
+    exit_if_already_running(c, Path(__file__).name)
 
     # df = pd.DataFrame(rows, columns=columns)
 
