@@ -56,7 +56,6 @@ def run_schedule() -> None:
     """
 
     # Configure the logger
-    #
     c = Config()
     c.logger = configure_logging(__name__, logfile_name="main_scheduler")
 
