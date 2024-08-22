@@ -1,5 +1,4 @@
 import time
-import logging
 
 # # Insert pythonpath into the front of the PATH environment variable, before importing anything
 # import sys
@@ -39,7 +38,9 @@ def make_schedule(c: Config) -> None:
     schedule.every().day.at("01:01").do(alarm_log_delete_duplicates.main, c=c)
     schedule.every().day.at("01:11").do(time_series_aggregate_calcs.main, c=c)
     schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
-    schedule.every().day.at("01:31").do(timescaledb_restart_background_workers.main, c=c)
+    schedule.every().day.at("01:31").do(
+        timescaledb_restart_background_workers.main, c=c
+    )
     schedule.every().hour.at(":03").do(
         synch_aws_iot_shadow_with_aws_rds_postgres_config.main, c=c
     )
