@@ -4,18 +4,18 @@ services:
     # Name and tag of image the Dockerfile creates
     image: mccarthysean/ijack:postgresql_scheduler_final
     env_file: .env
-    args:
-      ENVIRONMENT: production
-      # Use Docker BuildKit for better caching and faster builds
-      DOCKER_BUILDKIT: 1
-      BUILDKIT_INLINE_CACHE: 1
-      COMPOSE_DOCKER_CLI_BUILD: 1
-      # ERROR: OpenBLAS blas_thread_init if you upgrade from Debian bullseye to bookworm...
-      INSTALL_PYTHON_VERSION: 3.11.8-slim-bullseye
     build:
       context: .
       dockerfile: Dockerfile
       target: production
+      args:
+        ENVIRONMENT: production
+        # Use Docker BuildKit for better caching and faster builds
+        DOCKER_BUILDKIT: 1
+        BUILDKIT_INLINE_CACHE: 1
+        COMPOSE_DOCKER_CLI_BUILD: 1
+        # ERROR: OpenBLAS blas_thread_init if you upgrade from Debian bullseye to bookworm...
+        INSTALL_PYTHON_VERSION: 3.11.8-slim-bullseye
       cache_from:
         # Built and pushed in an earlier CI stage
         - mccarthysean/ijack:postgresql_scheduler_base
