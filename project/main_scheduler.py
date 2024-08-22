@@ -62,9 +62,9 @@ def run_schedule() -> None:
     # Make the schedule
     make_schedule(c=c)
 
+    c.logger.info("App running ✅. Running scheduled tasks forever...")
     while True:
         # Run all scheduled tasks
-        c.logger.info("App running ✅. Running scheduled tasks forever...")
         schedule.run_pending()
         time.sleep(1)
 
