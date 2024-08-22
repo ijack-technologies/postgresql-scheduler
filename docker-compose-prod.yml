@@ -34,8 +34,8 @@ services:
         limits:
           # The container can use up to X% of a single CPU
           cpus: '0.25'
-          # The container can use up to X amount of memory (might need lots when reading from the database)
-          memory: 2048M
+          # # The container can use up to X amount of memory (might need lots when reading from the database)
+          # memory: 2048M
       # labels:
       #   # Enable logging to Grafana Loki with Promtail
       #   logging: promtail
