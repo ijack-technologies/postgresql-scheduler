@@ -154,7 +154,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         "%Y-%m-%d %H:%M:%S"
     )
     # Only grab a ~small window of data to fill forward, at the most. Otherwise we'll overload the system.
-    max_date: datetime = after_this_date + timedelta(days=7)
+    max_date: datetime = after_this_date + timedelta(hours=12)
     max_date_str: str = max_date.strftime("%Y-%m-%d %H:%M:%S")
     after_this_date_str: str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
