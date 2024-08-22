@@ -33,7 +33,7 @@ def make_schedule(c: Config) -> None:
     31 1 * * * python3 /project/timescaledb_restart_background_workers.py
     3 * * * * python3 /project/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
     */10 * * * * python3 /project/update_info_from_shadows.py
-    """    
+    """
     c.logger.info("Making the cron-like schedule...")
     schedule.every().day.at("01:01").do(alarm_log_delete_duplicates.main, c=c)
     schedule.every().day.at("01:11").do(time_series_aggregate_calcs.main, c=c)
