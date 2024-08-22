@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Enable exit on non 0
-set -e
-
 # display only the name of the current branch you're on
 echo "Checking the current branch..."
 git rev-parse --abbrev-ref HEAD
@@ -30,6 +27,14 @@ echo "docker pull mccarthysean/ijack:postgresql_scheduler_base || true"
 docker pull mccarthysean/ijack:postgresql_scheduler_base || true
 
 echo ""
+echo "Pulling the final 'production' image from Docker Hub..."
+echo "docker pull mccarthysean/ijack:postgresql_scheduler_final || true"
+docker pull mccarthysean/ijack:postgresql_scheduler_final || true
+
+# Enable exit on non 0 AFTER the Docker pull commands
+set -e
+
+echo ""
 echo "Building the base 'builder' image locally..."
 echo "docker compose -f docker-compose.build.prod.base.yml build"
 docker compose -f docker-compose.build.prod.base.yml build
@@ -38,11 +43,6 @@ echo ""
 echo "Pushing the base 'builder' image to Docker Hub..."
 echo "docker push mccarthysean/ijack:postgresql_scheduler_base"
 docker push mccarthysean/ijack:postgresql_scheduler_base
-
-echo ""
-echo "Pulling the final 'production' image from Docker Hub..."
-echo "docker pull mccarthysean/ijack:postgresql_scheduler_final || true"
-docker pull mccarthysean/ijack:postgresql_scheduler_final || true
 
 echo ""
 echo "Building the final 'production' image locally..."
