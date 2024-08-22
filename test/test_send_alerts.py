@@ -4,8 +4,8 @@
 
 import sys
 import unittest
-from unittest.mock import patch
 from types import SimpleNamespace
+from unittest.mock import patch
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -19,14 +19,11 @@ except ValueError:
 from project.utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
 from test.utils import create_mock_twilio_client
 
-
 LOGFILE_NAME = "test_send_alerts"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
-)
+c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):
