@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Enable exit on non 0
+set -e
+
 # display only the name of the current branch you're on
 echo "Checking the current branch..."
 git rev-parse --abbrev-ref HEAD
@@ -52,3 +55,8 @@ echo ""
 echo "Deploying to the Docker swarm..."
 echo "docker stack deploy --with-registry-auth -c docker-compose.prod.yml postgresql_scheduler"
 docker stack deploy --with-registry-auth -c docker-compose.prod.yml postgresql_scheduler
+
+echo ""
+echo "Deployment complete!"
+
+exit 0
