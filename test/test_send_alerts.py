@@ -4,6 +4,8 @@
 
 import sys
 import unittest
+from unittest.mock import patch
+from types import SimpleNamespace
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -15,13 +17,8 @@ except ValueError:
 
 # local imports
 from project.utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
+from test.utils import create_mock_twilio_client
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace"
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
 
 
 LOGFILE_NAME = "test_send_alerts"
@@ -44,7 +41,8 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
 
-    def test_twilio(self):
+    @patch("project.utils.Client")
+    def test_twilio(self, mock_twilio_client):
         """Test if Twilio works"""
         global c
 
@@ -52,7 +50,12 @@ class TestAll(unittest.TestCase):
         sms_phone_list = c.PHONE_LIST_DEV
         c.TEST_FUNC = False
 
+        twilio_client_instance = create_mock_twilio_client()
+        mock_twilio_client.return_value = twilio_client_instance
+
         message = send_twilio_sms(c, sms_phone_list, warning)
+
+        mock_twilio_client.assert_called_once()
         c.logger.info(f"Twilio rc 'message': {message}")
         self.assertNotEqual(message, "")
         self.assertNotEqual(message.error_code, "None")
@@ -63,11 +66,13 @@ class TestAll(unittest.TestCase):
         )
         self.assertEqual(message.status, "queued")
 
-    def test_mailgun_text_only(self):
+    @patch("requests.post", return_value=SimpleNamespace(status_code=200))
+    def test_mailgun_text_only(self, mock_post):
         """Test if mailgun text-only email works"""
         global c
         c.TEST_FUNC = False
         text = "Just testing whether Mailgun text email works"
+        
         rc = send_mailgun_email(
             c,
             text=text,
@@ -75,10 +80,13 @@ class TestAll(unittest.TestCase):
             emailees_list=c.EMAIL_LIST_DEV,
             subject="TEST - IJACK Alert - Text Only",
         )
+
+        mock_post.assert_called_once()
         c.logger.info(f"Mailgun 'rc' for text email: {rc}")
         self.assertEqual(rc.status_code, 200)
 
-    def test_mailgun_html_only(self):
+    @patch("requests.post", return_value=SimpleNamespace(status_code=200))
+    def test_mailgun_html_only(self, mock_post):
         """Test if mailgun html-only email works"""
         global c
         c.TEST_FUNC = False
@@ -88,6 +96,7 @@ class TestAll(unittest.TestCase):
                 Location: Gull Lake<br><br>
                 Power unit: 200000<br><br></p>
                 </body></html>"""
+        
         rc = send_mailgun_email(
             c,
             text="",
@@ -95,6 +104,8 @@ class TestAll(unittest.TestCase):
             emailees_list=c.EMAIL_LIST_DEV,
             subject="TEST - IJACK Alert - HTML",
         )
+        
+        mock_post.assert_called_once()
         c.logger.info(f"Mailgun 'rc' for html email: {rc}")
         self.assertEqual(rc.status_code, 200)
 
