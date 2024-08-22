@@ -51,7 +51,7 @@ RUN /venv/bin/poetry config virtualenvs.create false && \
     # Export the requirements to stdout, and install them in the virtual environment
     /venv/bin/poetry export --no-interaction --no-ansi --without-hashes --format requirements.txt \
     $(test "$ENVIRONMENT" != "production" && echo "--with dev") \
-    | /venv/bin/pip install -r /dev/stdin
+    | /venv/bin/pip install -r /dev/stdin --no-cache-dir
 
 # Make sure our packages are in the PATH
 # ENV PATH="/project/node_modules/.bin:$PATH"
@@ -104,8 +104,8 @@ WORKDIR /project
 # Make the logs directory writable by the non-root user
 RUN mkdir -p /project/logs && \
     # chmod 777 /project/logs
-    chown -R $USER_UID:$USER_GID /project/logs
-    # echo "Logs directory permissions: $(ls -la /project/logs)"
+    chown -R $USER_UID:$USER_GID /project && \
+    echo "Main directory permissions: $(ls -la /project)"
 
 # Copy in files and change ownership to the non-root user
 COPY --chown=$USER_UID:$USER_GID --from=builder /venv /venv
@@ -119,6 +119,7 @@ ENV PATH="/venv/bin:$PATH"
 RUN echo PATH = $PATH
 
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
-COPY .bashrc /root/
+COPY .bashrc /$USERNAME
 
-CMD ["/bin/bash", "/project/entrypoint.sh"]
+# CMD ["/bin/bash", "/project/entrypoint.sh"]
+CMD ["/venv/bin/python3", "/project/main_scheduler.py"]

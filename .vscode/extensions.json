@@ -2,7 +2,6 @@
   "recommendations": [
     "github.copilot",
     "ms-toolsai.jupyter",
-    "ms-python.black-formatter",
     "ms-toolsai.datawrangler",
     "charliermarsh.ruff",
     "esbenp.prettier-vscode",
