@@ -25,7 +25,7 @@
 # c = Config()
 # c.DEV_TEST_PRD = "development"
 # c.logger = configure_logging(
-#     __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
+#     __name__, logfile_name=LOGFILE_NAME
 # )
 
 

@@ -22,9 +22,7 @@ LOGFILE_NAME = "really_run_timescaledb_restart_background_workers"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
-)
+c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

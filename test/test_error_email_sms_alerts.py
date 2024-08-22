@@ -35,9 +35,7 @@ LOGFILE_NAME = "test_error_email_sms_alerts"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
-)
+c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

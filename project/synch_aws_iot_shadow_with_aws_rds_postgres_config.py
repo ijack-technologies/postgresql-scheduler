@@ -1,6 +1,5 @@
 # import pandas as pd
 import json
-import logging
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -28,12 +27,9 @@ from project.utils import (
     get_client_iot,
 )
 
-LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "synch_aws_iot_shadow_with_aws_rds_postgres_config"
 c = Config()
-c.logger = configure_logging(
-    __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
-)
+c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 def update_device_shadows_in_threadpool(

@@ -1,4 +1,3 @@
-import logging
 import pprint
 import sys
 import time
@@ -36,7 +35,7 @@ from project.utils import (
 
 # from test.fixtures.fixture_utils import save_fixture
 
-LOG_LEVEL = logging.INFO
+
 LOGFILE_NAME = "update_info_from_shadows"
 
 
@@ -1018,7 +1017,5 @@ def main(c: Config, commit: bool = False) -> None:
 
 if __name__ == "__main__":
     c = Config()
-    c.logger = configure_logging(
-        __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
-    )
+    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c, commit=True)

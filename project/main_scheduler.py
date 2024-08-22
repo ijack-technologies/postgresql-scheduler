@@ -15,7 +15,6 @@ import time_series_aggregate_calcs
 import time_series_mv_refresh
 import timescaledb_restart_background_workers
 import update_info_from_shadows
-
 from utils import Config, configure_logging
 
 
@@ -56,11 +55,9 @@ def run_schedule() -> None:
     """
 
     # Configure the logger
-    # LOG_LEVEL = logging.INFO
+    #
     c = Config()
-    c.logger = configure_logging(
-        __name__, logfile_name="main_scheduler", path_to_log_directory="/project/logs/"
-    )
+    c.logger = configure_logging(__name__, logfile_name="main_scheduler")
 
     # Make the schedule
     make_schedule(c=c)

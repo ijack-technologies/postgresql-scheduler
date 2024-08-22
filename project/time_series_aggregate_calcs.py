@@ -2,7 +2,6 @@
 This script recalculates some aggregated data on a daily basis, for performance calculations.
 """
 
-import logging
 import sys
 import time
 from datetime import date
@@ -27,7 +26,6 @@ from project.utils import (
     utcnow_naive,
 )
 
-LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "time_series_aggregate_calcs"
 
 
@@ -249,7 +247,5 @@ def main(c: Config) -> bool:
 
 if __name__ == "__main__":
     c = Config()
-    c.logger = configure_logging(
-        __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
-    )
+    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c)

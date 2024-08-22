@@ -22,7 +22,6 @@ import requests
 from psycopg2.extras import RealDictCursor
 from twilio.rest import Client
 
-LOG_LEVEL = logging.INFO
 # logger = logging.getLogger(__name__)
 
 
@@ -54,9 +53,14 @@ class Config:
     TEST_DICT = {}
 
 
-def configure_logging(name, logfile_name, path_to_log_directory="/project/logs/"):
+def configure_logging(
+    name: str,
+    logfile_name: str,
+    path_to_log_directory: str = "/project/logs/",
+    log_level: int = logging.INFO,
+    want_file_handler: bool = True,
+):
     """Configure logger"""
-    global LOG_LEVEL
 
     logger = logging.getLogger(name)
     # Override the default logging.WARNING level so all messages can get through to the handlers
@@ -65,15 +69,13 @@ def configure_logging(name, logfile_name, path_to_log_directory="/project/logs/"
         "%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s"
     )
 
-    # date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
-    # log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filename = f"{logfile_name}.log"
     path_to_log_directory = Path(path_to_log_directory)
     if not path_to_log_directory.exists():
         path_to_log_directory.mkdir(parents=True, exist_ok=True)
     log_filepath = path_to_log_directory.joinpath(log_filename)
 
-    if platform.system() == "Linux":
+    if want_file_handler and platform.system() == "Linux":
         # fh = logging.FileHandler(filename=log_filepath)
         fh = TimedRotatingFileHandler(
             filename=log_filepath,
@@ -85,22 +87,18 @@ def configure_logging(name, logfile_name, path_to_log_directory="/project/logs/"
             utc=False,
             atTime=None,
         )
-        fh.setLevel(LOG_LEVEL)
+        fh.setLevel(log_level)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
+        logger.info("Added fileHandler to logger: %s", log_filepath)
 
-    # sh = logging.StreamHandler(sys.stdout)
     sh = logging.StreamHandler()
-    sh.setLevel(LOG_LEVEL)
+    sh.setLevel(log_level)
     sh.setFormatter(formatter)
-    # print(f"logger.handlers before adding streamHandler: {logger.handlers}")
     logger.addHandler(sh)
-    # print(f"logger.handlers after adding streamHandler: {logger.handlers}")
+    logger.info("Added streamHandler to logger")
 
-    # Test logger
-    sh.setLevel(logging.DEBUG)
-    logger.debug(f"Testing the logger: platform.system() = {platform.system()}")
-    sh.setLevel(LOG_LEVEL)
+    logger.info("Finished configuring the logger(s)")
 
     return logger
 
@@ -518,7 +516,6 @@ def check_if_c_in_args(args):
         c.logger = configure_logging(
             __name__,
             logfile_name=Path(__file__).stem,
-            path_to_log_directory="/project/logs/",
         )
     return c
 
@@ -602,7 +599,6 @@ def error_wrapper():
             c.logger = configure_logging(
                 __name__,
                 logfile_name=Path(__file__).stem,
-                path_to_log_directory="/project/logs/",
             )
             try:
                 # Do something before

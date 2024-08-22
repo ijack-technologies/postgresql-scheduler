@@ -1,4 +1,3 @@
-import logging
 import sys
 from pathlib import Path
 
@@ -18,7 +17,6 @@ from project.utils import (
     run_query,
 )
 
-LOG_LEVEL = logging.INFO
 LOGFILE_NAME = "db_remove_old_connections"
 
 SQL = """
@@ -96,7 +94,5 @@ def main(c):
 
 if __name__ == "__main__":
     c = Config()
-    c.logger = configure_logging(
-        __name__, logfile_name=LOGFILE_NAME, path_to_log_directory="/project/logs/"
-    )
+    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c)
