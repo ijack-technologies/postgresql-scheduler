@@ -22,7 +22,11 @@
                 "ms-azuretools.vscode-docker",
                 "GitHub.copilot",
                 "ms-toolsai.jupyter",
-                "ms-toolsai.datawrangler"
+                "ms-toolsai.datawrangler",
+                "charliermarsh.ruff",
+                "esbenp.prettier-vscode",
+                "adpyke.vscode-sql-formatter",
+                "tamasfe.even-better-toml"
             ],
             "settings": {
                 "remote.extensionKind": {

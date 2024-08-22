@@ -20,17 +20,11 @@ from project.time_series_mv_refresh import (
     get_and_insert_latest_values,
     get_latest_timestamp_in_table,
 )
-
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = "/workspace"
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
-
-
-# local imports
-from project.utils import Config, configure_logging
+from project.utils import (
+    Config,
+    configure_logging,
+    utcnow_naive,
+)
 
 LOGFILE_NAME = "test_time_series_update_views"
 
@@ -70,14 +64,14 @@ class TestAll(unittest.TestCase):
         mock_run_query.return_value = (
             ["timestamp_utc"],
             [
-                {"timestamp_utc": datetime.utcnow()},
+                {"timestamp_utc": utcnow_naive()},
             ],
         )
 
         timestamp = get_latest_timestamp_in_table(c)
 
         assert isinstance(timestamp, datetime)
-        assert timestamp < datetime.utcnow()
+        assert timestamp < utcnow_naive()
         mock_run_query.assert_called_once()
 
     @patch("project.time_series_mv_refresh.run_query")
@@ -110,7 +104,7 @@ class TestAll(unittest.TestCase):
         mock_run_query.return_value = (
             ["timestamp_utc"],
             [
-                {"timestamp_utc": datetime.utcnow() - timedelta(hours=2)},
+                {"timestamp_utc": utcnow_naive() - timedelta(hours=2)},
             ],
         )
 
@@ -126,10 +120,12 @@ class TestAll(unittest.TestCase):
         )
         self.assertIn("which is before the threshold timedelta '1:00:00'", error_msg)
 
+    @patch("project.time_series_mv_refresh.send_error_messages")
     @patch("project.time_series_mv_refresh.run_query")
     def test_check_table_timestamps_threshold(
         self,
         mock_run_query,
+        mock_send_error_messages,
     ):
         """Test the check_table_timestamps() function where the timestamp is old"""
         global c
@@ -138,7 +134,7 @@ class TestAll(unittest.TestCase):
         mock_run_query.return_value = (
             ["timestamp_utc"],
             [
-                {"timestamp_utc": datetime.utcnow() - timedelta(hours=0.5)},
+                {"timestamp_utc": utcnow_naive() - timedelta(hours=0.5)},
             ],
         )
 
@@ -154,24 +150,25 @@ class TestAll(unittest.TestCase):
         mock_run_query.return_value = (
             ["timestamp_utc"],
             [
-                {"timestamp_utc": datetime.utcnow() - timedelta(hours=2)},
+                {"timestamp_utc": utcnow_naive() - timedelta(hours=2)},
             ],
         )
 
-        with self.assertRaises(Exception) as error:
-            response = check_table_timestamps(
-                c,
-                tables=["time_series", "time_series_locf"],
-                time_delta=timedelta(hours=1),
-            )
+        # with self.assertRaises(Exception) as error:
+        bool_return = check_table_timestamps(
+            c,
+            tables=["time_series", "time_series_locf"],
+            time_delta=timedelta(hours=1),
+        )
 
-        the_exception = error.exception
-        error_msg = the_exception.args[0]
-        self.assertIn("ERROR: latest timestamp in table 'time_series' is", error_msg)
-        self.assertIn("which is before the threshold timedelta '1:00:00'", error_msg)
-
-        # The first table causes the error
-        self.assertEqual(mock_run_query.call_count, 1)
+        # the_exception = error.exception
+        # error_msg = the_exception.args[0]
+        # self.assertIn("ERROR: latest timestamp in table 'time_series' is", error_msg)
+        # self.assertIn("which is before the threshold timedelta '1:00:00'", error_msg)
+        self.assertTrue(bool_return)
+        # Both tables have the same, old timestamp
+        self.assertEqual(mock_run_query.call_count, 2)
+        self.assertEqual(mock_send_error_messages.call_count, 2)
 
     @patch("time.sleep")
     @patch(
@@ -183,7 +180,7 @@ class TestAll(unittest.TestCase):
                     "power_unit": "1",
                     "power_unit_str": "1",
                     "gateway": "1",
-                    "timestamp_utc": datetime.utcnow(),
+                    "timestamp_utc": utcnow_naive(),
                     "signal": 1,
                 }
             ],
@@ -198,7 +195,7 @@ class TestAll(unittest.TestCase):
         global c
 
         try:
-            boolean = get_and_insert_latest_values(c, after_this_date=datetime.utcnow())
+            boolean = get_and_insert_latest_values(c, after_this_date=utcnow_naive())
         except Exception as err:
             print(err)
             raise
@@ -214,9 +211,7 @@ class TestAll(unittest.TestCase):
         """Test the force_refresh_continuous_aggregates() function"""
         global c
 
-        boolean = force_refresh_continuous_aggregates(
-            c, after_this_date=datetime.utcnow()
-        )
+        boolean = force_refresh_continuous_aggregates(c, after_this_date=utcnow_naive())
         assert boolean is True
         assert mock_run_query.call_count == 5
 

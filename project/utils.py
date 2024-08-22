@@ -1,4 +1,3 @@
-import datetime
 import functools
 import json
 import logging
@@ -9,6 +8,8 @@ import subprocess
 import sys
 import time
 import traceback
+from datetime import datetime, timezone
+from datetime import time as dt_time
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from subprocess import PIPE, STDOUT
@@ -64,7 +65,7 @@ def configure_logging(name, logfile_name, path_to_log_directory="/project/logs/"
         "%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s"
     )
 
-    # date_for_log_filename = datetime.datetime.now().strftime('%Y-%m-%d')
+    # date_for_log_filename = datetime.now().strftime('%Y-%m-%d')
     # log_filename = f"{date_for_log_filename}_{logfile_name}.log"
     log_filename = f"{logfile_name}.log"
     path_to_log_directory = Path(path_to_log_directory)
@@ -102,6 +103,30 @@ def configure_logging(name, logfile_name, path_to_log_directory="/project/logs/"
     sh.setLevel(LOG_LEVEL)
 
     return logger
+
+
+# NOTE the below datetime functions are adapted from this Miguel Grinberg blog post:
+# https://blog.miguelgrinberg.com/post/it-s-time-for-a-change-datetime-utcnow-is-now-deprecated
+
+
+def utcnow_aware() -> datetime:
+    """Get the current time in UTC, with timezone info attached"""
+    return datetime.now(timezone.utc)
+
+
+def utcnow_naive() -> datetime:
+    """Get the current time in UTC, without timezone info"""
+    return utcnow_aware().replace(tzinfo=None)
+
+
+def utcfromtimestamp_aware(timestamp: float) -> datetime:
+    """Convert a timestamp to a UTC datetime object with timezone info attached"""
+    return datetime.fromtimestamp(timestamp, timezone.utc)
+
+
+def utcfromtimestamp_naive(timestamp: float) -> datetime:
+    """Convert a timestamp to a UTC datetime object without timezone info"""
+    return utcfromtimestamp_aware(timestamp).replace(tzinfo=None)
 
 
 def get_conn(c, db="ijack", cursor_factory=None):
@@ -498,14 +523,74 @@ def check_if_c_in_args(args):
     return c
 
 
-def is_time_between(begin_time, end_time, check_time=None):
+def is_time_between(
+    begin_time: datetime, end_time: datetime, check_time: datetime = None
+) -> bool:
     """Checks if the 'check_time' is between the begin_time and end_time"""
+
     # If check time is not given, default to current UTC time
-    check_time = check_time or datetime.datetime.utcnow().time()
+    check_time = check_time or utcnow_naive().time()
     if begin_time < end_time:
         return check_time >= begin_time and check_time <= end_time
-    else:  # crosses midnight
-        return check_time >= begin_time or check_time <= end_time
+
+    # crosses midnight
+    return check_time >= begin_time or check_time <= end_time
+
+
+def send_error_messages(
+    c: Config,
+    err: Exception,
+    filename: Path,
+    want_email: bool = True,
+    want_sms: bool = False,
+) -> None:
+    """Send error messages to email and/or SMS"""
+
+    # Every morning at 9:01 UTC I get an email that says "server closed the connection unexpectedly.
+    # This probably means the server terminated abnormally before or while processing the request."
+    check_dt = utcnow_naive()
+    c.logger.info(f"The time of the error is {check_dt}")
+    try:
+        if is_time_between(
+            begin_time=dt_time(hour=9, minute=0),
+            end_time=dt_time(hour=9, minute=3),
+            check_time=check_dt.time(),
+        ) and "server closed the connection" in str(err):
+            return None
+    except Exception as err_inner:
+        c.logger.exception(
+            f"ERROR checking the time of the error... \nError msg: {err_inner}"
+        )
+        err += f"\n\nWhile processing the initial error, another error happened while checking the time of the error: \n\n{err_inner}"
+
+    c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
+    alertees_email = ["smccarthy@myijack.com"]
+    alertees_sms = ["+14036897250"]
+    subject = f"IJACK {filename} ERROR!!!"
+    msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error at {check_dt} UTC time!"
+    msg_email = (
+        msg_sms
+        + f"\n\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \n\nArgs: {err.args}. \n\nError message: {err}"
+    )
+    msg_email += f"\n\nTraceback: {traceback.format_exc()}"
+
+    if want_sms:
+        message = send_twilio_sms(c, alertees_sms, msg_sms)
+
+    if want_email:
+        rc = send_mailgun_email(
+            c,
+            text=msg_email,
+            html="",
+            emailees_list=alertees_email,
+            subject=subject,
+        )
+
+    c.TEST_DICT["message"] = message
+    c.TEST_DICT["rc"] = rc
+    c.TEST_DICT["msg_sms"] = msg_sms
+
+    return None
 
 
 def error_wrapper():
@@ -533,49 +618,9 @@ def error_wrapper():
 
             # Do something after
             except Exception as err:
-                # Every morning at 9:01 UTC I get an email that says "server closed the connection unexpectedly.
-                # This probably means the server terminated abnormally before or while processing the request."
-                check_dt = datetime.datetime.utcnow()
-                c.logger.info(f"The time of the error is {check_dt}")
-                try:
-                    if is_time_between(
-                        begin_time=datetime.time(hour=9, minute=0),
-                        end_time=datetime.time(hour=9, minute=3),
-                        check_time=check_dt.time(),
-                    ) and "server closed the connection" in str(err):
-                        return None
-                except Exception as err_inner:
-                    c.logger.exception(
-                        f"ERROR checking the time of the error... \nError msg: {err_inner}"
-                    )
-                    err += f"\n\nWhile processing the initial error, another error happened while checking the time of the error: \n\n{err_inner}"
-
+                # Send error messages to email and/or SMS
                 filename = Path(__file__).name
-                c.logger.exception(
-                    f"ERROR running program! Closing now... \nError msg: {err}"
-                )
-                alertees_email = ["smccarthy@myijack.com"]
-                alertees_sms = ["+14036897250"]
-                subject = f"IJACK {filename} ERROR!!!"
-                msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error at {check_dt} UTC time!"
-                msg_email = (
-                    msg_sms
-                    + f"\n\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \n\nArgs: {err.args}. \n\nError message: {err}"
-                )
-                msg_email += f"\n\nTraceback: {traceback.format_exc()}"
-
-                message = send_twilio_sms(c, alertees_sms, msg_sms)
-                rc = send_mailgun_email(
-                    c,
-                    text=msg_email,
-                    html="",
-                    emailees_list=alertees_email,
-                    subject=subject,
-                )
-
-                c.TEST_DICT["message"] = message
-                c.TEST_DICT["rc"] = rc
-                c.TEST_DICT["msg_sms"] = msg_sms
+                send_error_messages(c, err, filename, want_email=True, want_sms=True)
 
                 raise
 
@@ -618,10 +663,10 @@ def get_all_gateways_config_metrics(c) -> list:
 
 def utc_to_local_dt(dt_utc, to_pytz_timezone=pytz.timezone("America/Regina")):
     """
-    Takes a non-timezone-aware UTC datetime.datetime() in structured
+    Takes a non-timezone-aware UTC datetime() in structured
     (non-string) format and converts it to the pytz_timezone wanted
     [e.g. pytz.timezone('America/Edmonton')],
-    still in datetime.datetime() format
+    still in datetime() format
     """
     return dt_utc.replace(tzinfo=pytz.utc).astimezone(to_pytz_timezone)
 
@@ -632,7 +677,7 @@ def utc_datetime_to_string(
     format_string="%Y-%m-%d %H:%M:%S %Z%z",
 ):
     """
-    Takes a UTC datetime.datetime() in structured (non-string) format
+    Takes a UTC datetime() in structured (non-string) format
     and converts it to a printable string, with the format specified.
     """
     return utc_to_local_dt(dt_utc, to_pytz_timezone).strftime(format_string)
@@ -647,7 +692,7 @@ def utc_timestamp_to_datetime_string(
     Takes a UTC timestamp and converts it to a printable string,
     with the format specified.
     """
-    dt = datetime.datetime.fromtimestamp(timestamp_utc)
+    dt = datetime.fromtimestamp(timestamp_utc)
     return utc_datetime_to_string(dt, to_pytz_timezone, format_string)
 
 
@@ -686,7 +731,7 @@ def seconds_since_last_any_msg(c, shadow):
             # # Convert to a datetime
             # since_when_time_received = datetime.utcfromtimestamp(time_received_latest)
             # # Get the timedelta since we started waiting
-            # time_delta_time_received = (datetime.utcnow() - since_when_time_received)
+            # time_delta_time_received = (utcnow_naive() - since_when_time_received)
             # # How many seconds has it been since we started waiting?
             # seconds_elapsed_total = time_delta_time_received.days*24*60*60 + time_delta_time_received.seconds
             # current_app.logger.debug(f"Most recent metric in AWS IoT device shadow: {key_latest} as of {round(seconds_elapsed_total/60, 1)} minutes ago")

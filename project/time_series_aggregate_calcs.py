@@ -5,7 +5,7 @@ This script recalculates some aggregated data on a daily basis, for performance 
 import logging
 import sys
 import time
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -24,6 +24,7 @@ from project.utils import (
     error_wrapper,
     exit_if_already_running,
     run_query,
+    utcnow_naive,
 )
 
 LOG_LEVEL = logging.INFO
@@ -123,7 +124,7 @@ def upsert_time_series_agg(
     """
     Upsert the time series aggregate data for a given power unit
     """
-    timestamp_utc_modified_str: str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp_utc_modified_str: str = utcnow_naive().strftime("%Y-%m-%d %H:%M:%S")
 
     # Upsert seems to be faster than delete and insert
     sql_upsert = (

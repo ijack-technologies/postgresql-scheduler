@@ -26,6 +26,8 @@ from project.utils import (
     exit_if_already_running,
     get_conn,
     run_query,
+    utcnow_naive,
+    send_error_messages,
 )
 
 LOG_LEVEL = logging.INFO
@@ -93,7 +95,7 @@ def get_latest_timestamp_in_table(
                 f"threshold is not of type 'timedelta'. Instead, it's of type '{type(threshold)}'"
             )
 
-        timestamp_threshold = datetime.utcnow() - threshold
+        timestamp_threshold = utcnow_naive() - threshold
         if timestamp < timestamp_threshold:
             raise Exception(
                 f"ERROR: latest timestamp in table '{table}' is {timestamp} which is before the threshold timedelta '{threshold}' (threshold timestamp: {timestamp_threshold}"
@@ -118,9 +120,15 @@ def check_table_timestamps(
         raise ValueError("There are no tables to check!")
 
     for table in tables:
-        get_latest_timestamp_in_table(
-            c, table=table, raise_error=True, threshold=time_delta
-        )
+        try:
+            get_latest_timestamp_in_table(
+                c, table=table, raise_error=True, threshold=time_delta
+            )
+        except Exception as err:
+            filename = Path(__file__).name
+            send_error_messages(
+                c=c, err=err, filename=filename, want_email=True, want_sms=True
+            )
 
     return True
 
@@ -315,7 +323,7 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
 def get_refresh_continuous_aggregate_sql(
     name: str,
     date_begin: datetime,
-    date_end: datetime = datetime.utcnow(),
+    date_end: datetime = utcnow_naive(),
     min_window: timedelta = timedelta(minutes=21),
 ):
     """
@@ -424,9 +432,19 @@ def main(c):
 
     # Get the lastest values from the LOCF MV and insert
     # into the regular table, to trigger the continuous aggregates to refresh
-    timestamp = get_latest_timestamp_in_table(
-        c, table="time_series_locf", raise_error=False
-    )
+    try:
+        # Do this first so we get an error email if the latest timestamp is too old,
+        # Even if the process below corrects the situation. This ensures
+        # we know about the error even if the process below FAILS!
+        timestamp = get_latest_timestamp_in_table(
+            c, table="time_series_locf", raise_error=True
+        )
+    except Exception as err:
+        filename = Path(__file__).name
+        send_error_messages(
+            c=c, err=err, filename=filename, want_email=True, want_sms=True
+        )
+
     get_and_insert_latest_values(c, after_this_date=timestamp)
 
     # Force the continuous aggregates to refresh, including the latest data

@@ -3,7 +3,7 @@ import pprint
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from math import atan2, cos, radians, sin, sqrt
 from pathlib import Path
 from typing import Tuple
@@ -31,6 +31,7 @@ from project.utils import (
     seconds_since_last_any_msg,
     send_mailgun_email,
     utc_timestamp_to_datetime_string,
+    utcnow_naive,
 )
 
 # from test.fixtures.fixture_utils import save_fixture
@@ -577,7 +578,7 @@ def upsert_gw_info(
 
     days_since_reported = round(seconds_since / (60 * 60 * 24), 1)
 
-    timestamp_utc_now = datetime.utcnow()
+    timestamp_utc_now = utcnow_naive()
     timestamp_utc_last_reported = timestamp_utc_now - timedelta(
         days=days_since_reported
     )
@@ -723,11 +724,11 @@ def record_can_bus_cellular_test(
         sql_gw_tested = f"""
             insert into public.gw_tested_cellular
             (user_id, timestamp_utc, gateway_id, network_id)
-            values ({user_id_shop_auto}, '{datetime.utcnow()}', {gateway_id}, {network_id_sasktel})
+            values ({user_id_shop_auto}, '{utcnow_naive()}', {gateway_id}, {network_id_sasktel})
         """
         # """).format(
         #     user_id=Literal(user_id_shop_auto),
-        #     timestamp_utc=Identifier(str(datetime.utcnow())),
+        #     timestamp_utc=Identifier(str(utcnow_naive())),
         #     gateway_id=Literal(gateway_id),
         #     network_id=Literal(network_id_sasktel)
         # )

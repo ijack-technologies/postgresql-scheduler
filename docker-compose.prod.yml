@@ -2,7 +2,7 @@ version: '3.7'
 services:
   postgresql_scheduler:
     # Name and tag of image the Dockerfile creates
-    image: mccarthysean/ijack:postgresql_scheduler
+    image: mccarthysean/ijack:postgresql_scheduler_final
     # this will signal that the connection is alive after 200 seconds,
     # which is less than the time it takes to drop the connection (300 seconds?), thus preventing it from being dropped.
     # https://stackoverflow.com/questions/56289874/postgres-closes-connection-during-query-after-a-few-hundred-seconds-when-using-p

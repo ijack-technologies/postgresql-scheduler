@@ -47,13 +47,17 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
 
-    def test_gateways_mv_refresh(self):
+    @patch("project._archive.db_remove_old_connections.run_query")
+    @patch("project._archive.db_remove_old_connections.exit_if_already_running")
+    def test_gateways_mv_refresh(self, mock_exit_if_already_running, mock_run_query):
         """Test the main program"""
         global c
 
         # This is no longer a materialized view--just a regular view
-        with patch("project.db_remove_old_connections.exit_if_already_running") as _:
-            db_remove_old_connections.main(c)
+        db_remove_old_connections.main(c)
+
+        mock_exit_if_already_running.assert_called_once()
+        mock_run_query.assert_called_once()
 
 
 if __name__ == "__main__":

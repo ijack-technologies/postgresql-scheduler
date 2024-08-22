@@ -1,7 +1,0 @@
-version: '3.7'
-services:
-  postgresql_scheduler:
-    # Name and tag of image the Dockerfile creates
-    image: mccarthysean/ijack:postgresql_scheduler
-    build: .
-    env_file: .env

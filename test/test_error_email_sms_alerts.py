@@ -67,6 +67,7 @@ class TestAll(unittest.TestCase):
         )
         with self.assertRaises(Exception):
             time_series_mv_refresh.main(c)
+
         mock_check_if_c_in_args.assert_called_once()
         mock_mail.assert_called_once()
         mock_twil.assert_called_once()
@@ -90,6 +91,7 @@ class TestAll(unittest.TestCase):
         )
         with self.assertRaises(Exception):
             alarm_log_delete_duplicates.main(c)
+
         mock_check_if_c_in_args.assert_called_once()
         mock_mail.assert_called_once()
         mock_twil.assert_called_once()
@@ -116,27 +118,28 @@ class TestAll(unittest.TestCase):
     @patch("project.utils.send_twilio_sms")
     @patch("project.utils.send_mailgun_email")
     @patch("project.utils.check_if_c_in_args")
-    @patch("project.utils.datetime.datetime")
+    @patch("project.utils.utcnow_naive")
     def test_its_8_am_UTC_time_error_every_night(
-        self, mock_dt, mock_check_if_c_in_args, mock_mail, mock_twil
+        self, mock_utcnow_naive, mock_check_if_c_in_args, mock_mail, mock_twil
     ):
         """Test we ignore the 2-3am local time (8:00 UTC time) error every night"""
 
         mock_check_if_c_in_args.side_effect = Exception(
             "server closed the connection unexpectedly"
         )
-        mock_dt.utcnow.return_value = datetime(2021, 1, 1, 9, 1)
+        mock_utcnow_naive.return_value = datetime(2021, 1, 1, 9, 1)
         global c
         c.TEST_FUNC = True
         # c.TEST_ERROR = False
 
-        alarm_log_delete_duplicates.main(c)
+        with self.assertRaises(Exception):
+            time_series_mv_refresh.main(c)
 
         mock_check_if_c_in_args.assert_called_once()
         mock_mail.assert_not_called()
         mock_twil.assert_not_called()
         # No error is raised!
-        mock_dt.utcnow.assert_called_once()
+        mock_utcnow_naive.assert_called_once()
 
 
 if __name__ == "__main__":

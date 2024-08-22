@@ -1,14 +1,56 @@
+FROM python:3.11.8-slim-bullseye
 
-FROM python:3.8-slim-buster
+# Use Docker BuildKit for better caching and faster builds
+ARG DOCKER_BUILDKIT=1
+ARG BUILDKIT_INLINE_CACHE=1
+# Enable BuildKit for Docker-Compose
+ARG COMPOSE_DOCKER_CLI_BUILD=1
+
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
 
 # Install cron for scheduled jobs and procps for "ps" tool to check running procs
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install git cron nano procps wget
+    apt-get -y --no-install-recommends install curl git cron nano procps wget dos2unix && \
+    # Clean up
+    apt-get autoremove -y && \
+    apt-get clean -y && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /
-RUN pip3 install --upgrade pip && \
-    pip3 install -r requirements.txt
+WORKDIR /workspace
+
+# Install Poetry with the root user
+# Ensure pip is the latest version
+ENV POETRY_HOME=/usr/local
+RUN pip install --upgrade pip && \
+    # Install Poetry
+    # curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python - && \
+    curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python && \
+    cd /usr/local/bin && \
+    ln -s /opt/poetry/bin/poetry && \
+    poetry config virtualenvs.create false && \
+    # Clean up
+    apt-get autoremove -y && \
+    apt-get clean -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    # Make the logs folder
+    mkdir -p /project/logs
+
+COPY poetry.lock pyproject.toml ./
+# COPY pyproject.toml ./
+RUN \
+    # in-project .venv makes it very slow since it's sharing files with Windows/WSL...
+    # poetry config virtualenvs.in-project true
+    # These settings get put into the ~/.config./pyconfig/config.toml file
+    # poetry lock && \
+    poetry config virtualenvs.create false && \
+    # poetry config repositories.ijack_private https://pypi.myijack.com && \
+    # The following username/password setup doesn't seem to work for some reason...
+    # poetry config http-basic.ijack_private $PYPI_USERNAME_PRIVATE $PYPI_PASSWORD_PRIVATE
+    echo "Running poetry install..." && \
+    # poetry add --dev gateway-setup
+    # echo ""
+    poetry install --no-interaction --no-ansi
 
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /root/
-RUN mkdir -p /project/logs
