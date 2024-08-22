@@ -26,8 +26,8 @@ from project.utils import (
     exit_if_already_running,
     get_conn,
     run_query,
-    utcnow_naive,
     send_error_messages,
+    utcnow_naive,
 )
 
 LOG_LEVEL = logging.INFO
@@ -243,6 +243,9 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     n_power_units = len(df["power_unit"].unique())
     power_unit_counter = 0
     time_start = time.time()
+    # Pandas 3.0 future defaults: copy_on_write = True and no_silent_downcasting = True
+    pd.options.mode.copy_on_write = True
+    pd.set_option("future.no_silent_downcasting", True)
     for power_unit, group in df.groupby("power_unit"):
         power_unit_counter += 1
         c.logger.info(
@@ -254,7 +257,10 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
         )
         # Sort by timestamp_utc, then fill in missing values
         sorted_group = (
-            group.sort_values("timestamp_utc", ascending=True).ffill().bfill()
+            group.sort_values("timestamp_utc", ascending=True)
+            .infer_objects()
+            .ffill()
+            .bfill()
         )
         # Replace the original group with the sorted and filled group
         df.loc[df["power_unit"] == power_unit, :] = sorted_group
