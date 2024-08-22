@@ -94,8 +94,7 @@ RUN addgroup --gid $USER_GID --system $USERNAME && \
     # chown -R $USER_UID:$USER_GID /project && \
     # Get curl and netcat for Docker healthcheck
     apt-get update && \
-    apt-get -y --no-install-recommends install nano curl iputils-ping \
-    netcat-traditional g++ protobuf-compiler libprotobuf-dev && \
+    apt-get -y --no-install-recommends install curl cron nano procps wget iputils-ping && \
     apt-get clean && \
     # Delete index files we don't need anymore:
     rm -rf /var/lib/apt/lists/*
