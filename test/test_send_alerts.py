@@ -20,7 +20,6 @@ from project.utils import Config, configure_logging, send_mailgun_email, send_tw
 from test.utils import create_mock_twilio_client
 
 
-
 LOGFILE_NAME = "test_send_alerts"
 
 c = Config()
@@ -72,7 +71,7 @@ class TestAll(unittest.TestCase):
         global c
         c.TEST_FUNC = False
         text = "Just testing whether Mailgun text email works"
-        
+
         rc = send_mailgun_email(
             c,
             text=text,
@@ -96,7 +95,7 @@ class TestAll(unittest.TestCase):
                 Location: Gull Lake<br><br>
                 Power unit: 200000<br><br></p>
                 </body></html>"""
-        
+
         rc = send_mailgun_email(
             c,
             text="",
@@ -104,7 +103,7 @@ class TestAll(unittest.TestCase):
             emailees_list=c.EMAIL_LIST_DEV,
             subject="TEST - IJACK Alert - HTML",
         )
-        
+
         mock_post.assert_called_once()
         c.logger.info(f"Mailgun 'rc' for html email: {rc}")
         self.assertEqual(rc.status_code, 200)
