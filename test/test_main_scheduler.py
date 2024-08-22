@@ -1,6 +1,5 @@
 import sys
 import unittest
-from unittest.mock import patch
 import time
 
 import schedule
@@ -12,7 +11,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-import project.time_series_mv_refresh as time_series_mv_refresh
 from project.utils import Config, configure_logging
 
 
