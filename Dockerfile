@@ -109,7 +109,7 @@ RUN mkdir -p /project/logs && \
 
 # Copy in files and change ownership to the non-root user
 COPY --chown=$USER_UID:$USER_GID --from=builder /venv /venv
-COPY --chown=$USER_UID:$USER_GID project .env entrypoint.sh ./
+COPY --chown=$USER_UID:$USER_GID project .env ./
 
 # Set the user so nobody can run as root on the Docker host (security)
 USER $USERNAME
@@ -121,5 +121,4 @@ RUN echo PATH = $PATH
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /$USERNAME
 
-# CMD ["/bin/bash", "/project/entrypoint.sh"]
 CMD ["/venv/bin/python3", "/project/main_scheduler.py"]

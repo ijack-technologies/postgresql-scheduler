@@ -53,9 +53,7 @@ def run_schedule() -> None:
     while True:
         # Run all scheduled tasks
         schedule.run_pending()
-
-        # Wait 5 seconds before running the scheduled tasks again
-        time.sleep(5)
+        time.sleep(1)
 
 
 if __name__ == "__main__":
