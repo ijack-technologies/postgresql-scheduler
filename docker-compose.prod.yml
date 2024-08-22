@@ -42,9 +42,10 @@ services:
       #   logging_jobname: postgresql_scheduler
     healthcheck:
       test: [ "CMD", "ping", "-c", "1", "google.com" ]
-      interval: 6m
+      interval: 1m
       timeout: 5m
       retries: 3
+      start_period: 30s
 
     volumes:
       - type: volume
