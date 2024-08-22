@@ -1,6 +1,5 @@
 import sys
 import unittest
-from datetime import datetime
 from unittest.mock import patch
 import time
 
@@ -26,7 +25,6 @@ c.logger = configure_logging(
 )
 
 
-
 class TestAll(unittest.TestCase):
     """Test all functions"""
 
@@ -37,7 +35,8 @@ class TestAll(unittest.TestCase):
     @patch("project.time_series_mv_refresh.get_latest_timestamp_in_table")
     @patch("project.time_series_mv_refresh.exit_if_already_running")
     def test_time_series_mv_refresh(
-        self, mock_exit_if_already_running, 
+        self,
+        mock_exit_if_already_running,
         mock_get_latest_timestamp_in_table,
         mock_check_table_timestamps,
         mock_force_refresh_continuous_aggregates,
@@ -60,7 +59,7 @@ class TestAll(unittest.TestCase):
         while True:
             # schedule.run_pending()
             schedule.run_all()
-            
+
             if time.time() > time_finish:
                 break
         seconds_taken = time.time() - time_start
@@ -73,7 +72,7 @@ class TestAll(unittest.TestCase):
         self.assertTrue(mock_get_and_insert_latest_values.call_count > 0)
 
         # mock_time_sleep.assert_called()
-        
+
 
 if __name__ == "__main__":
     unittest.main()
