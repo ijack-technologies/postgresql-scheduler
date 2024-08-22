@@ -16,6 +16,11 @@ git checkout master
 echo "Pulling the latest changes..."
 git pull
 
+# Read the .env file into stdout with "cat .env", filter out lines that start with "#",
+# and pipe it to xargs, which builds an argument list out the standard input.
+# cat .env | grep -v "^#"
+export $(cat .env | grep -v "^#" | xargs)
+
 # Build and tag image locally in one step.
 # No need for docker tag <image> mccarthysean/ijack:<tag>
 
