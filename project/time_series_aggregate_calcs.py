@@ -180,7 +180,7 @@ def upsert_time_series_agg(
 
 
 @error_wrapper()
-def main(c) -> bool:
+def main(c: Config) -> bool:
     """Main entrypoint function"""
 
     exit_if_already_running(c, Path(__file__).name)

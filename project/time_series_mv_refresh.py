@@ -423,7 +423,7 @@ def ad_hoc_maybe_refresh_continuous_aggs() -> None:
 
 
 @error_wrapper()
-def main(c):
+def main(c: Config) -> bool:
     """Main entrypoint function"""
 
     exit_if_already_running(c, Path(__file__).name)

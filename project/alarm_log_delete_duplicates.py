@@ -42,7 +42,7 @@ SQL = """
 
 
 @error_wrapper()
-def main(c):
+def main(c: Config) -> None:
     """Main entrypoint function"""
     global SQL
 

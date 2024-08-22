@@ -738,7 +738,7 @@ def record_can_bus_cellular_test(
 
 
 @error_wrapper()
-def main(c: Config, commit: bool = False):
+def main(c: Config, commit: bool = False) -> None:
     """
     Query unit data from AWS RDS "IJACK" PostgreSQL database,
     and update it in the AWS IoT "thing shadow" from which the gateways

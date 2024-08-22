@@ -1,4 +1,5 @@
 import time
+import logging
 
 # # Insert pythonpath into the front of the PATH environment variable, before importing anything
 # import sys
@@ -16,8 +17,10 @@ import time_series_mv_refresh
 import timescaledb_restart_background_workers
 import update_info_from_shadows
 
+from utils import Config, configure_logging
 
-def make_schedule():
+
+def make_schedule(c: Config) -> None:
     """
     Make a cron-like schedule for running tasks
 
@@ -33,14 +36,14 @@ def make_schedule():
     3 * * * * python3 /project/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
     */10 * * * * python3 /project/update_info_from_shadows.py
     """
-    schedule.every().day.at("01:01").do(alarm_log_delete_duplicates.main)
-    schedule.every().day.at("01:11").do(time_series_aggregate_calcs.main)
-    schedule.every(30).minutes.do(time_series_mv_refresh.main)
-    schedule.every().day.at("01:31").do(timescaledb_restart_background_workers.main)
+    schedule.every().day.at("01:01").do(alarm_log_delete_duplicates.main, c=c)
+    schedule.every().day.at("01:11").do(time_series_aggregate_calcs.main, c=c)
+    schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
+    schedule.every().day.at("01:31").do(timescaledb_restart_background_workers.main, c=c)
     schedule.every().hour.at(":03").do(
-        synch_aws_iot_shadow_with_aws_rds_postgres_config.main
+        synch_aws_iot_shadow_with_aws_rds_postgres_config.main, c=c
     )
-    schedule.every(10).minutes.do(update_info_from_shadows.main)
+    schedule.every(10).minutes.do(update_info_from_shadows.main, c=c, commit=True)
 
     return None
 
@@ -50,6 +53,17 @@ def run_schedule() -> None:
     Run the schedule of tasks and wait 5 seconds before running the scheduled tasks again.
     This loop will run forever.
     """
+
+    # Configure the logger
+    # LOG_LEVEL = logging.INFO
+    c = Config()
+    c.logger = configure_logging(
+        __name__, logfile_name="main_scheduler", path_to_log_directory="/project/logs/"
+    )
+
+    # Make the schedule
+    make_schedule(c=c)
+
     while True:
         # Run all scheduled tasks
         schedule.run_pending()
