@@ -23,7 +23,7 @@ from project.utils import (
     configure_logging,
     error_wrapper,
     exit_if_already_running,
-    get_all_gateways_config_metrics,
+    get_all_power_units_config_metrics,
     get_client_iot,
 )
 
@@ -119,7 +119,7 @@ def main(c: Config) -> None:
 
     # Get all gateways from database, and all the fields we're going
     # to update in the AWS IoT device shadow with C__{METRIC}
-    rows: list = get_all_gateways_config_metrics(c)
+    rows: list = get_all_power_units_config_metrics(c)
 
     # Dict to which we'll add aws_thing: shadow pairs,
     # which we'll then update efficiently in a thread pool

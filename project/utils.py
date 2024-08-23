@@ -630,30 +630,83 @@ def error_wrapper():
     return wrapper_outer
 
 
-def get_all_gateways_config_metrics(c) -> list:
+def get_all_power_units_config_metrics(c) -> list:
     """
-    Get all gateways from database, and all the fields we're going
+    Get all power units from database, and all the fields we're going
     to update in the AWS IoT device shadow with C__{METRIC}
     """
 
     # These are all the metrics that will be put in the AWS IoT device shadow as "C__{METRIC}"
     SQL = """
-        select aws_thing, gateway, customer, mqtt_topic, cust_sub_group_abbrev,
-            unit_type, apn,
-            location, power_unit, model,
-            time_zone,
-            heartbeat_enabled, online_hb_enabled, spm, stboxf, suction, discharge, hyd_temp,
-            wait_time_mins, wait_time_mins_ol, wait_time_mins_spm, wait_time_mins_stboxf,
-            wait_time_mins_suction, wait_time_mins_discharge, wait_time_mins_hyd_temp,
-            hyd_oil_lvl_thresh, hyd_filt_life_thresh, hyd_oil_life_thresh,
-            wait_time_mins_hyd_oil_lvl, wait_time_mins_hyd_filt_life, wait_time_mins_hyd_oil_life,
-            ip_modbus, subnet_modbus, gateway_modbus,
-            wait_time_mins_chk_mtr_ovld, wait_time_mins_pwr_fail, wait_time_mins_soft_start_err, wait_time_mins_grey_wire_err,
-            wait_time_mins_ae011
-        from public.gateways
-        where aws_thing <> 'test'
-            and aws_thing is not null
-            and customer_id is distinct from 21 -- demo customer
+        with modbus as (           
+            select 
+				power_unit_id,
+                STRING_AGG(
+                    CONCAT(ip_address, '>', subnet, '>', gateway),
+                    ','
+                ) as modbus_networks
+            from power_units_modbus_networks
+            group by power_unit_id
+        )
+        select gw.aws_thing, 
+            gw.gateway, 
+            cust.customer, 
+            cust.mqtt_topic, 
+            cust_sub.abbrev AS cust_sub_group_abbrev,
+            ut.unit_type, 
+            pu.apn,
+            CASE WHEN str.downhole IS NULL OR str.downhole = ''::text THEN str.surface
+                ELSE (str.downhole || ' @ '::text) || str.surface
+            END AS location, 
+            pu.power_unit, 
+            mt.model,
+            tz.time_zone,
+            -- Alert settings
+            pu.wait_time_mins,
+            pu.wait_time_mins_ol,
+            pu.wait_time_mins_suction,
+            pu.wait_time_mins_discharge,
+            pu.wait_time_mins_spm,
+            pu.wait_time_mins_stboxf,
+            pu.wait_time_mins_hyd_temp,
+            pu.hyd_oil_lvl_thresh,
+            pu.hyd_filt_life_thresh,
+            pu.hyd_oil_life_thresh,
+            pu.wait_time_mins_hyd_oil_lvl,
+            pu.wait_time_mins_hyd_filt_life,
+            pu.wait_time_mins_hyd_oil_life,
+            pu.wait_time_mins_chk_mtr_ovld,
+            pu.wait_time_mins_pwr_fail,
+            pu.wait_time_mins_soft_start_err,
+            pu.wait_time_mins_grey_wire_err,
+            pu.wait_time_mins_ae011,
+            pu.heartbeat_enabled,
+            pu.online_hb_enabled,
+            pu.suction,
+            pu.discharge,
+            pu.spm,
+            pu.stboxf,
+            pu.hyd_temp,
+            --pu.ip_modbus,
+            --pu.subnet_modbus,
+            --pu.gateway_modbus,
+            --modbus.ip_address as ip_modbus,
+            --modbus.subnet as subnet_modbus,
+            --modbus.gateway as gateway_modbus
+            modbus.modbus_networks
+        FROM gw gw
+        LEFT JOIN power_units pu ON gw.power_unit_id = pu.id
+        LEFT JOIN structures str ON pu.id = str.power_unit_id
+        LEFT JOIN myijack.structure_customer_rel str_cust_rel ON str_cust_rel.structure_id = str.id
+        LEFT JOIN myijack.customers cust ON str_cust_rel.customer_id = cust.id
+        LEFT JOIN myijack.cust_sub_groups cust_sub ON cust_sub.id = str.cust_sub_group_id
+        LEFT JOIN myijack.time_zones tz ON str.time_zone_id = tz.id
+        LEFT JOIN myijack.model_types mt ON str.model_type_id = mt.id
+        LEFT JOIN myijack.unit_types ut ON str.unit_type_id = ut.id
+        LEFT JOIN modbus ON pu.id = modbus.power_unit_id
+        where gw.aws_thing <> 'test'
+            and gw.aws_thing is not null
+            and cust.id is distinct from 21 -- demo customer
     """
     _, rows = run_query(c, SQL, db="ijack", fetchall=True)
 
