@@ -535,13 +535,20 @@ def is_time_between(
 
 
 def send_error_messages(
-    c: Config,
-    err: Exception,
-    filename: Path,
+    c: Config = None,
+    err: Exception = None,
+    filename: Path = None,
     want_email: bool = True,
     want_sms: bool = False,
 ) -> None:
     """Send error messages to email and/or SMS"""
+
+    if not isinstance(c, Config) or not getattr(c, "logger", None):
+        c = Config()
+        c.logger = configure_logging(
+            __name__,
+            logfile_name=Path(__file__).stem,
+        )
 
     # Every morning at 9:01 UTC I get an email that says "server closed the connection unexpectedly.
     # This probably means the server terminated abnormally before or while processing the request."
@@ -595,11 +602,7 @@ def error_wrapper():
         @functools.wraps(func)
         def wrapper_inner(*args, **kwargs):
             # Need to make this in the outer scope first and overwrite it if necessary...
-            c = Config()
-            c.logger = configure_logging(
-                __name__,
-                logfile_name=Path(__file__).stem,
-            )
+            c = None
             try:
                 # Do something before
                 c = check_if_c_in_args(args)

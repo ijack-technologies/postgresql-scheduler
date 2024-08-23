@@ -27,9 +27,6 @@ from project.utils import (
     get_client_iot,
 )
 
-LOGFILE_NAME = "synch_aws_iot_shadow_with_aws_rds_postgres_config"
-c = Config()
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 def update_device_shadows_in_threadpool(
@@ -205,4 +202,7 @@ def main(c: Config) -> None:
 
 
 if __name__ == "__main__":
+    LOGFILE_NAME = "synch_aws_iot_shadow_with_aws_rds_postgres_config"
+    c = Config()
+    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c)

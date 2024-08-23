@@ -17,25 +17,19 @@ except ValueError:
 from project import time_series_aggregate_calcs
 from project.utils import Config, configure_logging
 
-LOGFILE_NAME = "real_time_series_aggregate_calcs"
-
-c = Config()
-c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
-
 
 class TestAll(unittest.TestCase):
-    # executed prior to each test below, not just when the class is initialized
-    def setUp(self):
-        global c
-        c.DEV_TEST_PRD = "development"
-        # This c.TEST_FUNC just disables SMS, email, and phone call alerts
-        c.TEST_FUNC = True
-
     @patch("project.time_series_aggregate_calcs.exit_if_already_running")
     def test_time_series_aggregate_calcs(self, mock_exit_if_already_running):
         """Test the main program"""
-        global c
+
+        c = Config()
+        c.DEV_TEST_PRD = "development"
+        # This c.TEST_FUNC just disables SMS, email, and phone call alerts
+        c.TEST_FUNC = True
+        LOGFILE_NAME = "real_time_series_aggregate_calcs"
+        c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
         time_series_aggregate_calcs.main(c)
 
         mock_exit_if_already_running.assert_called_once()

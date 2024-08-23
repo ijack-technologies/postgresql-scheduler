@@ -20,14 +20,6 @@
 # from project.utils import Config, configure_logging
 # import update_gps_lat_lon_from_land_locations
 
-# LOGFILE_NAME = "test_main_programs"
-
-# c = Config()
-# c.DEV_TEST_PRD = "development"
-# c.logger = configure_logging(
-#     __name__, logfile_name=LOGFILE_NAME
-# )
-
 
 # class TestAll(unittest.TestCase):
 
@@ -51,4 +43,12 @@
 
 
 # if __name__ == "__main__":
+
+# LOGFILE_NAME = "test_main_programs"
+
+# c = Config()
+# c.DEV_TEST_PRD = "development"
+# c.logger = configure_logging(
+#     __name__, logfile_name=LOGFILE_NAME
+# )
 #     unittest.main()
