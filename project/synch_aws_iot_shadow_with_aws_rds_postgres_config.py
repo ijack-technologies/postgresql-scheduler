@@ -28,7 +28,6 @@ from project.utils import (
 )
 
 
-
 def update_device_shadows_in_threadpool(
     c: Config, gateways_to_update: dict, client_iot: boto3.client
 ) -> list:
