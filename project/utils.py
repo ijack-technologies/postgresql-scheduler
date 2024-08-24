@@ -709,6 +709,8 @@ def get_all_power_units_config_metrics(c) -> list:
             and cust.id is distinct from 21 -- demo customer
     """
     _, rows = run_query(c, SQL, db="ijack", fetchall=True)
+    if not rows:
+        raise ValueError("No rows found in the database for the power units!!!")
 
     return rows
 
