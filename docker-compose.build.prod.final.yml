@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   postgresql_scheduler:
     # Name and tag of image the Dockerfile creates

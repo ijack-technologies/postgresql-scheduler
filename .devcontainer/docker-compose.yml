@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   # dev_pg_scheduler:
   scheduler_dev:
@@ -46,10 +45,11 @@ services:
     # command: /bin/sh -c "while sleep 1000; do :; done"
     # links:
     #   - container-2
-    networks:
-      - myijack-network
-networks:
-  myijack-network:
-    # driver: bridge
-    external:
-      name: myijack-network
+    # networks:
+    #   - myijack-network
+
+# networks:
+#   myijack-network:
+#     # driver: bridge
+#     external:
+#       name: myijack-network

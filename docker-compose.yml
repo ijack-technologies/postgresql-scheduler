@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   postgresql_scheduler:
     # Name of the container this service creates. Otherwise it's prefixed with the git repo name

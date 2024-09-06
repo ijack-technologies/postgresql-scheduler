@@ -199,6 +199,11 @@ def get_and_insert_latest_values(c, after_this_date: datetime):
     time.sleep(0.5)
     del rows_new
 
+    if len(df_new) == 0:
+        raise ValueError(
+            f"ERROR: No new data was found in the 'time_series' table after the timestamp '{after_this_date_str}' and before the timestamp '{max_date_str}'"
+        )
+
     # Join the old and new dataframes together
     df = pd.concat([df_old, df_new], ignore_index=True)
     del df_old
