@@ -144,7 +144,7 @@ def check_table_timestamps(
 # def get_gateway_power_unit_dict(c, conn=None) -> dict:
 #     """Get the gateway and power unit mapping"""
 #     SQL_GW_PU = """
-#         select 
+#         select
 #             t2.aws_thing as gateway,
 #             t1.power_unit_str
 #         from public.power_units t1
@@ -182,7 +182,11 @@ def get_power_units_in_service(c) -> dict:
 
 
 def get_and_insert_latest_values(
-    c, after_this_date: datetime, power_unit_str: str, gateway_power_unit_dict: dict, conn=None
+    c,
+    after_this_date: datetime,
+    power_unit_str: str,
+    gateway_power_unit_dict: dict,
+    conn=None,
 ) -> bool:
     """
     Get the latest values from the "last one carried forward" materialized view,
@@ -275,7 +279,7 @@ def get_and_insert_latest_values(
         "Converting the power unit to a string and removing the '.0' if it's there..."
     )
     # time_start = time.time()
-    df["power_unit"] = df["power_unit"].astype(str).str.replace(r'\.0$', '', regex=True)
+    df["power_unit"] = df["power_unit"].astype(str).str.replace(r"\.0$", "", regex=True)
     # mins_taken = round((time.time() - time_start) / 60, 1)
     # c.logger.info(
     #     "Minutes taken to ensure the power unit and gateway are filled in: %s",
@@ -409,7 +413,7 @@ def force_refresh_continuous_aggregates(
         "time_series_mvca_6_hour_interval": timedelta(hours=12),
         "time_series_mvca_24_hour_interval": timedelta(hours=48),
     }
-    
+
     if conn:
         should_close_connection: bool = False
         isolation_level_before = conn.isolation_level
