@@ -537,7 +537,10 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
                 )
             except Exception as err:
                 if by_power_unit:
-                    c.logger.exception("Error getting the latest timestamp in the table for power unit '%s'", power_unit_str)
+                    c.logger.exception(
+                        "Error getting the latest timestamp in the table for power unit '%s'",
+                        power_unit_str,
+                    )
                     continue
                 filename = Path(__file__).name
                 send_error_messages(
