@@ -482,7 +482,7 @@ def ad_hoc_maybe_refresh_continuous_aggs() -> None:
 
 
 @error_wrapper()
-def main(c: Config, by_power_unit: bool = True) -> bool:
+def main(c: Config, by_power_unit: bool = False) -> bool:
     """Main entrypoint function"""
 
     exit_if_already_running(c, Path(__file__).name)
@@ -536,6 +536,9 @@ def main(c: Config, by_power_unit: bool = True) -> bool:
                     conn=conn_ts,
                 )
             except Exception as err:
+                if by_power_unit:
+                    c.logger.exception("Error getting the latest timestamp in the table for power unit '%s'", power_unit_str)
+                    continue
                 filename = Path(__file__).name
                 send_error_messages(
                     c=c, err=err, filename=filename, want_email=True, want_sms=True
