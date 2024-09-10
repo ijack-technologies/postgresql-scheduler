@@ -16,6 +16,7 @@ from subprocess import PIPE, STDOUT
 from typing import List, Tuple
 
 import boto3
+import pandas as pd
 import psycopg2
 import pytz
 import requests
@@ -823,3 +824,36 @@ def seconds_since_last_any_msg(c, shadow):
         # color_time_since = "danger"
 
     return seconds_elapsed_total, msg
+
+
+def get_power_units_and_unit_types(c, conn=None) -> dict:
+    """Get the power units and unit types mapping"""
+    sql = """
+    SELECT
+        id as structure_id,
+        power_unit_id,
+        power_unit_str,
+        power_unit_type,
+        gateway_id,
+        aws_thing,
+        unit_type_id,
+        unit_type,
+        case when unit_type_id in (1, 4) then false else true end as is_egas_type,
+        model_type_id,
+        model,
+        model_unit_type_id,
+        model_unit_type,
+        customer_id,
+        customer
+    FROM public.vw_structures_joined
+        --structure must have a power unit
+        where power_unit_id is not null
+            --power unit must have a gateway or there's no data
+            and gateway_id is not null
+    """
+    columns, rows = run_query(
+        c, sql, db="ijack", conn=conn, fetchall=True, raise_error=True, log_query=False
+    )
+    df = pd.DataFrame(rows, columns=columns)
+    dict_ = dict(zip(df["power_unit_str"], df["is_egas_type"]))
+    return dict_

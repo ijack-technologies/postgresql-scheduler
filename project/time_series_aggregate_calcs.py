@@ -22,44 +22,12 @@ from project.utils import (
     configure_logging,
     error_wrapper,
     exit_if_already_running,
+    get_power_units_and_unit_types,
     run_query,
     utcnow_naive,
 )
 
 LOGFILE_NAME = "time_series_aggregate_calcs"
-
-
-def get_power_units_and_unit_types(c) -> dict:
-    """Get the power units and unit types mapping"""
-    sql = """
-    SELECT
-        id as structure_id,
-        power_unit_id,
-        power_unit_str,
-        power_unit_type,
-        gateway_id,
-        aws_thing,
-        unit_type_id,
-        unit_type,
-        case when unit_type_id in (1, 4) then false else true end as is_egas_type,
-        model_type_id,
-        model,
-        model_unit_type_id,
-        model_unit_type,
-        customer_id,
-        customer
-    FROM public.vw_structures_joined
-        --structure must have a power unit
-        where power_unit_id is not null
-            --power unit must have a gateway or there's no data
-            and gateway_id is not null
-    """
-    columns, rows = run_query(
-        c, sql, db="ijack", fetchall=True, raise_error=True, log_query=False
-    )
-    df = pd.DataFrame(rows, columns=columns)
-    dict_ = dict(zip(df["power_unit_str"], df["is_egas_type"]))
-    return dict_
 
 
 def get_time_series_data(

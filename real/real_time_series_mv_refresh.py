@@ -39,7 +39,7 @@ class TestAll(unittest.TestCase):
     ):
         """Test the main program"""
         global c
-        time_series_mv_refresh.main(c)
+        time_series_mv_refresh.main(c, by_power_unit=True)
 
 
 if __name__ == "__main__":
