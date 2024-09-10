@@ -24,7 +24,6 @@ from project.utils import (
     error_wrapper,
     exit_if_already_running,
     get_conn,
-    get_power_units_and_unit_types,
     run_query,
     send_error_messages,
     utcnow_naive,
@@ -141,30 +140,31 @@ def check_table_timestamps(
     return True
 
 
-# def get_gateway_power_unit_dict(c, conn=None) -> dict:
-#     """Get the gateway and power unit mapping"""
-#     SQL_GW_PU = """
-#         select
-#             t2.aws_thing as gateway,
-#             t1.power_unit_str
-#         from public.power_units t1
-#         left join public.gw t2
-#             on t2.power_unit_id = t1.id
-#         where t1.power_unit_str is not null
-#             and t2.gateway is not null
-#     """
-#     columns, rows = run_query(c, SQL_GW_PU, db="ijack", conn=conn, fetchall=True, raise_error=True)
-#     df = pd.DataFrame(rows, columns=columns)
-#     dict_ = dict(zip(df["gateway"], df["power_unit_str"]))
-#     return dict_
-
-
-def get_power_units_in_service(c) -> dict:
-    """Get the gateway and power unit mapping, for power units that are in service"""
+def get_gateway_power_unit_dict(c, conn=None) -> dict:
+    """Get the gateway and power unit mapping"""
     SQL_GW_PU = """
-        select 
+        select
             t2.aws_thing as gateway,
             t1.power_unit_str
+        from public.power_units t1
+        left join public.gw t2
+            on t2.power_unit_id = t1.id
+        where t1.power_unit_str is not null
+            and t2.gateway is not null
+    """
+    columns, rows = run_query(
+        c, SQL_GW_PU, db="ijack", conn=conn, fetchall=True, raise_error=True
+    )
+    df = pd.DataFrame(rows, columns=columns)
+    dict_ = dict(zip(df["gateway"], df["power_unit_str"]))
+    return dict_
+
+
+def get_power_units_in_service(c) -> list:
+    """Get the gateway and power unit mapping, for power units that are in service"""
+    SQL_POWER_UNITS = """
+        select 
+            distinct t1.power_unit_str
         from public.power_units t1
         inner join public.gw t2
             on t2.power_unit_id = t1.id
@@ -175,10 +175,8 @@ def get_power_units_in_service(c) -> dict:
             and t3.power_unit_id is not null
             and t3.surface is not null
     """
-    columns, rows = run_query(c, SQL_GW_PU, db="ijack", fetchall=True, raise_error=True)
-    df = pd.DataFrame(rows, columns=columns)
-    dict_ = dict(zip(df["gateway"], df["power_unit_str"]))
-    return dict_
+    _, rows = run_query(c, SQL_POWER_UNITS, db="ijack", fetchall=True, raise_error=True)
+    return [row["power_unit_str"] for row in rows]
 
 
 def get_and_insert_latest_values(
@@ -487,39 +485,30 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    # # NOTE the following is only for ad hoc purposes;
-    # # it only runs if the date is before a certain date!
-    # # It also runs again after the latest values are inserted, below!
-    # ad_hoc_maybe_refresh_continuous_aggs()
-
-    # # First refresh the main "last one carried forward" materialized view
-    # refresh_locf_materialized_view(c)
-
     conn_ts = get_conn(c, db="timescale")
 
     try:
+        # Get the gateway: power unit mapping dictionary, which has all gateway: power unit pairs,
+        # even if the power unit is no longer in service with a structure ID.
+        gateway_power_unit_dict: dict = get_gateway_power_unit_dict(c)
+
         if by_power_unit:
+            # Do it one power unit as a time, instead of all at once in a big DataFrame
             # if datetime.today() < datetime(2024, 9, 11):
-            #     power_unit_uno_egas_dict = {"200480": "egas"}
+            #     power_units_in_service = {"": "200480"}
             # else:
-            power_unit_uno_egas_dict: dict = get_power_units_and_unit_types(c)
+            power_units_in_service: list = get_power_units_in_service(c)
+            n_power_units = str(len(power_units_in_service))
         else:
-            power_unit_uno_egas_dict = {None: None}
+            power_units_in_service = [None]
+            n_power_units = "All power units at the same time"
 
-        # Get the gateway and power unit mapping
-        # gateway_power_unit_dict = get_gateway_power_unit_dict(c)
-        gateway_power_unit_dict = get_power_units_in_service(c)
-
-        n_power_units = len(power_unit_uno_egas_dict)
-        for index, (power_unit_str, is_egas_type) in enumerate(
-            power_unit_uno_egas_dict.items()
-        ):
+        for index, power_unit_str in enumerate(power_units_in_service):
             c.logger.info(
-                "Power unit %s of %s: %s - %s",
+                "Power unit %s of %s: %s",
                 index + 1,
                 n_power_units,
                 power_unit_str,
-                "EGAS type" if is_egas_type else "UNO type",
             )
 
             # Get the lastest values from the LOCF MV and insert
