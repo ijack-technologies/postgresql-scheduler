@@ -9,15 +9,15 @@ services:
     # tty: true
     volumes:
       # Mount the root folder that contains .git
-      - ..:/workspace
+      - .:/workspace:cached
       # Windows home folder:
-      - C:\Users\seanm\:/c_users_sean
+      # - C:\Users\seanm\:/c_users_sean
       # [Optional] For reusing Git SSH keys.
       # - ~/.ssh:/root/.ssh-local:ro
     build:
       # context: where should docker compose look for the Dockerfile?
       # i.e. either a path to a directory containing a Dockerfile, or a url to a git repository
-      context: ..
+      context: .
       dockerfile: Dockerfile.dev
     # this will signal that the connection is alive after 200 seconds,
     # which is less than the time it takes to drop the connection (300 seconds?), thus preventing it from being dropped.
@@ -27,8 +27,7 @@ services:
       - net.ipv4.tcp_keepalive_time=200
       - net.ipv4.tcp_keepalive_intvl=30
       - net.ipv4.tcp_keepalive_probes=10
-    env_file:
-      - ../.env
+    env_file: .env
       # environment:
       #   - FLASK_CONFIG=development
       #   - FLASK_ENV=development
