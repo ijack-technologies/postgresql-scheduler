@@ -9,6 +9,7 @@ import time
 # except ValueError:
 #     sys.path.insert(0, pythonpath)
 import alarm_log_delete_duplicates
+import time_series_rt_delete_old_data
 import schedule
 import synch_aws_iot_shadow_with_aws_rds_postgres_config
 import time_series_aggregate_calcs
@@ -37,6 +38,7 @@ def make_schedule(c: Config) -> None:
     c.logger.info("Making the cron-like schedule...")
     schedule.every().day.at("01:01").do(alarm_log_delete_duplicates.main, c=c)
     schedule.every().day.at("01:11").do(time_series_aggregate_calcs.main, c=c)
+    schedule.every().day.at("01:21").do(time_series_rt_delete_old_data.main, c=c)
     schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
     schedule.every().day.at("01:31").do(
         timescaledb_restart_background_workers.main, c=c
