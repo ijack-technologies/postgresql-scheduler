@@ -26,7 +26,10 @@
                 "charliermarsh.ruff",
                 "esbenp.prettier-vscode",
                 "adpyke.vscode-sql-formatter",
-                "tamasfe.even-better-toml"
+                "tamasfe.even-better-toml",
+                "monosans.djlint",
+                "foxundermoon.shell-format",
+                "redhat.vscode-yaml"
             ],
             "settings": {
                 "remote.extensionKind": {

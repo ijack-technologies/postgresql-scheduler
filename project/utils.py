@@ -796,12 +796,6 @@ def seconds_since_last_any_msg(c, shadow) -> Tuple[float, str, str]:
     # How many seconds has it been since we started waiting?
     seconds_elapsed_total = round(time.time() - time_received_latest, 1)
 
-    c.logger.info(
-        "Most recent metric in AWS IoT device shadow: %s as of %s minutes ago",
-        key_latest,
-        round(seconds_elapsed_total / 60, 1),
-    )
-
     mins_ago = round(seconds_elapsed_total / 60, 1)
     hours_ago = round(mins_ago / 60, 1)
     days_ago = round(hours_ago / 24, 1)
@@ -823,6 +817,12 @@ def seconds_since_last_any_msg(c, shadow) -> Tuple[float, str, str]:
     else:
         msg = f"{days_ago} days"
         # color_time_since = "danger"
+
+    c.logger.info(
+        "Most recent metric in AWS IoT device shadow: %s as of %s ago",
+        key_latest,
+        msg,
+    )
 
     return seconds_elapsed_total, msg, key_latest
 

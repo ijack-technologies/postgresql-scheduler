@@ -573,11 +573,13 @@ def upsert_gw_info(
     if not gateway_id or not aws_thing:
         return False
 
-    seconds_since, msg, _ = seconds_since_last_any_msg(c, shadow)
-
-    days_since_reported = round(seconds_since / (60 * 60 * 24), 1)
-
+    seconds_since, msg, latest_metric = seconds_since_last_any_msg(c, shadow)
+    c.logger.info(
+        f"Gateway '{aws_thing}' last reported {msg} ago with metric {latest_metric}"
+    )
+    
     timestamp_utc_now = utcnow_naive()
+    days_since_reported = round(seconds_since / (60 * 60 * 24), 1)
     timestamp_utc_last_reported = timestamp_utc_now - timedelta(
         days=days_since_reported
     )
