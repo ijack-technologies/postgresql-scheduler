@@ -7,8 +7,8 @@ git rev-parse --abbrev-ref HEAD
 echo "Fetching the latest changes..."
 git fetch
 
-echo "Checking out the 'master' branch..."
-git checkout master
+echo "Checking out the 'main' branch..."
+git checkout main
 
 echo "Pulling the latest changes..."
 git pull
