@@ -142,3 +142,31 @@ indent = 2
 html_has_lang = 'en-US'
 image_alt = true
 aria_role = true
+
+[tool.pyright]
+include = ["./project", "./test"]
+exclude = [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/site-packages",
+]
+verboseOutput = true
+pythonVersion = "3.6"
+pythonPlatform = "Linux"
+extraPaths = ["/workspace/.venv/lib/python3.11/site-packages"]
+typeCheckingMode = "strict"
+
+reportUnboundVariable = "error"
+reportArgumentType = "none"
+reportReturnType = "none"
+reportGeneralTypeIssues = "none"
+reportAttributeAccessIssue = "none"
+reportIndexIssue = "none"
+reportCallIssue = "none"
+reportAssignmentType = "none"
+# reportIncompatibleMethodOverride = true
+reportIncompatibleMethodOverride = "none"
+reportOptionalMemberAccess = "none"
+
+reportUnsupportedDunderAll = true
+reportIncompatibleVariableOverride = true

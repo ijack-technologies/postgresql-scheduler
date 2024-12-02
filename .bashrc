@@ -158,3 +158,12 @@ alias pip=pip3
 alias rm='rm -i'
 alias cp='cp -i'
 alias mv='mv -i'
+
+# Activate the Python virtual environment
+export VIRTUAL_ENV=/workspace/.venv
+if [ -d "$VIRTUAL_ENV" ]; then
+  export PATH="$VIRTUAL_ENV/bin:$PATH"
+  source /workspace/.venv/bin/activate
+else
+  echo "No virtual environment found in $VIRTUAL_ENV"
+fi

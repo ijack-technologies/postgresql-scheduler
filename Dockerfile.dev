@@ -36,21 +36,13 @@ RUN pip install --upgrade pip && \
     # Make the logs folder
     mkdir -p /project/logs
 
-COPY poetry.lock pyproject.toml ./
-# COPY pyproject.toml ./
-RUN \
-    # in-project .venv makes it very slow since it's sharing files with Windows/WSL...
-    # poetry config virtualenvs.in-project true
-    # These settings get put into the ~/.config./pyconfig/config.toml file
-    # poetry lock && \
-    poetry config virtualenvs.create false && \
-    # poetry config repositories.ijack_private https://pypi.myijack.com && \
-    # The following username/password setup doesn't seem to work for some reason...
-    # poetry config http-basic.ijack_private $PYPI_USERNAME_PRIVATE $PYPI_PASSWORD_PRIVATE
-    echo "Running poetry install..." && \
-    # poetry add --dev gateway-setup
-    # echo ""
-    poetry install --no-interaction --no-ansi
+# Switch back to dialog for any ad-hoc use of apt-get
+ENV DEBIAN_FRONTEND=
 
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /root/
+
+# Copy the entrypoint script to install the Python and Node dependencies if the .venv or node_modules directories don't exist
+COPY entrypoint.dev.sh /entrypoint.dev.sh
+RUN chmod +x /entrypoint.dev.sh
+ENTRYPOINT ["/entrypoint.dev.sh"]

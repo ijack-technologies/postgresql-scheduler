@@ -751,7 +751,7 @@ def utc_timestamp_to_datetime_string(
     return utc_datetime_to_string(dt, to_pytz_timezone, format_string)
 
 
-def seconds_since_last_any_msg(c, shadow):
+def seconds_since_last_any_msg(c, shadow) -> Tuple[float, str, str]:
     """How many seconds has it been since we received ANY message from the gateway at AWS?"""
 
     time_received_latest = 0
@@ -769,6 +769,7 @@ def seconds_since_last_any_msg(c, shadow):
             # Latitude and longitude can be updated by the website itself, if the unit is selected!
             or key == "LATITUDE"
             or key == "LONGITUDE"
+            or key == "connected"
         ):
             continue
 
@@ -795,7 +796,7 @@ def seconds_since_last_any_msg(c, shadow):
     # How many seconds has it been since we started waiting?
     seconds_elapsed_total = round(time.time() - time_received_latest, 1)
 
-    c.logger.debug(
+    c.logger.info(
         "Most recent metric in AWS IoT device shadow: %s as of %s minutes ago",
         key_latest,
         round(seconds_elapsed_total / 60, 1),
@@ -823,7 +824,7 @@ def seconds_since_last_any_msg(c, shadow):
         msg = f"{days_ago} days"
         # color_time_since = "danger"
 
-    return seconds_elapsed_total, msg
+    return seconds_elapsed_total, msg, key_latest
 
 
 def get_power_units_and_unit_types(c, conn=None) -> dict:

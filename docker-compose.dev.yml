@@ -8,8 +8,8 @@ services:
     # # Don't ever close this container
     # tty: true
     volumes:
-      # Mount the root folder that contains .git
-      - .:/workspace:cached
+      # Mount the root folder that contains .git with 'consistent' permissions, which helps with file permissions issues.
+      - .:/workspace:consistent
       # Windows home folder:
       # - C:\Users\seanm\:/c_users_sean
       # [Optional] For reusing Git SSH keys.

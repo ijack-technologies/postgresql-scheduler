@@ -573,7 +573,7 @@ def upsert_gw_info(
     if not gateway_id or not aws_thing:
         return False
 
-    seconds_since, msg = seconds_since_last_any_msg(c, shadow)
+    seconds_since, msg, _ = seconds_since_last_any_msg(c, shadow)
 
     days_since_reported = round(seconds_since / (60 * 60 * 24), 1)
 
