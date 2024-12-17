@@ -40,7 +40,7 @@ load_dotenv(env_file_location)
 
 # def insert_path(pythonpath):
 #     """Insert pythonpath into the front of the PATH environment
-#     variable, before importing anything from canpy"""
+#     variable, before importing anything from project/"""
 #     try:
 #         sys.path.index(str(pythonpath))
 #     except ValueError:

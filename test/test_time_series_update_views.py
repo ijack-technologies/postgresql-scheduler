@@ -7,13 +7,14 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
 pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
 except ValueError:
     sys.path.insert(0, pythonpath)
 
+from project.logger_config import configure_logging
 from project.time_series_mv_refresh import (
     check_table_timestamps,
     force_refresh_continuous_aggregates,
@@ -22,8 +23,6 @@ from project.time_series_mv_refresh import (
     get_latest_timestamp_in_table,
     get_power_units_in_service,
 )
-
-from project.logger_config import configure_logging
 from project.utils import (
     Config,
     utcnow_naive,

@@ -6,7 +6,7 @@
 # import unittest
 # from unittest.mock import patch
 
-# # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+# # Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
 # def insert_path(pythonpath):
 #     try:
 #         sys.path.index(pythonpath)

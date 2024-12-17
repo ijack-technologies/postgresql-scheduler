@@ -1,8 +1,18 @@
 import logging
+import sys
 import time
+from pathlib import Path
 
 import pytz
 import schedule
+
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
+pythonpath = str(Path(__file__).parent.parent)
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
+
 
 from project import (
     alarm_log_delete_duplicates,

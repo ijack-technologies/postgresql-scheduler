@@ -5,7 +5,7 @@
 import sys
 import unittest
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
 pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
@@ -17,7 +17,7 @@ from project import synch_aws_iot_shadow_with_aws_rds_postgres_config
 from project.logger_config import configure_logging
 from project.utils import Config
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
 pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)

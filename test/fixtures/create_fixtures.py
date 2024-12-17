@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
 pythonpath = str(Path(__file__).parent.parent.parent)
 try:
     sys.path.index(pythonpath)

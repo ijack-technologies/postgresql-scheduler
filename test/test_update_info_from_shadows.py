@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 # from psycopg2.extras import DictCursor
 from psycopg2.sql import SQL, Literal
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
 pythonpath = "/workspace"
 try:
     sys.path.index(pythonpath)
