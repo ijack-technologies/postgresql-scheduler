@@ -33,21 +33,8 @@ logger = logging.getLogger(__name__)
 
 
 def make_schedule(c: Config) -> None:
-    """
-    Make a cron-like schedule for running tasks
-
-    # min hour dom month dow   command
-    # */15 * * * * python3 /project/_archive/db_remove_old_connections.py
-    # */3 * * * * python3 /project/_archive/gateways_mv_refresh.py
-    # Delete duplicate alarm log records once daily
-    1 1 * * * python3 /project/alarm_log_delete_duplicates.py
-    # Recalculate aggregated time series records once daily
-    11 1 * * * python3 /project/time_series_aggregate_calcs.py
-    */30 * * * * python3 /project/time_series_mv_refresh.py
-    31 1 * * * python3 /project/timescaledb_restart_background_workers.py
-    3 * * * * python3 /project/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
-    */10 * * * * python3 /project/update_info_from_shadows.py
-    """
+    """Make a cron-like schedule for running tasks"""
+    
     logger.info("Making the cron-like schedule...")
     schedule.every().day.at("01:01", pytz.timezone("America/Regina")).do(
         alarm_log_delete_duplicates.main, c=c
