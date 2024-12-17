@@ -13,7 +13,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -813,10 +813,10 @@ def add_unique_finished_good(db_table_name: str, unique_name: str, cursor) -> in
 
 def go_through_all_sheets(
     sheets_w_part_nums: dict, wb: Workbook, cad_per_usd: float
-) -> List[dict]:
+) -> Tuple[List[dict], dict]:
     """Go through each worksheet in the workbook"""
 
-    part_list_of_dicts = []
+    part_list_of_dicts: list = []
     # This is going to get uploaded to the relational tables, BY WORKSHEET
     finished_goods_dict: dict = {}
 
