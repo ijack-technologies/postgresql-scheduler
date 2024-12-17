@@ -1384,11 +1384,13 @@ def get_workbook_from_xlsb(file_in_path_xlsb: Path) -> Workbook:
     return new_wb
 
 
-def entrypoint(c: Config = None):
+def entrypoint(
+    # c: Config = None
+):
     """Main function"""
 
     # Assign the Config object to the global variable
-    c = c or Config()
+    # c = c or Config()
 
     start_time = datetime.now()
     with psycopg2.connect(
@@ -1517,7 +1519,7 @@ def main(c: Config = None) -> None:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    entrypoint(c=c)
+    entrypoint()
 
     return None
 
