@@ -3,6 +3,7 @@ name = "postgresql_scheduler"
 version = "0.2.0"
 description = "IJACK Scheduled Jobs, mostly for database updating/refreshing/inserting"
 authors = ["Sean McCarthy <smccarthy@myijack.com>"]
+packages = [{include = "project"}]  # Point to the project directory
 
 [[tool.poetry.source]]
 name = "ijack_private"
