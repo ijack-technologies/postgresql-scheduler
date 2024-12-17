@@ -1,22 +1,15 @@
-import sys
+import logging
 from pathlib import Path
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(Path(__file__).parent.parent)
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
-
-
-from project.utils import (
+from logger_config import configure_logging
+from utils import (
     Config,
-    configure_logging,
     error_wrapper,
     exit_if_already_running,
     run_query,
 )
 
+logger = logging.getLogger(__name__)
 
 # Delete old data from the time_series_rt table
 SQL = """
@@ -41,7 +34,5 @@ def main(c: Config) -> None:
 
 if __name__ == "__main__":
     c = Config()
-    c.logger = configure_logging(
-        __name__, logfile_name="time_series_rt_delete_old_data"
-    )
+    configure_logging(__name__, logfile_name="time_series_rt_delete_old_data")
     main(c)

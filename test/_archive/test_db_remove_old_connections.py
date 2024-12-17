@@ -15,9 +15,10 @@ except ValueError:
 
 
 from project._archive import db_remove_old_connections
+from project.logger_config import configure_logging
 
 # local imports
-from project.utils import Config, configure_logging
+from project.utils import Config
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -31,7 +32,7 @@ LOGFILE_NAME = "test_db_remove_old_connections"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

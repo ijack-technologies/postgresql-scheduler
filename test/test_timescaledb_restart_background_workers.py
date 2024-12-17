@@ -16,13 +16,14 @@ except ValueError:
 from project import timescaledb_restart_background_workers
 
 # local imports
-from project.utils import Config, configure_logging
+from project.utils import Config
+from project.logger_config import configure_logging
 
 LOGFILE_NAME = "test_timescaledb_restart_background_workers"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

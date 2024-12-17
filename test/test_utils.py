@@ -14,13 +14,14 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from project.utils import Config, configure_logging, send_error_messages
+from project.logger_config import configure_logging
+from project.utils import Config, send_error_messages
 
 LOGFILE_NAME = "test_time_series_update_views"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

@@ -3,6 +3,7 @@
 # load_dotenv()
 
 import sys
+import logging
 import unittest
 from unittest.mock import patch
 
@@ -15,8 +16,10 @@ except ValueError:
 
 
 from project import time_series_aggregate_calcs
-from project.utils import Config, configure_logging
+from project.utils import Config
+from project.logger_config import configure_logging
 
+logger = logging.getLogger(__name__)
 
 class TestAll(unittest.TestCase):
     @patch("project.time_series_aggregate_calcs.exit_if_already_running")
@@ -28,7 +31,7 @@ class TestAll(unittest.TestCase):
         # This c.TEST_FUNC just disables SMS, email, and phone call alerts
         c.TEST_FUNC = True
         LOGFILE_NAME = "real_time_series_aggregate_calcs"
-        c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+        configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
         time_series_aggregate_calcs.main(c)
 

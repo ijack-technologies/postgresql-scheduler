@@ -1,6 +1,7 @@
 import sys
 import time
 import unittest
+import logging
 
 import schedule
 
@@ -11,13 +12,16 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from project.utils import Config, configure_logging
+from project.logger_config import configure_logging
+from project.utils import Config
 
 LOGFILE_NAME = "test_main_scheduler"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
+logger = logging.getLogger(__name__)
 
 
 class TestAll(unittest.TestCase):
@@ -45,7 +49,7 @@ class TestAll(unittest.TestCase):
 
         def slow_func(c: Config) -> None:
             """Sets test_var to True"""
-            c.logger.info("Slow function running...")
+            logger.info("Slow function running...")
             c.test_var = True
 
         schedule.every(1).seconds.do(slow_func, c=c)

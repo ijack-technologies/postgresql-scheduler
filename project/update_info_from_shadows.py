@@ -1,5 +1,5 @@
+import logging
 import pprint
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
@@ -8,19 +8,10 @@ from pathlib import Path
 from typing import Tuple
 
 import pytz
+from logger_config import configure_logging
 from psycopg2 import connect as psycopg2_connect
-
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(Path(__file__).parent.parent)
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
-
-# local imports
-from project.utils import (
+from utils import (
     Config,
-    configure_logging,
     error_wrapper,
     exit_if_already_running,
     get_client_iot,
@@ -33,8 +24,7 @@ from project.utils import (
     utcnow_naive,
 )
 
-# from test.fixtures.fixture_utils import save_fixture
-
+logger = logging.getLogger(__name__)
 
 LOGFILE_NAME = "update_info_from_shadows"
 
@@ -43,7 +33,7 @@ def convert_to_float(c, string):
     try:
         return float(string)
     except Exception:
-        c.logger.info("Cannot convert '%s' to float...", string)
+        logger.info("Cannot convert '%s' to float...", string)
         return 0
 
 
@@ -75,8 +65,8 @@ based on power_unit_id associated with aws_thing in public.gw table
 structure = {structure}
 aws_thing = {aws_thing}
     """
-    c.logger.info(log_msg)
-    c.logger.info(f"Select SQL: {select_sql}")
+    logger.info(log_msg)
+    logger.info(f"Select SQL: {select_sql}")
 
     return select_sql
 
@@ -120,8 +110,8 @@ based on power_unit_id associated with aws_thing in public.gw table:
 structure = {structure}
 aws_thing = {aws_thing}
     """
-    c.logger.info(log_msg)
-    c.logger.info(f"Update SQL: {update_sql}")
+    logger.info(log_msg)
+    logger.info(f"Update SQL: {update_sql}")
 
     return update_sql
 
@@ -309,7 +299,7 @@ def is_power_unit_already_in_use(c, power_unit_id: int) -> Tuple[bool, str]:
 
     if isinstance(rows, list) and len(rows) > 0:
         gateway = rows[0]["gateway"]
-        c.logger.warning(
+        logger.warning(
             f"power_unit_id '{power_unit_id}' is already in use by gateway '{gateway}'..."
         )
         return True, gateway
@@ -334,7 +324,7 @@ def already_emailed_recently(
     if isinstance(rows, list) and len(rows) > 0:
         count = rows[0]["count"]
         if count > 0:
-            c.logger.warning(
+            logger.warning(
                 f"Already emailed today about this gateway '{aws_thing}' wanting to match with power unit '{power_unit_str}'..."
             )
             return True
@@ -365,7 +355,7 @@ def set_power_unit_to_gateway(c, power_unit_id_shadow: int, aws_thing: str) -> b
         error_msg = f"aws_thing '{aws_thing}' is not a string or it's too short, so not updating public.gw table for power_unit_id_shadow '{power_unit_id_shadow}'"
         raise TypeError(error_msg)
 
-    c.logger.warning(
+    logger.warning(
         f"Updating public.gw aws_thing '{aws_thing}' record to use power_unit_id_shadow '{power_unit_id_shadow}'"
     )
     SQL = f"""
@@ -466,7 +456,7 @@ def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
     n_gateways = len(gw_rows)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        c.logger.info(
+        logger.info(
             f"Gathering {n_gateways} gateways' AWS IoT device shadows in thread pool..."
         )
 
@@ -491,8 +481,8 @@ def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
         time2 = time.time()
 
     n_shadows = len(shadows)
-    # c.logger.info(pd.Series(shadows).value_counts())
-    c.logger.info(
+    # logger.info(pd.Series(shadows).value_counts())
+    logger.info(
         f"'{n_shadows}' AWS IoT shadows collected out of '{n_gateways}' gateways in {(time2-time1)/60:.2f} minutes!"
     )
 
@@ -503,7 +493,7 @@ def get_shadow_table_html(c, shadow: dict) -> str:
     """Get an HTML table with all the info in the AWS IoT device shadow, for the email"""
 
     if not isinstance(shadow, dict) or not shadow:
-        c.logger.error(
+        logger.error(
             f"ERROR: shadow '{shadow}' of type '{type(shadow)}' cannot be converted to html..."
         )
         return ""
@@ -574,10 +564,10 @@ def upsert_gw_info(
         return False
 
     seconds_since, msg, latest_metric = seconds_since_last_any_msg(c, shadow)
-    c.logger.info(
+    logger.info(
         f"Gateway '{aws_thing}' last reported {msg} ago with metric {latest_metric}"
     )
-    
+
     timestamp_utc_now = utcnow_naive()
     days_since_reported = round(seconds_since / (60 * 60 * 24), 1)
     timestamp_utc_last_reported = timestamp_utc_now - timedelta(
@@ -798,14 +788,14 @@ def main(c: Config, commit: bool = False) -> None:
             # This "if aws_thing is None" is unnecessary since the nulls are filtered out in the query,
             # and simply not allowed in the table, but it doesn't hurt
             if aws_thing is None:
-                c.logger.warning(
+                logger.warning(
                     '"AWS thing" is None. Continuing with next aws_thing in public.gw table...'
                 )
                 continue
 
             shadow = shadows.get(aws_thing, {})
             if not shadow or not isinstance(shadow, dict):
-                c.logger.warning(
+                logger.warning(
                     f'No shadow exists for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...'
                 )
                 continue
@@ -819,7 +809,7 @@ def main(c: Config, commit: bool = False) -> None:
 
             power_unit_shadow = reported.get("SERIAL_NUMBER", None)
             if power_unit_shadow is None:
-                c.logger.warning(
+                logger.warning(
                     f'Power unit "SERIAL_NUMBER" not in shadow for aws_thing "{aws_thing}". Continuing with next AWS_THING in public.gw table...'
                 )
                 continue
@@ -827,7 +817,7 @@ def main(c: Config, commit: bool = False) -> None:
             power_unit_shadow_str = str(power_unit_shadow).strip().replace(".0", "")
             power_unit_id_shadow = pu_dict.get(power_unit_shadow_str, None)
             if power_unit_id_shadow is None:
-                c.logger.warning(
+                logger.warning(
                     f"Can't find the power unit ID for the shadow's reported power unit of '{power_unit_shadow_str}'. \
     Continuing with next AWS_THING in public.gw table..."
                 )
@@ -854,7 +844,7 @@ def main(c: Config, commit: bool = False) -> None:
                     )
 
             if power_unit_id_shadow == power_unit_id_gw:
-                c.logger.info(
+                logger.info(
                     f"Power unit '{power_unit_shadow_str}' in the public.gw table matches the one reported in the device shadow. Continuing with next..."
                 )
                 continue
@@ -864,7 +854,7 @@ def main(c: Config, commit: bool = False) -> None:
                 continue
 
             if aws_thing == "00:60:E0:86:4C:DA" and date.today() < date(2022, 6, 30):
-                c.logger.warning(
+                logger.warning(
                     "skipping gateway '00:60:E0:86:4C:DA' since Richie needs to reset the power unit on the CAN bus, on-site..."
                 )
                 continue
@@ -997,14 +987,14 @@ def main(c: Config, commit: bool = False) -> None:
             else:
                 html += f"\n<p>No AWS IoT device shadow information for previously-linked gateway '{gateway_already_linked}'.</p>"
 
-            c.logger.info(html)
+            logger.info(html)
 
             send_mailgun_email(
                 c, text="", html=html, emailees_list=emailees_list, subject=subject
             )
 
         time_finish = time.time()
-        c.logger.info(
+        logger.info(
             f"Time to update all gateways to their reported power units: {round(time_finish - time_start)} seconds"
         )
 
@@ -1019,5 +1009,5 @@ def main(c: Config, commit: bool = False) -> None:
 
 if __name__ == "__main__":
     c = Config()
-    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+    configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c, commit=True)

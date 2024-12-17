@@ -2,7 +2,6 @@ import functools
 import json
 import logging
 import os
-import platform
 import signal
 import subprocess
 import sys
@@ -10,7 +9,6 @@ import time
 import traceback
 from datetime import datetime, timezone
 from datetime import time as dt_time
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import List, Tuple
@@ -20,10 +18,11 @@ import pandas as pd
 import psycopg2
 import pytz
 import requests
+from logger_config import configure_logging
 from psycopg2.extras import RealDictCursor
 from twilio.rest import Client
 
-# logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -52,56 +51,6 @@ class Config:
     ]
     # For returning values in the "c" config object
     TEST_DICT = {}
-
-
-def configure_logging(
-    name: str,
-    logfile_name: str,
-    path_to_log_directory: str = "/project/logs/",
-    log_level: int = logging.INFO,
-    want_file_handler: bool = True,
-):
-    """Configure logger"""
-
-    logger = logging.getLogger(name)
-    # Override the default logging.WARNING level so all messages can get through to the handlers
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        "%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s"
-    )
-
-    log_filename = f"{logfile_name}.log"
-    path_to_log_directory = Path(path_to_log_directory)
-    if not path_to_log_directory.exists():
-        path_to_log_directory.mkdir(parents=True, exist_ok=True)
-    log_filepath = path_to_log_directory.joinpath(log_filename)
-
-    if want_file_handler and platform.system() == "Linux":
-        # fh = logging.FileHandler(filename=log_filepath)
-        fh = TimedRotatingFileHandler(
-            filename=log_filepath,
-            when="H",
-            interval=1,
-            backupCount=48,
-            encoding=None,
-            delay=False,
-            utc=False,
-            atTime=None,
-        )
-        fh.setLevel(log_level)
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-        logger.info("Added fileHandler to logger: %s", log_filepath)
-
-    sh = logging.StreamHandler()
-    sh.setLevel(log_level)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
-    logger.info("Added streamHandler to logger")
-
-    logger.info("Finished configuring the logger(s)")
-
-    return logger
 
 
 # NOTE the below datetime functions are adapted from this Miguel Grinberg blog post:
@@ -189,7 +138,7 @@ def run_query(
     # with conn.cursor(cursor_factory=DictCursor) as cursor:
     with conn.cursor(cursor_factory=RealDictCursor) as cursor:
         if log_query:
-            c.logger.info("Running query now... SQL to run: \n%s", sql)
+            logger.info("Running query now... SQL to run: \n%s", sql)
         time_start = time.time()
         if execute:
             try:
@@ -198,7 +147,7 @@ def run_query(
                 else:
                     cursor.execute(sql, values_dict)
             except Exception as err:
-                c.logger.error(f"ERROR executing SQL: '{sql}'\n\n Error: {err}")
+                logger.error(f"ERROR executing SQL: '{sql}'\n\n Error: {err}")
                 if raise_error:
                     raise
             else:
@@ -214,7 +163,7 @@ def run_query(
     time_finish = time.time()
     execution_time = round(time_finish - time_start, 1)
     if execution_time > 10:
-        c.logger.info(f"Time to execute query: {execution_time} seconds")
+        logger.info(f"Time to execute query: {execution_time} seconds")
 
     if is_close_conn:
         conn.close()
@@ -229,7 +178,7 @@ def error_wrapper_old(c, func, *args, **kwargs):
     try:
         func(*args, **kwargs)
     except Exception:
-        c.logger.exception(f"Problem running function: {func}")
+        logger.exception(f"Problem running function: {func}")
         # Keep going regardless
 
     return None
@@ -260,7 +209,7 @@ def send_twilio_sms(c, sms_phone_list, body):
             from_="+13069884140",  # new number Apr 20, 2021
             body=body,
         )
-        c.logger.info(f"SMS sent to {phone_num}")
+        logger.info(f"SMS sent to {phone_num}")
 
     return message
 
@@ -286,7 +235,7 @@ def send_twilio_phone(c, phone_list, body):
             twiml=f"<Response><Say>Hello. The {body}</Say></Response>",
             # url=twiml_instructions_url
         )
-        c.logger.info(f"Phone call sent to {phone_num}")
+        logger.info(f"Phone call sent to {phone_num}")
 
     return call
 
@@ -319,7 +268,7 @@ def send_mailgun_email(
             images2.append(("inline", open(item, "rb")))
 
     # if c.DEV_TEST_PRD in ['testing', 'production']:
-    # c.logger.debug(f"c.DEV_TEST_PRD: {c.DEV_TEST_PRD}")
+    # logger.debug(f"c.DEV_TEST_PRD: {c.DEV_TEST_PRD}")
     if len(emailees_list) > 0:
         rc = requests.post(
             "https://api.mailgun.net/v3/myijack.com/messages",
@@ -333,7 +282,7 @@ def send_mailgun_email(
                 key: value,
             },
         )
-        c.logger.info(
+        logger.info(
             f"Email sent to emailees_list: '{str(emailees_list)}' \nSubject: {subject} \nrc.status_code: {rc.status_code}"
         )
         assert rc.status_code == 200
@@ -391,7 +340,7 @@ def get_iot_device_shadow(c, client_iot, aws_thing):
         streamingBody = response["payload"]
         response_payload = json.loads(streamingBody.read())
     except Exception:
-        c.logger.exception(
+        logger.exception(
             f"ERROR! Probably no shadow exists for aws_thing '{aws_thing}'..."
         )
     else:
@@ -434,16 +383,16 @@ def subprocess_run(
             rc = "N/A"
             stdout = cp
     except Exception:
-        c.logger.exception(
+        logger.exception(
             f"ERROR running command with subprocess_run(): '{command_list}'"
         )
 
     else:
         log_msg = f"rc: '{rc}' from command: \n'{command_list}'. \nstdout/stderr: \n{stdout}\n\n"
         if log_results:
-            c.logger.info(log_msg)
+            logger.info(log_msg)
         else:
-            c.logger.debug(log_msg)
+            logger.debug(log_msg)
 
         # Sleep for 'sleep' seconds, if desired, after completing the process
         time.sleep(sleep)
@@ -463,18 +412,18 @@ def find_pids(c, search_string):
     return list_of_pids
 
 
-def exit_if_already_running(c, filename):
+def exit_if_already_running(c, filename) -> None:
     """If this program is already running, exit"""
     list_of_pids = find_pids(c, filename)
     if len(list_of_pids) > 1:
-        c.logger.warning(
+        logger.warning(
             f"This scheduled process is already running with PID(s) of '{list_of_pids}'. Exiting now to avoid overloading the system."
         )
         if not c.TEST_FUNC:
             sys.exit(0)
 
 
-def kill_pids(c, list_of_pids):
+def kill_pids(c, list_of_pids) -> List:
     """Kill all process IDs (PIDs) in the list_of_pids"""
     assert isinstance(list_of_pids, list)
 
@@ -483,12 +432,12 @@ def kill_pids(c, list_of_pids):
         try:
             int_pid = int(pid)
         except Exception:
-            c.logger.exception(
+            logger.exception(
                 f"PID {pid} cannot be cast to an integer for os.kill(), which requires an integer"
             )
 
         os.kill(int_pid, signal.SIGTERM)
-        c.logger.info(f"PID {pid} killed")
+        logger.info(f"PID {pid} killed")
         list_of_pids_killed.append(pid)
 
     return list_of_pids_killed
@@ -506,7 +455,8 @@ def kill_pids(c, list_of_pids):
 #     return wrapper_decorator
 
 
-def check_if_c_in_args(args):
+def check_if_c_in_args(args) -> Config:
+    """Check if the 'utils.Config object' is in the args, and return it"""
     c = None
     for arg in args:
         if "utils.Config object" in str(arg):
@@ -514,7 +464,7 @@ def check_if_c_in_args(args):
             break
     if c is None:
         c = Config()
-        c.logger = configure_logging(
+        configure_logging(
             __name__,
             logfile_name=Path(__file__).stem,
         )
@@ -546,7 +496,7 @@ def send_error_messages(
 
     if not isinstance(c, Config) or not getattr(c, "logger", None):
         c = Config()
-        c.logger = configure_logging(
+        configure_logging(
             __name__,
             logfile_name=Path(__file__).stem,
         )
@@ -554,7 +504,7 @@ def send_error_messages(
     # Every morning at 9:01 UTC I get an email that says "server closed the connection unexpectedly.
     # This probably means the server terminated abnormally before or while processing the request."
     check_dt = utcnow_naive()
-    c.logger.info(f"The time of the error is {check_dt}")
+    logger.info(f"The time of the error is {check_dt}")
     try:
         if is_time_between(
             begin_time=dt_time(hour=9, minute=0),
@@ -563,12 +513,12 @@ def send_error_messages(
         ) and "server closed the connection" in str(err):
             return None
     except Exception as err_inner:
-        c.logger.exception(
+        logger.exception(
             f"ERROR checking the time of the error... \nError msg: {err_inner}"
         )
         err += f"\n\nWhile processing the initial error, another error happened while checking the time of the error: \n\n{err_inner}"
 
-    c.logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
+    logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
     alertees_email = ["smccarthy@myijack.com"]
     alertees_sms = ["+14036897250"]
     subject = f"IJACK {filename} ERROR!!!"
@@ -818,7 +768,7 @@ def seconds_since_last_any_msg(c, shadow) -> Tuple[float, str, str]:
         msg = f"{days_ago} days"
         # color_time_since = "danger"
 
-    c.logger.info(
+    logger.info(
         "Most recent metric in AWS IoT device shadow: %s as of %s ago",
         key_latest,
         msg,

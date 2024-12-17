@@ -1,22 +1,21 @@
+import logging
 import time
 
-# # Insert pythonpath into the front of the PATH environment variable, before importing anything
-# import sys
-# from pathlib import Path
-# pythonpath = str(Path(__file__).parent)
-# try:
-#     sys.path.index(pythonpath)
-# except ValueError:
-#     sys.path.insert(0, pythonpath)
 import alarm_log_delete_duplicates
-import time_series_rt_delete_old_data
 import schedule
 import synch_aws_iot_shadow_with_aws_rds_postgres_config
 import time_series_aggregate_calcs
 import time_series_mv_refresh
+import time_series_rt_delete_old_data
 import timescaledb_restart_background_workers
 import update_info_from_shadows
-from utils import Config, configure_logging
+import upload_bom_master_parts_to_db
+from logger_config import configure_logging
+from utils import Config
+
+configure_logging(__name__, logfile_name="main_scheduler")
+
+logger = logging.getLogger(__name__)
 
 
 def make_schedule(c: Config) -> None:
@@ -35,10 +34,11 @@ def make_schedule(c: Config) -> None:
     3 * * * * python3 /project/synch_aws_iot_shadow_with_aws_rds_postgres_config.py
     */10 * * * * python3 /project/update_info_from_shadows.py
     """
-    c.logger.info("Making the cron-like schedule...")
+    logger.info("Making the cron-like schedule...")
     schedule.every().day.at("01:01").do(alarm_log_delete_duplicates.main, c=c)
     schedule.every().day.at("01:11").do(time_series_aggregate_calcs.main, c=c)
     schedule.every().day.at("01:21").do(time_series_rt_delete_old_data.main, c=c)
+    schedule.every().day.at("01:31").do(upload_bom_master_parts_to_db.main, c=c)
     schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
     schedule.every().day.at("01:31").do(
         timescaledb_restart_background_workers.main, c=c
@@ -59,12 +59,11 @@ def run_schedule() -> None:
 
     # Configure the logger
     c = Config()
-    c.logger = configure_logging(__name__, logfile_name="main_scheduler")
 
     # Make the schedule
     make_schedule(c=c)
 
-    c.logger.info("App running ✅. Running scheduled tasks forever...")
+    logger.info("App running ✅. Running scheduled tasks forever...")
     while True:
         # Run all scheduled tasks
         schedule.run_pending()

@@ -2,6 +2,7 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
+import logging
 import sys
 import unittest
 from datetime import datetime
@@ -16,13 +17,17 @@ except ValueError:
 
 
 from project import time_series_mv_refresh
-from project.utils import Config, configure_logging
+
+from project.logger_config import configure_logging
+from project.utils import Config
 
 LOGFILE_NAME = "test_main_programs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
+logger = logging.getLogger(__name__)
 
 
 class TestAll(unittest.TestCase):

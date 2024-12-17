@@ -3,25 +3,18 @@ This just restarts the TimescaleDB background workers once a day,
 in case they've stopped, for whatever reason
 """
 
-import sys
+import logging
 from pathlib import Path
 
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(Path(__file__).parent.parent)
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
-
-
-# local imports
-from project.utils import (
+from logger_config import configure_logging
+from utils import (
     Config,
-    configure_logging,
     error_wrapper,
     exit_if_already_running,
     run_query,
 )
+
+logger = logging.getLogger(__name__)
 
 LOGFILE_NAME = "timescaledb_restart_background_workers"
 
@@ -49,5 +42,5 @@ def main(c: Config) -> bool:
 
 if __name__ == "__main__":
     c = Config()
-    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+    configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c)

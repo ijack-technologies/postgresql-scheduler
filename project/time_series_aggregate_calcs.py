@@ -2,24 +2,15 @@
 This script recalculates some aggregated data on a daily basis, for performance calculations.
 """
 
-import sys
+import logging
 import time
 from datetime import date
 from pathlib import Path
 
 import pandas as pd
-
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(Path(__file__).parent.parent)
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
-
-# local imports
-from project.utils import (
+from logger_config import configure_logging
+from utils import (
     Config,
-    configure_logging,
     error_wrapper,
     exit_if_already_running,
     get_power_units_and_unit_types,
@@ -28,6 +19,8 @@ from project.utils import (
 )
 
 LOGFILE_NAME = "time_series_aggregate_calcs"
+
+logger = logging.getLogger(__name__)
 
 
 def get_time_series_data(
@@ -157,7 +150,7 @@ def main(c: Config) -> bool:
     for index, (power_unit_str, is_egas_type) in enumerate(
         power_unit_uno_egas_dict.items()
     ):
-        c.logger.info(
+        logger.info(
             "Power unit %s of %s: %s - %s",
             index + 1,
             n_power_units,
@@ -177,7 +170,7 @@ def main(c: Config) -> bool:
             month_date_str = month_date.strftime("%Y-%m-%d")
             next_month_date = month_date + pd.DateOffset(months=1)
             next_month_date_str = next_month_date.strftime("%Y-%m-%d")
-            c.logger.info(
+            logger.info(
                 "Month %s of %s: %s - %s",
                 index + 1,
                 num_months,
@@ -192,7 +185,7 @@ def main(c: Config) -> bool:
                 end_date_str=next_month_date_str,
             )
             if df_month_date.empty:
-                c.logger.warning(
+                logger.warning(
                     "No data found for power unit '%s'",
                     power_unit_str,
                 )
@@ -209,11 +202,11 @@ def main(c: Config) -> bool:
         # Give other apps a chance to run after each power unit
         time.sleep(0.5)
 
-    c.logger.info("All done!")
+    logger.info("All done!")
     return True
 
 
 if __name__ == "__main__":
     c = Config()
-    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+    configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c)

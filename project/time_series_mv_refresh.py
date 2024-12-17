@@ -1,4 +1,4 @@
-import sys
+import logging
 import time
 from datetime import datetime, timedelta
 from io import StringIO
@@ -7,20 +7,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import psycopg2
-
-# import numpy as np
-
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(Path(__file__).parent.parent)
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
-
-# local imports
-from project.utils import (
+from logger_config import configure_logging
+from utils import (
     Config,
-    configure_logging,
     error_wrapper,
     exit_if_already_running,
     get_conn,
@@ -28,6 +17,8 @@ from project.utils import (
     send_error_messages,
     utcnow_naive,
 )
+
+logger = logging.getLogger(__name__)
 
 LOGFILE_NAME = "time_series_mv_refresh"
 
@@ -200,7 +191,7 @@ def get_and_insert_latest_values(
     max_date_str: str = max_date.strftime("%Y-%m-%d %H:%M:%S")
     after_this_date_str: str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
 
-    c.logger.info(
+    logger.info(
         "Getting data from LOCF table so we almost certainly have something to fill forward..."
     )
     SQL_OLD_DATA = f"""
@@ -215,12 +206,12 @@ def get_and_insert_latest_values(
     columns_old, rows_old = run_query(
         c, SQL_OLD_DATA, db="timescale", conn=conn, fetchall=True, raise_error=True
     )
-    c.logger.info("Sleeping for 1 second to allow the server to catch up...")
+    logger.info("Sleeping for 1 second to allow the server to catch up...")
     time.sleep(1)
     df_old = pd.DataFrame(rows_old, columns=columns_old)
     del rows_old
 
-    c.logger.info(
+    logger.info(
         "Getting new data from the regular time_series table (which contains nulls), to be efficiently inserted into the LOCF table we previously queried above..."
     )
     SQL_LATEST_DATA = f"""
@@ -235,7 +226,7 @@ def get_and_insert_latest_values(
     columns_new, rows_new = run_query(
         c, SQL_LATEST_DATA, db="timescale", conn=conn, fetchall=True, raise_error=True
     )
-    c.logger.info("Sleeping for 1 second to allow the server to catch up...")
+    logger.info("Sleeping for 1 second to allow the server to catch up...")
     time.sleep(1)
     df_new = pd.DataFrame(rows_new, columns=columns_new)
     time.sleep(0.5)
@@ -243,7 +234,7 @@ def get_and_insert_latest_values(
 
     if len(df_new) == 0:
         # raise ValueError(
-        c.logger.warning(
+        logger.warning(
             f"ERROR: No new data was found in the 'time_series' table for power unit '{power_unit_str}' after the timestamp '{after_this_date_str}' and before the timestamp '{max_date_str}'"
         )
         return False
@@ -263,29 +254,29 @@ def get_and_insert_latest_values(
     df_missing_power_unit = df[df["power_unit"].isnull()]
     n_records_missing_power_unit = len(df_missing_power_unit)
     if n_records_missing_power_unit > 0:
-        c.logger.info(
+        logger.info(
             "Number of records missing a power unit: %s", n_records_missing_power_unit
         )
-        c.logger.info("Ensuring the power unit is filled in...")
+        logger.info("Ensuring the power unit is filled in...")
         df["power_unit"] = np.where(
             df["gateway"] & ~df["power_unit"],
             df["gateway"].map(gateway_power_unit_dict),
         )
 
     # For the power unit, convert to string and remove the ".0" if it's there
-    c.logger.info(
+    logger.info(
         "Converting the power unit to a string and removing the '.0' if it's there..."
     )
     # time_start = time.time()
     df["power_unit"] = df["power_unit"].astype(str).str.replace(r"\.0$", "", regex=True)
     # mins_taken = round((time.time() - time_start) / 60, 1)
-    # c.logger.info(
+    # logger.info(
     #     "Minutes taken to ensure the power unit and gateway are filled in: %s",
     #     mins_taken,
     # )
 
     # If values are missing, it's because they were the same as the previous values so they weren't sent
-    c.logger.info("Sorting and filling in missing values...")
+    logger.info("Sorting and filling in missing values...")
     n_power_units = len(df["power_unit"].unique())
     power_unit_counter = 0
     time_start = time.time()
@@ -294,7 +285,7 @@ def get_and_insert_latest_values(
     pd.set_option("future.no_silent_downcasting", True)
     for power_unit, group in df.groupby("power_unit"):
         power_unit_counter += 1
-        c.logger.info(
+        logger.info(
             "Sorting and filling %s of %s... Group size for power_unit %s: %s",
             power_unit_counter,
             n_power_units,
@@ -313,7 +304,7 @@ def get_and_insert_latest_values(
         time.sleep(0.1)
 
     mins_taken = round((time.time() - time_start) / 60, 1)
-    c.logger.info(
+    logger.info(
         "Minutes taken to sort and fill in missing values: %s",
         mins_taken,
     )
@@ -322,7 +313,7 @@ def get_and_insert_latest_values(
     # Change signal to smallint in postgres. Must be 'Int64' in pandas to allow for NaNs
     df["signal"] = df["signal"].astype("Int64")
 
-    c.logger.info("Initializing a string buffer of the CSV data...")
+    logger.info("Initializing a string buffer of the CSV data...")
     time_start = time.time()
     sio = StringIO()
     # Write the Pandas DataFrame as a CSV to the buffer
@@ -334,9 +325,7 @@ def get_and_insert_latest_values(
     # Be sure to reset the position to the start of the stream
     sio.seek(0)
     minutes_taken = round((time.time() - time_start) / 60, 1)
-    c.logger.info(
-        f"{minutes_taken} minutes to create the string buffer of the CSV data."
-    )
+    logger.info(f"{minutes_taken} minutes to create the string buffer of the CSV data.")
 
     time_start = time.time()
     try:
@@ -360,13 +349,13 @@ def get_and_insert_latest_values(
         )
     except Exception as err:
         if "UniqueViolation" in str(err):
-            c.logger.error(err)
+            logger.error(err)
         else:
-            c.logger.exception("ERROR running cursor.copy_from(sio...)!")
+            logger.exception("ERROR running cursor.copy_from(sio...)!")
             raise
 
     minutes_taken = round((time.time() - time_start) / 60, 1)
-    c.logger.info(
+    logger.info(
         f"{minutes_taken} minutes to run efficient copy_from(file=sio) operation!"
     )
 
@@ -425,7 +414,7 @@ def force_refresh_continuous_aggregates(
     conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     for view, min_time_delta in views_to_update.items():
         try:
-            c.logger.info(
+            logger.info(
                 "Force-refreshing continuously-aggregating materialized view '%s'", view
             )
             sql = get_refresh_continuous_aggregate_sql(
@@ -435,12 +424,12 @@ def force_refresh_continuous_aggregates(
             run_query(c, sql, db="timescale", commit=False, conn=conn, raise_error=True)
             time.sleep(0.5)
         except psycopg2.errors.InvalidParameterValue:
-            c.logger.exception(
+            logger.exception(
                 "ERROR force-refreshing continuously-aggregating materialized view '%s'",
                 view,
             )
         except Exception:
-            c.logger.exception(
+            logger.exception(
                 "ERROR force-refreshing continuously-aggregating materialized view '%s'",
                 view,
             )
@@ -504,7 +493,7 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
             n_power_units = "All power units at the same time"
 
         for index, power_unit_str in enumerate(power_units_in_service):
-            c.logger.info(
+            logger.info(
                 "Power unit %s of %s: %s",
                 index + 1,
                 n_power_units,
@@ -526,7 +515,7 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
                 )
             except Exception as err:
                 if by_power_unit:
-                    c.logger.exception(
+                    logger.exception(
                         "Error getting the latest timestamp in the table for power unit '%s'",
                         power_unit_str,
                     )
@@ -546,7 +535,7 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
                     conn=conn_ts,
                 )
             except psycopg2.errors.UniqueViolation as err:
-                c.logger.error(err)
+                logger.error(err)
                 conn_ts.rollback()
 
         # Force the continuous aggregates to refresh, including the latest data
@@ -563,5 +552,5 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
 
 if __name__ == "__main__":
     c = Config()
-    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+    configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c)

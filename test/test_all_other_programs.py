@@ -18,7 +18,8 @@ from project import (
 )
 
 # local imports
-from project.utils import Config, configure_logging
+from project.utils import Config
+from project.logger_config import configure_logging
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -32,7 +33,7 @@ LOGFILE_NAME = "test_main_programs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

@@ -8,20 +8,19 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
+from project.logger_config import configure_logging
 from project.update_info_from_shadows import (  # get_power_unit_records,; get_structure_records,
     get_device_shadows_in_threadpool,
     get_gateway_records,
 )
-
-# local imports
-from project.utils import Config, configure_logging, get_client_iot, get_conn
+from project.utils import Config, get_client_iot, get_conn
 from test.fixtures.fixture_utils import save_fixture
 
 LOGFILE_NAME = "update_info_from_shadows"
 
 
 c = Config()
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 conn = get_conn(c)

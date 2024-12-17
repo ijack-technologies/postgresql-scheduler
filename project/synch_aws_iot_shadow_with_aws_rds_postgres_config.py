@@ -1,6 +1,5 @@
-# import pandas as pd
 import json
-import sys
+import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
@@ -9,23 +8,16 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
-
-# Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
-pythonpath = str(Path(__file__).parent.parent)
-try:
-    sys.path.index(pythonpath)
-except ValueError:
-    sys.path.insert(0, pythonpath)
-
-# local imports
-from project.utils import (
+from logger_config import configure_logging
+from utils import (
     Config,
-    configure_logging,
     error_wrapper,
     exit_if_already_running,
     get_all_power_units_config_metrics,
     get_client_iot,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def update_device_shadows_in_threadpool(
@@ -37,7 +29,7 @@ def update_device_shadows_in_threadpool(
     n_gateways = len(gateways_to_update)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        c.logger.info(
+        logger.info(
             f"Updating {n_gateways} gateways' AWS IoT device shadows in thread pool..."
         )
 
@@ -56,7 +48,7 @@ def update_device_shadows_in_threadpool(
         errors_dict = {}
         for index, future in enumerate(as_completed(future_to_aws_thing_dict)):
             aws_thing = future_to_aws_thing_dict[future]
-            c.logger.info(f"{index + 1} of {n_gateways} shadows updated: {aws_thing}")
+            logger.info(f"{index + 1} of {n_gateways} shadows updated: {aws_thing}")
             status_code: int = None
             response_payload: str = None
             try:
@@ -89,11 +81,11 @@ def update_device_shadows_in_threadpool(
         time2 = time.time()
 
     n_success_dict = len(success_dict)
-    c.logger.info(
+    logger.info(
         f"{n_success_dict} of {n_gateways} AWS IoT shadows successfully updated in {(time2-time1)/60:.1f} minutes!"
     )
     for aws_thing, response_payload in errors_dict.items():
-        c.logger.error(
+        logger.error(
             f"Error updating AWS IoT shadow for {aws_thing}: {response_payload}"
         )
 
@@ -136,11 +128,11 @@ def main(c: Config) -> None:
         #     # Get a slightly shorter customer name, if available
         #     customer = str(dict_["mqtt_topic"]).title()
         # except Exception:
-        #     c.logger.exception(
+        #     logger.exception(
         #         "Trouble finding the MQTT topic. Is this the SHOP gateway? Continuing with the customer name instead..."
         #     )
         #     customer = dict_["customer"]
-        # c.logger.info(
+        # logger.info(
         #     f"Preparing {counter + 1} of {n_rows} for {customer} AWS_THING: {aws_thing}..."
         # )
 
@@ -173,7 +165,7 @@ def main(c: Config) -> None:
             gateways_to_update[aws_thing] = json_payload_str
 
             # Update the thing shadow for this gateway/AWS_THING
-            # c.logger.info(
+            # logger.info(
             #     f"{counter + 1} of {n_rows}: Updating {customer} AWS_THING: {aws_thing}"
             # )
             # client_iot.update_thing_shadow(
@@ -181,19 +173,19 @@ def main(c: Config) -> None:
             # )
         except TypeError:
             # If there's a problem with the JSON serialization, log the error and stop the program!
-            c.logger.exception(
+            logger.exception(
                 "ERROR serializing JSON string for aws_thing '%s'", aws_thing
             )
             raise
         # except Exception:
-        #     c.logger.exception(
+        #     logger.exception(
         #         "ERROR updating AWS IoT shadow for aws_thing '%s'", aws_thing
         #     )
 
     update_device_shadows_in_threadpool(c, gateways_to_update, client_iot)
 
     time_finish = time.time()
-    c.logger.info(
+    logger.info(
         f"Time to update all AWS IoT thing shadows: {round(time_finish - time_start)} seconds"
     )
 
@@ -203,5 +195,5 @@ def main(c: Config) -> None:
 if __name__ == "__main__":
     LOGFILE_NAME = "synch_aws_iot_shadow_with_aws_rds_postgres_config"
     c = Config()
-    c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+    configure_logging(__name__, logfile_name=LOGFILE_NAME)
     main(c)

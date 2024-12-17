@@ -22,13 +22,14 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 from project import update_info_from_shadows
-from project.utils import Config, configure_logging, get_conn, run_query
+from project.logger_config import configure_logging
+from project.utils import Config, get_conn, run_query
 
 LOGFILE_NAME = "test_main_programs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 fixture_folder = Path(pythonpath).joinpath("test").joinpath("fixtures")
 

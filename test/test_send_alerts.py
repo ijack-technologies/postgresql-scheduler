@@ -2,6 +2,7 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
+import logging
 import sys
 import unittest
 from types import SimpleNamespace
@@ -16,14 +17,17 @@ except ValueError:
 
 
 # local imports
-from project.utils import Config, configure_logging, send_mailgun_email, send_twilio_sms
+from project.logger_config import configure_logging
+from project.utils import Config, send_mailgun_email, send_twilio_sms
 from test.utils import create_mock_twilio_client
 
 LOGFILE_NAME = "test_send_alerts"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-c.logger = configure_logging(__name__, logfile_name=LOGFILE_NAME)
+configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
+logger = logging.getLogger(__name__)
 
 
 class TestAll(unittest.TestCase):
@@ -52,7 +56,7 @@ class TestAll(unittest.TestCase):
         message = send_twilio_sms(c, sms_phone_list, warning)
 
         mock_twilio_client.assert_called_once()
-        c.logger.info(f"Twilio rc 'message': {message}")
+        logger.info(f"Twilio rc 'message': {message}")
         self.assertNotEqual(message, "")
         self.assertNotEqual(message.error_code, "None")
         self.assertNotEqual(message.error_message, "None")
@@ -78,7 +82,7 @@ class TestAll(unittest.TestCase):
         )
 
         mock_post.assert_called_once()
-        c.logger.info(f"Mailgun 'rc' for text email: {rc}")
+        logger.info(f"Mailgun 'rc' for text email: {rc}")
         self.assertEqual(rc.status_code, 200)
 
     @patch("requests.post", return_value=SimpleNamespace(status_code=200))
@@ -102,7 +106,7 @@ class TestAll(unittest.TestCase):
         )
 
         mock_post.assert_called_once()
-        c.logger.info(f"Mailgun 'rc' for html email: {rc}")
+        logger.info(f"Mailgun 'rc' for html email: {rc}")
         self.assertEqual(rc.status_code, 200)
 
 
