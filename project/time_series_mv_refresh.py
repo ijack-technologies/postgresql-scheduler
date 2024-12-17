@@ -7,8 +7,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import psycopg2
-from logger_config import configure_logging
-from utils import (
+
+from project.logger_config import configure_logging
+from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,

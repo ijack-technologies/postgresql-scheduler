@@ -8,8 +8,9 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
-from logger_config import configure_logging
-from utils import (
+
+from project.logger_config import configure_logging
+from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,

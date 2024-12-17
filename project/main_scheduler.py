@@ -11,8 +11,9 @@ import time_series_rt_delete_old_data
 import timescaledb_restart_background_workers
 import update_info_from_shadows
 import upload_bom_master_parts_to_db
-from logger_config import configure_logging
-from utils import Config
+
+from project.logger_config import configure_logging
+from project.utils import Config
 
 configure_logging(__name__, logfile_name="main_scheduler")
 

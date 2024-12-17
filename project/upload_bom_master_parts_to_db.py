@@ -25,7 +25,8 @@ from openpyxl.utils.cell import column_index_from_string, get_column_letter
 from openpyxl.worksheet.table import Table
 from psycopg2.sql import SQL, Literal
 from pyxlsb import open_workbook as open_xlsb
-from utils import (
+
+from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,

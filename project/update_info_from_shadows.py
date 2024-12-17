@@ -8,9 +8,10 @@ from pathlib import Path
 from typing import Tuple
 
 import pytz
-from logger_config import configure_logging
 from psycopg2 import connect as psycopg2_connect
-from utils import (
+
+from project.logger_config import configure_logging
+from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,

@@ -8,8 +8,9 @@ from datetime import date
 from pathlib import Path
 
 import pandas as pd
-from logger_config import configure_logging
-from utils import (
+
+from project.logger_config import configure_logging
+from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,

@@ -18,9 +18,10 @@ import pandas as pd
 import psycopg2
 import pytz
 import requests
-from logger_config import configure_logging
 from psycopg2.extras import RealDictCursor
 from twilio.rest import Client
+
+from project.logger_config import configure_logging
 
 logger = logging.getLogger(__name__)
 

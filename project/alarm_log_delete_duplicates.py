@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
 
-from logger_config import configure_logging
-from utils import (
+from project.logger_config import configure_logging
+from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
