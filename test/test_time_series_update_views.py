@@ -19,6 +19,8 @@ from project.time_series_mv_refresh import (
     force_refresh_continuous_aggregates,
     get_and_insert_latest_values,
     get_latest_timestamp_in_table,
+    get_gateway_power_unit_dict,
+    get_power_units_in_service,
 )
 from project.utils import (
     Config,
@@ -114,7 +116,7 @@ class TestAll(unittest.TestCase):
         the_exception = error.exception
         error_msg = the_exception.args[0]
         self.assertIn(
-            "ERROR: latest timestamp in table 'time_series_locf_copy' is", error_msg
+            "ERROR: latest timestamp in table 'time_series_locf_copy' for power unit 'None'", error_msg
         )
         self.assertIn("which is before the threshold timedelta '1:00:00'", error_msg)
 
@@ -193,7 +195,12 @@ class TestAll(unittest.TestCase):
         global c
 
         try:
-            boolean = get_and_insert_latest_values(c, after_this_date=utcnow_naive())
+            gateway_power_unit_dict: dict = get_gateway_power_unit_dict(c)
+            power_units_in_service: list = get_power_units_in_service(c)
+            power_unit_str: str = power_units_in_service[0]
+            boolean = get_and_insert_latest_values(c, after_this_date=utcnow_naive(),
+                    power_unit_str=power_unit_str,
+                    gateway_power_unit_dict=gateway_power_unit_dict,)
         except Exception as err:
             print(err)
             raise
