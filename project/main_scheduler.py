@@ -40,7 +40,7 @@ def make_schedule(c: Config) -> None:
     schedule.every().day.at("01:21").do(time_series_rt_delete_old_data.main, c=c)
     schedule.every().day.at("01:31").do(upload_bom_master_parts_to_db.main, c=c)
     schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
-    schedule.every().day.at("01:31").do(
+    schedule.every().day.at("01:41").do(
         timescaledb_restart_background_workers.main, c=c
     )
     schedule.every().hour.at(":03").do(
@@ -53,7 +53,7 @@ def make_schedule(c: Config) -> None:
 
 def run_schedule() -> None:
     """
-    Run the schedule of tasks and wait 5 seconds before running the scheduled tasks again.
+    Run the schedule of tasks and wait X seconds before running the scheduled tasks again.
     This loop will run forever.
     """
 

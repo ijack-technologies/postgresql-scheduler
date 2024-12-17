@@ -16,7 +16,8 @@ def configure_logging(
     path_to_log_directory: Path = Path(log_directory)
     path_to_log_directory.mkdir(parents=True, exist_ok=True)
 
-    # Configure root logger
+    # Configure root logger. The root logger's handlers (in our case, both the file and console handlers)
+    # are automatically inherited by all child loggers due to Python's logger propagation system.
     root_logger = logging.getLogger(name)
     # Override the default logging.WARNING level so all messages can get through to the handlers
     root_logger.setLevel(logging.DEBUG)
