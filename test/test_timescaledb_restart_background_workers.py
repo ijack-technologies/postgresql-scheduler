@@ -13,11 +13,10 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from project import timescaledb_restart_background_workers
 
-# local imports
-from project.utils import Config
+from project import timescaledb_restart_background_workers
 from project.logger_config import configure_logging
+from project.utils import Config
 
 LOGFILE_NAME = "test_timescaledb_restart_background_workers"
 

@@ -1,7 +1,7 @@
+import logging
 import sys
 import time
 import unittest
-import logging
 
 import schedule
 

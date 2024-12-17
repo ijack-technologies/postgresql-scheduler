@@ -2,8 +2,8 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import sys
 import logging
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -16,8 +16,8 @@ except ValueError:
 
 
 from project import synch_aws_iot_shadow_with_aws_rds_postgres_config
-from project.utils import Config
 from project.logger_config import configure_logging
+from project.utils import Config
 
 logger = logging.getLogger(__name__)
 

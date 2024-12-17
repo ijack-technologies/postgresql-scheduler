@@ -1,17 +1,19 @@
 import logging
 import time
 
-import alarm_log_delete_duplicates
 import pytz
 import schedule
-import synch_aws_iot_shadow_with_aws_rds_postgres_config
-import time_series_aggregate_calcs
-import time_series_mv_refresh
-import time_series_rt_delete_old_data
-import timescaledb_restart_background_workers
-import update_info_from_shadows
-import upload_bom_master_parts_to_db
 
+from project import (
+    alarm_log_delete_duplicates,
+    synch_aws_iot_shadow_with_aws_rds_postgres_config,
+    time_series_aggregate_calcs,
+    time_series_mv_refresh,
+    time_series_rt_delete_old_data,
+    timescaledb_restart_background_workers,
+    update_info_from_shadows,
+    upload_bom_master_parts_to_db,
+)
 from project.logger_config import configure_logging
 from project.utils import Config
 

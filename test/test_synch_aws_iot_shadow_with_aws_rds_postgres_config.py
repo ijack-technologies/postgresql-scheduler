@@ -12,11 +12,10 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from project import synch_aws_iot_shadow_with_aws_rds_postgres_config
 
-# local imports
-from project.utils import Config
+from project import synch_aws_iot_shadow_with_aws_rds_postgres_config
 from project.logger_config import configure_logging
+from project.utils import Config
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"

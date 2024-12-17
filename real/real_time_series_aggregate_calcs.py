@@ -2,8 +2,8 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import sys
 import logging
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -16,10 +16,11 @@ except ValueError:
 
 
 from project import time_series_aggregate_calcs
-from project.utils import Config
 from project.logger_config import configure_logging
+from project.utils import Config
 
 logger = logging.getLogger(__name__)
+
 
 class TestAll(unittest.TestCase):
     @patch("project.time_series_aggregate_calcs.exit_if_already_running")

@@ -16,7 +16,6 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-# local imports
 from project.logger_config import configure_logging
 from project.utils import Config, send_mailgun_email, send_twilio_sms
 from test.utils import create_mock_twilio_client

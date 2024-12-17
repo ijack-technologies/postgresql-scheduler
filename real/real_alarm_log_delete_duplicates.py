@@ -12,14 +12,12 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
+
 from project import (
     alarm_log_delete_duplicates,
-    time_series_mv_refresh,
 )
-
-# local imports
-from project.utils import Config
 from project.logger_config import configure_logging
+from project.utils import Config
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"
@@ -46,11 +44,6 @@ class TestAll(unittest.TestCase):
         global c
         c.DEV_TEST_PRD = "development"
         c.TEST_FUNC = True
-
-    def test_time_series(self):
-        """Test the main program"""
-        global c
-        time_series_mv_refresh.main(c)
 
     def test_alarm_log_delete_duplicates(self):
         """Test the main program"""

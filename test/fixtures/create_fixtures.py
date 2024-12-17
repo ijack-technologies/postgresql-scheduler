@@ -9,7 +9,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 from project.logger_config import configure_logging
-from project.update_info_from_shadows import (  # get_power_unit_records,; get_structure_records,
+from project.update_info_from_shadows import (
     get_device_shadows_in_threadpool,
     get_gateway_records,
 )

@@ -1,4 +1,5 @@
 import logging
+import sys
 import platform
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
@@ -31,8 +32,8 @@ def configure_logging(
         "%(asctime)s : %(module)s : %(lineno)d : %(levelname)s : %(funcName)s : %(message)s"
     )
 
-    # Console handler
-    console_handler = logging.StreamHandler()
+    # Console handler (stdout) - crucial for Docker logs
+    console_handler = logging.StreamHandler(stream=sys.stdout)
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
 

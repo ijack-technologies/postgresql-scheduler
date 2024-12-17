@@ -17,7 +17,6 @@ except ValueError:
 
 
 from project import time_series_mv_refresh
-
 from project.logger_config import configure_logging
 from project.utils import Config
 

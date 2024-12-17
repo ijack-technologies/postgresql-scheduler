@@ -16,7 +16,7 @@
 # insert_path("/workspace/ad_hoc")
 # insert_path("/workspace/project")
 
-# # local imports
+#
 # from project.utils import Config
 # from project.logger_config import configure_logging
 # import update_gps_lat_lon_from_land_locations

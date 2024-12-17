@@ -19,10 +19,8 @@ from project import (
     alarm_log_delete_duplicates,
     time_series_mv_refresh,
 )
-
-# local imports
-from project.utils import Config
 from project.logger_config import configure_logging
+from project.utils import Config
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from canpy
 pythonpath = "/workspace"

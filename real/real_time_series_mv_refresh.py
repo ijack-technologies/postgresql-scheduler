@@ -2,8 +2,8 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import sys
 import logging
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -16,8 +16,8 @@ except ValueError:
 
 
 from project import time_series_mv_refresh
-from project.utils import Config
 from project.logger_config import configure_logging
+from project.utils import Config
 
 LOGFILE_NAME = "test_main_programs"
 
