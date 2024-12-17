@@ -2,6 +2,7 @@ import logging
 import time
 
 import alarm_log_delete_duplicates
+import pytz
 import schedule
 import synch_aws_iot_shadow_with_aws_rds_postgres_config
 import time_series_aggregate_calcs
@@ -35,12 +36,20 @@ def make_schedule(c: Config) -> None:
     */10 * * * * python3 /project/update_info_from_shadows.py
     """
     logger.info("Making the cron-like schedule...")
-    schedule.every().day.at("01:01").do(alarm_log_delete_duplicates.main, c=c)
-    schedule.every().day.at("01:11").do(time_series_aggregate_calcs.main, c=c)
-    schedule.every().day.at("01:21").do(time_series_rt_delete_old_data.main, c=c)
-    schedule.every().day.at("01:31").do(upload_bom_master_parts_to_db.main, c=c)
+    schedule.every().day.at("01:01", pytz.timezone("America/Regina")).do(
+        alarm_log_delete_duplicates.main, c=c
+    )
+    schedule.every().day.at("01:11", pytz.timezone("America/Regina")).do(
+        time_series_aggregate_calcs.main, c=c
+    )
+    schedule.every().day.at("01:21", pytz.timezone("America/Regina")).do(
+        time_series_rt_delete_old_data.main, c=c
+    )
+    schedule.every().day.at("01:31", pytz.timezone("America/Regina")).do(
+        upload_bom_master_parts_to_db.main, c=c
+    )
     schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
-    schedule.every().day.at("01:41").do(
+    schedule.every().day.at("01:41", pytz.timezone("America/Regina")).do(
         timescaledb_restart_background_workers.main, c=c
     )
     schedule.every().hour.at(":03").do(

@@ -170,6 +170,7 @@ reportAssignmentType = "none"
 # reportIncompatibleMethodOverride = true
 reportIncompatibleMethodOverride = "none"
 reportOptionalMemberAccess = "none"
+reportUnknownMemberType = "none"
 
 reportUnsupportedDunderAll = true
 reportIncompatibleVariableOverride = true
