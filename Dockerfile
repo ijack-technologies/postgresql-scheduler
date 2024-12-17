@@ -26,6 +26,7 @@ ENV PYTHONHASHSEED=random
 ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /project
+ENV PYTHONPATH="/:/project:$PYTHONPATH"
 
 # Install cron for scheduled jobs and procps for "ps" tool to check running procs
 RUN apt-get update && \
