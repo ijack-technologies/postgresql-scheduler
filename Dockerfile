@@ -114,8 +114,9 @@ COPY --chown=$USER_UID:$USER_GID project .env ./
 # Set the user so nobody can run as root on the Docker host (security)
 USER $USERNAME
 
-# Make sure we use the virtualenv
-ENV PATH="/venv/bin:$PATH"
+# Add the / folder so we can import from project.utils, etc.
+# Add the /venv/bin folder so we can run python, etc.
+ENV PATH="/:/venv/bin:$PATH"
 RUN echo PATH = $PATH
 
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
