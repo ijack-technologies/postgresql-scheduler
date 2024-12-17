@@ -21,9 +21,7 @@ import requests
 from psycopg2.extras import RealDictCursor
 from twilio.rest import Client
 
-from project.logger_config import configure_logging
-
-logger = logging.getLogger(__name__)
+from project.logger_config import logger
 
 
 class Config:
@@ -465,10 +463,6 @@ def check_if_c_in_args(args) -> Config:
             break
     if c is None:
         c = Config()
-        configure_logging(
-            __name__,
-            logfile_name=Path(__file__).stem,
-        )
     return c
 
 
@@ -495,12 +489,8 @@ def send_error_messages(
 ) -> None:
     """Send error messages to email and/or SMS"""
 
-    if not isinstance(c, Config) or not getattr(c, "logger", None):
+    if not isinstance(c, Config):
         c = Config()
-        configure_logging(
-            __name__,
-            logfile_name=Path(__file__).stem,
-        )
 
     # Every morning at 9:01 UTC I get an email that says "server closed the connection unexpectedly.
     # This probably means the server terminated abnormally before or while processing the request."

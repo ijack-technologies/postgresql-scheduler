@@ -18,7 +18,6 @@
 
 #
 # from project.utils import Config
-# from project.logger_config import configure_logging
 # import backfill_old_time_series_and_card_data
 
 
@@ -49,7 +48,4 @@
 
 # c = Config()
 # c.DEV_TEST_PRD = "development"
-# configure_logging(
-#     __name__, logfile_name=LOGFILE_NAME
-# )
 #     unittest.main()

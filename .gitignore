@@ -3,3 +3,4 @@
 instance/
 .env
 .venv
+o365_token.txt

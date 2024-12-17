@@ -1,4 +1,3 @@
-import logging
 import sys
 import time
 import unittest
@@ -12,16 +11,13 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from project.logger_config import configure_logging
+from project.logger_config import logger
 from project.utils import Config
 
 LOGFILE_NAME = "test_main_scheduler"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-configure_logging(__name__, logfile_name=LOGFILE_NAME)
-
-logger = logging.getLogger(__name__)
 
 
 class TestAll(unittest.TestCase):

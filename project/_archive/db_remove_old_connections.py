@@ -1,15 +1,11 @@
-import logging
 from pathlib import Path
 
-from project.logger_config import configure_logging
 from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
     run_query,
 )
-
-logger = logging.getLogger(__name__)
 
 LOGFILE_NAME = "db_remove_old_connections"
 
@@ -88,5 +84,5 @@ def main(c):
 
 if __name__ == "__main__":
     c = Config()
-    configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
     main(c)

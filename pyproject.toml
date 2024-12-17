@@ -173,6 +173,10 @@ reportIncompatibleMethodOverride = "none"
 reportOptionalMemberAccess = "none"
 reportUnknownMemberType = "none"
 reportUnknownVariableType = "none"
+reportMissingParameterType = "none"
+reportUnknownParameterType = "none"
+reportMissingTypeArgument = "none"
+reportUnknownArgumentType = "none"
 
 reportUnsupportedDunderAll = true
 reportIncompatibleVariableOverride = true

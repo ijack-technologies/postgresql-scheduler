@@ -6,10 +6,10 @@ and upload them to the database.
 @author: Sean McCarthy
 """
 
-import logging
 import os
 import pickle
 import platform
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -26,13 +26,19 @@ from openpyxl.worksheet.table import Table
 from psycopg2.sql import SQL, Literal
 from pyxlsb import open_workbook as open_xlsb
 
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
+pythonpath = str(Path(__file__).parent.parent)
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
+
+from project.logger_config import logger
 from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
 )
-
-logger = logging.getLogger(__name__)
 
 # Load the .env file
 env_file_location = Path(__file__).parent.parent.joinpath(".env")
@@ -308,7 +314,7 @@ def connect_to_o365(client_id: str, client_secret: str, tenant_id: str) -> Accou
     raise Exception("Authentication failed")
 
 
-def list_onedrive_folders(account):
+def list_onedrive_folders(account: Account) -> None:
     """List all folders in OneDrive"""
     storage = account.storage()
     default_drive = storage.get_default_drive()
@@ -317,7 +323,7 @@ def list_onedrive_folders(account):
     # child_folders = default_drive.get_child_folders()
 
     # Recursively list all folders
-    def print_folder_structure(folder, indent=""):
+    def print_folder_structure(folder: Path, indent: str = "") -> None:
         logger.info(f"{indent}📁 {folder.name}")
         for item in folder.get_items():
             if item.is_folder:
@@ -336,7 +342,7 @@ def list_onedrive_folders(account):
 
 
 def list_sharepoint_files(
-    account, site: str = "ProductionNew", folder_path: str = "General/a - BOM"
+    account: Account, site: str = "ProductionNew", folder_path: str = "General/a - BOM"
 ):
     """List all files in the BOM folder"""
     try:
@@ -356,7 +362,7 @@ def list_sharepoint_files(
         logger.info("-" * 50)
 
         # List all items in the folder
-        def list_items(folder, indent: int = 0):
+        def list_items(folder: Path, indent: int = 0):
             """Recursively list all items in the folder"""
             spaces = " " * indent
             for item in folder.get_items():
@@ -967,11 +973,7 @@ def go_through_all_sheets(
                 harmonization_code = ws.cell(row_num, harmonization_code_col).value
                 country_of_origin = ws.cell(row_num, country_of_origin_col).value
 
-                if (
-                    part_num is not None
-                    and cost_cad is not None
-                    and msrp_mult_cad is not None
-                ):
+                if part_num and cost_cad is not None and msrp_mult_cad is not None:
                     logger.info(f"\n{cell}")
                     logger.info(f"cad_per_usd: {cad_per_usd}")
                     logger.info(f"type(cad_per_usd): {type(cad_per_usd)}")
@@ -1469,7 +1471,6 @@ def entrypoint(
         #     parts_df_no_newline: pd.DataFrame = check_for_newline_chars(parts_table_df)
 
         # Upload all parts to database 'parts' table.
-        # NOTE: why not just upload the parts from the DataFrame?
         update_parts_table(df=parts_df_no_newline, conn=conn)
 
         # Re-create the part_id_dict after new parts have been upserted

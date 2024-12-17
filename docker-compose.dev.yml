@@ -27,6 +27,8 @@ services:
       - net.ipv4.tcp_keepalive_time=200
       - net.ipv4.tcp_keepalive_intvl=30
       - net.ipv4.tcp_keepalive_probes=10
+    environment: 
+      ENVIRONMENT: development
     env_file: .env
       # environment:
       #   - FLASK_CONFIG=development

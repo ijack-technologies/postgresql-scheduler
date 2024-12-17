@@ -1,4 +1,3 @@
-import logging
 import sys
 import time
 from pathlib import Path
@@ -24,17 +23,13 @@ from project import (
     update_info_from_shadows,
     upload_bom_master_parts_to_db,
 )
-from project.logger_config import configure_logging
+from project.logger_config import logger
 from project.utils import Config
-
-configure_logging(__name__, logfile_name="main_scheduler")
-
-logger = logging.getLogger(__name__)
 
 
 def make_schedule(c: Config) -> None:
     """Make a cron-like schedule for running tasks"""
-    
+
     logger.info("Making the cron-like schedule...")
     schedule.every().day.at("01:01", pytz.timezone("America/Regina")).do(
         alarm_log_delete_duplicates.main, c=c

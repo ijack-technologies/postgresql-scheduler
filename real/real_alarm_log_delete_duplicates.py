@@ -16,7 +16,6 @@ except ValueError:
 from project import (
     alarm_log_delete_duplicates,
 )
-from project.logger_config import configure_logging
 from project.utils import Config
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
@@ -31,7 +30,6 @@ LOGFILE_NAME = "test_main_programs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

@@ -2,7 +2,6 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import logging
 import sys
 import unittest
 from types import SimpleNamespace
@@ -16,7 +15,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-from project.logger_config import configure_logging
+from project.logger_config import logger
 from project.utils import Config, send_mailgun_email, send_twilio_sms
 from test.utils import create_mock_twilio_client
 
@@ -24,9 +23,6 @@ LOGFILE_NAME = "test_send_alerts"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-configure_logging(__name__, logfile_name=LOGFILE_NAME)
-
-logger = logging.getLogger(__name__)
 
 
 class TestAll(unittest.TestCase):

@@ -1,15 +1,11 @@
-import logging
 from pathlib import Path
 
-from project.logger_config import configure_logging
 from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
     run_query,
 )
-
-logger = logging.getLogger(__name__)
 
 # Delete duplicate records once a day (this table gets lots of duplicates if left alone)
 SQL = """
@@ -44,5 +40,4 @@ def main(c: Config) -> None:
 
 if __name__ == "__main__":
     c = Config()
-    configure_logging(__name__, logfile_name="alarm_log_delete_duplicates")
     main(c)

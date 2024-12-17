@@ -2,7 +2,6 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import logging
 import sys
 import unittest
 from unittest.mock import patch
@@ -16,15 +15,12 @@ except ValueError:
 
 
 from project import update_info_from_shadows
-from project.logger_config import configure_logging
 from project.utils import Config
 
 LOGFILE_NAME = "test_main_programs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-configure_logging(__name__, logfile_name=LOGFILE_NAME)
-logger = logging.getLogger(__name__)
 
 
 class TestAll(unittest.TestCase):

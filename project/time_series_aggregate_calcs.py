@@ -2,14 +2,13 @@
 This script recalculates some aggregated data on a daily basis, for performance calculations.
 """
 
-import logging
 import time
 from datetime import date
 from pathlib import Path
 
 import pandas as pd
 
-from project.logger_config import configure_logging
+from project.logger_config import logger
 from project.utils import (
     Config,
     error_wrapper,
@@ -20,8 +19,6 @@ from project.utils import (
 )
 
 LOGFILE_NAME = "time_series_aggregate_calcs"
-
-logger = logging.getLogger(__name__)
 
 
 def get_time_series_data(
@@ -209,5 +206,5 @@ def main(c: Config) -> bool:
 
 if __name__ == "__main__":
     c = Config()
-    configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
     main(c)

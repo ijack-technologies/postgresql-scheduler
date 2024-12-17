@@ -2,7 +2,6 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import logging
 import sys
 import unittest
 from unittest.mock import patch
@@ -16,10 +15,7 @@ except ValueError:
 
 
 from project import synch_aws_iot_shadow_with_aws_rds_postgres_config
-from project.logger_config import configure_logging
 from project.utils import Config
-
-logger = logging.getLogger(__name__)
 
 
 class TestAll(unittest.TestCase):
@@ -34,7 +30,6 @@ class TestAll(unittest.TestCase):
         # This c.TEST_FUNC just disables SMS, email, and phone call alerts
         c.TEST_FUNC = True
         LOGFILE_NAME = "test_synch_aws_iot_shadow_with_aws_rds_postgres_config"
-        configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
         synch_aws_iot_shadow_with_aws_rds_postgres_config.main(c)
 

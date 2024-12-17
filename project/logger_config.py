@@ -1,21 +1,18 @@
 import logging
+import os
 import sys
-import platform
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 
 def configure_logging(
-    name: str,
-    logfile_name: str,
+    name: str = __name__,
+    logfile_name: str = "scheduler",
     log_directory: str = "/project/logs/",
     log_level: int = logging.INFO,
-    want_file_handler: bool = True,
-) -> None:
+    # want_file_handler: bool = True,
+) -> logging.Logger:
     """Configure logger"""
-
-    path_to_log_directory: Path = Path(log_directory)
-    path_to_log_directory.mkdir(parents=True, exist_ok=True)
 
     # Configure root logger. The root logger's handlers (in our case, both the file and console handlers)
     # are automatically inherited by all child loggers due to Python's logger propagation system.
@@ -37,9 +34,14 @@ def configure_logging(
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
 
-    if want_file_handler and platform.system() == "Linux":
+    # if want_file_handler and platform.system() == "Linux":
+    if os.getenv("ENVIRONMENT", "production") == "production":
+        path_to_log_directory: Path = Path(log_directory)
+        path_to_log_directory.mkdir(parents=True, exist_ok=True)
+
         log_filename = f"{logfile_name}.log"
         log_filepath = path_to_log_directory.joinpath(log_filename)
+
         # file_handler = logging.FileHandler(filename=log_filepath)
         file_handler = TimedRotatingFileHandler(
             filename=log_filepath,
@@ -61,4 +63,7 @@ def configure_logging(
 
     root_logger.info("Finished configuring the logger(s)")
 
-    return None
+    return root_logger
+
+
+logger: logging.Logger = configure_logging()

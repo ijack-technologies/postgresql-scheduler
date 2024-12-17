@@ -2,7 +2,6 @@
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import logging
 import sys
 import unittest
 from unittest.mock import patch
@@ -15,15 +14,12 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 from project import timescaledb_restart_background_workers
-from project.logger_config import configure_logging
 from project.utils import Config
 
 LOGFILE_NAME = "really_run_timescaledb_restart_background_workers"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-configure_logging(__name__, logfile_name=LOGFILE_NAME)
-logger = logging.getLogger(__name__)
 
 
 class TestAll(unittest.TestCase):

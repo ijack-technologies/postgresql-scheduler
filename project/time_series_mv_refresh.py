@@ -1,4 +1,3 @@
-import logging
 import time
 from datetime import datetime, timedelta
 from io import StringIO
@@ -8,7 +7,7 @@ import numpy as np
 import pandas as pd
 import psycopg2
 
-from project.logger_config import configure_logging
+from project.logger_config import logger
 from project.utils import (
     Config,
     error_wrapper,
@@ -18,8 +17,6 @@ from project.utils import (
     send_error_messages,
     utcnow_naive,
 )
-
-logger = logging.getLogger(__name__)
 
 LOGFILE_NAME = "time_series_mv_refresh"
 
@@ -553,5 +550,5 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
 
 if __name__ == "__main__":
     c = Config()
-    configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
     main(c)

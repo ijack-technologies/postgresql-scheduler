@@ -8,7 +8,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from project.logger_config import configure_logging
 from project.update_info_from_shadows import (
     get_device_shadows_in_threadpool,
     get_gateway_records,
@@ -20,7 +19,6 @@ LOGFILE_NAME = "update_info_from_shadows"
 
 
 c = Config()
-configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 conn = get_conn(c)

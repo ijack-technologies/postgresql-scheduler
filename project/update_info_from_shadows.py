@@ -1,4 +1,3 @@
-import logging
 import pprint
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -10,7 +9,7 @@ from typing import Tuple
 import pytz
 from psycopg2 import connect as psycopg2_connect
 
-from project.logger_config import configure_logging
+from project.logger_config import logger
 from project.utils import (
     Config,
     error_wrapper,
@@ -24,8 +23,6 @@ from project.utils import (
     utc_timestamp_to_datetime_string,
     utcnow_naive,
 )
-
-logger = logging.getLogger(__name__)
 
 LOGFILE_NAME = "update_info_from_shadows"
 
@@ -1010,5 +1007,5 @@ def main(c: Config, commit: bool = False) -> None:
 
 if __name__ == "__main__":
     c = Config()
-    configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
     main(c, commit=True)

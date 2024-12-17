@@ -1,15 +1,11 @@
-import logging
 from pathlib import Path
 
-from project.logger_config import configure_logging
 from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
     run_query,
 )
-
-logger = logging.getLogger(__name__)
 
 # Delete old data from the time_series_rt table
 SQL = """
@@ -34,5 +30,4 @@ def main(c: Config) -> None:
 
 if __name__ == "__main__":
     c = Config()
-    configure_logging(__name__, logfile_name="time_series_rt_delete_old_data")
     main(c)

@@ -14,7 +14,6 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-from project.logger_config import configure_logging
 from project.time_series_mv_refresh import (
     check_table_timestamps,
     force_refresh_continuous_aggregates,
@@ -32,7 +31,6 @@ LOGFILE_NAME = "test_time_series_update_views"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

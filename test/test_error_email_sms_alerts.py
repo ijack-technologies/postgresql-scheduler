@@ -19,7 +19,6 @@ from project import (
     alarm_log_delete_duplicates,
     time_series_mv_refresh,
 )
-from project.logger_config import configure_logging
 from project.utils import Config
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
@@ -34,7 +33,6 @@ LOGFILE_NAME = "test_error_email_sms_alerts"
 
 c = Config()
 c.DEV_TEST_PRD = "development"
-configure_logging(__name__, logfile_name=LOGFILE_NAME)
 
 
 class TestAll(unittest.TestCase):

@@ -1,5 +1,4 @@
 import json
-import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
@@ -9,7 +8,7 @@ import boto3
 from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 
-from project.logger_config import configure_logging
+from project.logger_config import logger
 from project.utils import (
     Config,
     error_wrapper,
@@ -17,8 +16,6 @@ from project.utils import (
     get_all_power_units_config_metrics,
     get_client_iot,
 )
-
-logger = logging.getLogger(__name__)
 
 
 def update_device_shadows_in_threadpool(
@@ -196,5 +193,5 @@ def main(c: Config) -> None:
 if __name__ == "__main__":
     LOGFILE_NAME = "synch_aws_iot_shadow_with_aws_rds_postgres_config"
     c = Config()
-    configure_logging(__name__, logfile_name=LOGFILE_NAME)
+
     main(c)
