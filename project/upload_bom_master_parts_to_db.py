@@ -565,14 +565,48 @@ def check_for_newline_chars(df: pd.DataFrame) -> pd.DataFrame:
     return df2
 
 
-def update_parts_table(df: pd.DataFrame, conn) -> None:
-    """Update parts from the BOM Master spreadsheet"""
+def get_part_ids_from_part_nums(
+    part_nums: List[str], unique_names_and_ids: dict
+) -> List[int]:
+    """Get the part IDs from a list of part numbers"""
+    part_ids = []
+    for part_num in part_nums:
+        if part_num in unique_names_and_ids:
+            part_ids.append(unique_names_and_ids[part_num])
+        else:
+            logger.info(f"Part number '{part_num}' not found in the database!")
+    return part_ids
 
-    logger.info("\n\nUpdating parts data in the AWS RDS database...")
-    n_rows = len(df)
-    assert (
-        n_rows > 100
-    ), f"Not enough rows in new spreadsheet. Only {n_rows}, so not deleting or updating anything!"
+
+def deleted_unused_finished_goods(finished_goods_df: pd.DataFrame, conn) -> None:
+    """Delete finished goods that are no longer in the BOM Master spreadsheet"""
+    with conn.cursor() as cursor:
+        for worksheet, rel_df_new in finished_goods_df.groupby("db_table_name"):
+            db_table_name = f"{worksheet}_part_rel"
+            # Raise an error if the part_id record is null
+            if rel_df_new["part_id"].isnull().any():
+                raise ValueError(
+                    f"Error: Part ID is null in the '{db_table_name}' table!"
+                )
+
+            unique_parts_new = rel_df_new["part_id"].drop_duplicates().to_list()
+            # Convert the list of IDs to a comma-separated string
+            unique_parts_str: str = ",".join(str(id) for id in unique_parts_new)
+            logger.warning(
+                f"Deleting records from relationship table '{db_table_name}' that are no longer in the BOM Master spreadsheet!"
+            )
+            sql_delete = f"""
+                delete from public.{db_table_name}
+                where part_id NOT in ({unique_parts_str});
+                """
+            cursor.execute(sql_delete)
+            conn.commit()
+
+    return None
+
+
+def delete_and_mark_unused_parts(new_parts_df: pd.DataFrame, conn) -> None:
+    """Update parts from the BOM Master spreadsheet"""
 
     with conn.cursor() as cursor:
         # Delete all rows not in the new spreadsheet, not in the work orders table,
@@ -612,7 +646,7 @@ def update_parts_table(df: pd.DataFrame, conn) -> None:
         tuples_inv = cursor.fetchall()
         unique_parts_db_inv = [row[0] for row in tuples_inv]
 
-        unique_parts_new = df["part_num"].drop_duplicates().to_list()
+        unique_parts_new = new_parts_df["part_num"].drop_duplicates().to_list()
         parts_to_delete = {}
         for part_num, part_id in unique_parts_db.items():
             if all(
@@ -626,12 +660,25 @@ def update_parts_table(df: pd.DataFrame, conn) -> None:
                 parts_to_delete[part_num] = part_id
 
         n_parts_to_delete = len(parts_to_delete)
-        if n_parts_to_delete > 0 and DELETE_DEPRECATED_PARTS is True:
+        if n_parts_to_delete > 0:
+            # Make the 'flagged_for_deletion' column True for parts to delete
             logger.info(
-                f"WARNING: Deleting {n_parts_to_delete} parts which are no longer in the BOM Master spreadsheet!"
+                f"Flagging {n_parts_to_delete} parts that are no longer in the BOM Master spreadsheet!"
             )
             part_id_for_sql = SQL(",").join(map(Literal, parts_to_delete.values()))
+            sql_mark_for_deletion = SQL(
+                """
+                update public.parts
+                set flagged_for_deletion = true
+                where id in ({})
+                """
+            ).format(part_id_for_sql)
+            cursor.execute(sql_mark_for_deletion)
+            conn.commit()
 
+            logger.warning(
+                f"Removing {n_parts_to_delete} parts from the relationship tables since they're no longer in the BOM Master spreadsheet!"
+            )
             sql_delete = SQL(
                 """
                 delete from bom_base_powerunit_part_rel where part_id in ({});
@@ -640,10 +687,8 @@ def update_parts_table(df: pd.DataFrame, conn) -> None:
                 delete from bom_structure_part_rel where part_id in ({});
                 delete from bom_pump_top_part_rel where part_id in ({});
                 delete from bom_dgas_part_rel where part_id in ({});
-                delete from public.parts where id in ({});
                 """
             ).format(
-                part_id_for_sql,
                 part_id_for_sql,
                 part_id_for_sql,
                 part_id_for_sql,
@@ -654,8 +699,31 @@ def update_parts_table(df: pd.DataFrame, conn) -> None:
             cursor.execute(sql_delete)
             conn.commit()
 
+            if DELETE_DEPRECATED_PARTS is True:
+                logger.warning(
+                    f"Deleting {n_parts_to_delete} parts from public.parts since they're no longer in the BOM Master spreadsheet!"
+                )
+                sql_delete = SQL("delete from public.parts where id in ({});").format(
+                    part_id_for_sql
+                )
+                cursor.execute(sql_delete)
+                conn.commit()
+
+    return None
+
+
+def update_parts_table(new_parts_df: pd.DataFrame, conn) -> None:
+    """Update parts from the BOM Master spreadsheet"""
+
+    logger.info("\n\nUpdating parts data in the AWS RDS database...")
+    n_rows = len(new_parts_df)
+    assert (
+        n_rows > 100
+    ), f"Not enough rows in new spreadsheet. Only {n_rows}, so not deleting or updating anything!"
+
+    with conn.cursor() as cursor:
         counter = 0
-        for row in df.itertuples():
+        for row in new_parts_df.itertuples():
             counter += 1
             logger.info(f"Row {counter} of {n_rows}")
 
@@ -717,9 +785,9 @@ def update_parts_table(df: pd.DataFrame, conn) -> None:
 
             sql_update_existing_parts = """
                 INSERT INTO public.parts
-                    (worksheet, ws_row, part_num, description, msrp_mult_cad, transfer_mult_cad_dealer, msrp_mult_usd, transfer_mult_inc_to_corp, transfer_mult_usd_dealer, warehouse_mult, cost_cad, msrp_cad, dealer_cost_cad, cost_usd, msrp_usd, ijack_corp_cost, dealer_cost_usd, is_usd, cad_per_usd, is_soft_part, weight, harmonization_code, country_of_origin, lead_time)
+                    (worksheet, ws_row, part_num, description, msrp_mult_cad, transfer_mult_cad_dealer, msrp_mult_usd, transfer_mult_inc_to_corp, transfer_mult_usd_dealer, warehouse_mult, cost_cad, msrp_cad, dealer_cost_cad, cost_usd, msrp_usd, ijack_corp_cost, dealer_cost_usd, is_usd, cad_per_usd, is_soft_part, weight, harmonization_code, country_of_origin, lead_time, timestamp_utc_inserted, timestamp_utc_updated)
                 VALUES
-                    (%(worksheet)s, %(ws_row)s, %(part_num)s, %(description)s, %(msrp_mult_cad)s, %(transfer_mult_cad_dealer)s, %(msrp_mult_usd)s, %(transfer_mult_inc_to_corp)s, %(transfer_mult_usd_dealer)s, %(warehouse_mult)s, %(cost_cad)s, %(msrp_cad)s, %(dealer_cost_cad)s, %(cost_usd)s, %(msrp_usd)s, %(ijack_corp_cost)s, %(dealer_cost_usd)s, %(is_usd)s, %(cad_per_usd)s, %(is_soft_part)s, %(weight)s, %(harmonization_code)s, %(country_of_origin)s, %(lead_time)s)
+                    (%(worksheet)s, %(ws_row)s, %(part_num)s, %(description)s, %(msrp_mult_cad)s, %(transfer_mult_cad_dealer)s, %(msrp_mult_usd)s, %(transfer_mult_inc_to_corp)s, %(transfer_mult_usd_dealer)s, %(warehouse_mult)s, %(cost_cad)s, %(msrp_cad)s, %(dealer_cost_cad)s, %(cost_usd)s, %(msrp_usd)s, %(ijack_corp_cost)s, %(dealer_cost_usd)s, %(is_usd)s, %(cad_per_usd)s, %(is_soft_part)s, %(weight)s, %(harmonization_code)s, %(country_of_origin)s, %(lead_time)s, now(), now())
                 ON CONFLICT (part_num) DO UPDATE
                     SET
                         worksheet = %(worksheet)s,
@@ -744,7 +812,8 @@ def update_parts_table(df: pd.DataFrame, conn) -> None:
                         weight = %(weight)s,
                         lead_time = %(lead_time)s,
                         harmonization_code = %(harmonization_code)s,
-                        country_of_origin = %(country_of_origin)s
+                        country_of_origin = %(country_of_origin)s,
+                        timestamp_utc_updated = now()
             """
             cursor.execute(sql_update_existing_parts, values)
         conn.commit()
@@ -1198,12 +1267,13 @@ def upsert_finished_good_pairs(
 
                 sql_insert = f"""
                     INSERT INTO public.{many_to_many_table_name}
-                        (finished_good_id, part_id, quantity)
+                        (finished_good_id, part_id, quantity, timestamp_utc_inserted, timestamp_utc_updated)
                     VALUES
-                        (%(finished_good_id)s, %(part_id)s, %(quantity)s)
+                        (%(finished_good_id)s, %(part_id)s, %(quantity)s, now(), now())
                     ON CONFLICT (finished_good_id, part_id) DO UPDATE
                         SET
-                            quantity = {quantity}
+                            quantity = {quantity},
+                            timestamp_utc_updated = now()
                 """
 
                 cursor.execute(sql_insert, values)
@@ -1387,6 +1457,21 @@ def get_workbook_from_xlsb(file_in_path_xlsb: Path) -> Workbook:
     return new_wb
 
 
+def make_finished_goods_dataframe(
+    finished_goods_dict: dict, part_id_dict: dict
+) -> pd.DataFrame:
+    """Make a DataFrame of finished goods for easy viewing"""
+    result_list = []
+    for db_table_name, items in finished_goods_dict.items():
+        for dict_ in items:
+            dict_copy = dict_.copy()  # Create a copy to avoid modifying the original
+            dict_copy["db_table_name"] = db_table_name
+            dict_copy["part_id"] = part_id_dict.get(dict_["part_num"], None)
+            result_list.append(dict_copy)
+
+    return pd.DataFrame(result_list) if result_list else pd.DataFrame()
+
+
 def entrypoint(
     # c: Config = None
 ):
@@ -1470,8 +1555,18 @@ def entrypoint(
 
         #     parts_df_no_newline: pd.DataFrame = check_for_newline_chars(parts_table_df)
 
+        # Use this to manually search for parts, to see if they're related to a finished good
+        finished_goods_df: pd.DataFrame = make_finished_goods_dataframe(
+            finished_goods_dict, part_id_dict
+        )
+        logger.info(finished_goods_df.head())
+
+        deleted_unused_finished_goods(finished_goods_df=finished_goods_df, conn=conn)
+
+        delete_and_mark_unused_parts(new_parts_df=parts_df_no_newline, conn=conn)
+
         # Upload all parts to database 'parts' table.
-        update_parts_table(df=parts_df_no_newline, conn=conn)
+        update_parts_table(new_parts_df=parts_df_no_newline, conn=conn)
 
         # Re-create the part_id_dict after new parts have been upserted
         part_id_dict: dict = get_distinct_parts_and_ids(conn=conn)

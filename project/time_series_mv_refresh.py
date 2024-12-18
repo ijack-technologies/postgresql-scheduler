@@ -35,7 +35,7 @@ LOGFILE_NAME = "time_series_mv_refresh"
 #         public.time_series_locf
 #         WITH DATA;
 #     """
-#     run_query(c, sql_refresh_locf_mv, db="timescale", commit=True, raise_error=True)
+#     run_query(sql_refresh_locf_mv, db="timescale", commit=True, raise_error=True)
 
 #     return True
 
@@ -72,7 +72,7 @@ def get_latest_timestamp_in_table(
         #     sql += " and timestamp_utc < '2024-09-10'"
 
         _, rows = run_query(
-            c, sql, db="timescale", conn=conn, fetchall=True, raise_error=raise_error
+            sql, db="timescale", conn=conn, fetchall=True, raise_error=raise_error
         )
 
         timestamp = rows[0]["timestamp_utc"]
@@ -142,7 +142,7 @@ def get_gateway_power_unit_dict(c, conn=None) -> dict:
             and t2.gateway is not null
     """
     columns, rows = run_query(
-        c, SQL_GW_PU, db="ijack", conn=conn, fetchall=True, raise_error=True
+        SQL_GW_PU, db="ijack", conn=conn, fetchall=True, raise_error=True
     )
     df = pd.DataFrame(rows, columns=columns)
     dict_ = dict(zip(df["gateway"], df["power_unit_str"]))
@@ -164,7 +164,7 @@ def get_power_units_in_service(c) -> list:
             and t3.power_unit_id is not null
             and t3.surface is not null
     """
-    _, rows = run_query(c, SQL_POWER_UNITS, db="ijack", fetchall=True, raise_error=True)
+    _, rows = run_query(SQL_POWER_UNITS, db="ijack", fetchall=True, raise_error=True)
     return [row["power_unit_str"] for row in rows]
 
 
@@ -202,7 +202,7 @@ def get_and_insert_latest_values(
         SQL_OLD_DATA += f" and power_unit = '{power_unit_str}'"
 
     columns_old, rows_old = run_query(
-        c, SQL_OLD_DATA, db="timescale", conn=conn, fetchall=True, raise_error=True
+        SQL_OLD_DATA, db="timescale", conn=conn, fetchall=True, raise_error=True
     )
     logger.info("Sleeping for 1 second to allow the server to catch up...")
     time.sleep(1)
@@ -222,7 +222,7 @@ def get_and_insert_latest_values(
         SQL_LATEST_DATA += f" and power_unit = '{power_unit_str}'"
 
     columns_new, rows_new = run_query(
-        c, SQL_LATEST_DATA, db="timescale", conn=conn, fetchall=True, raise_error=True
+        SQL_LATEST_DATA, db="timescale", conn=conn, fetchall=True, raise_error=True
     )
     logger.info("Sleeping for 1 second to allow the server to catch up...")
     time.sleep(1)
@@ -328,7 +328,6 @@ def get_and_insert_latest_values(
     time_start = time.time()
     try:
         run_query(
-            c,
             sql=None,
             db="timescale",
             commit=True,
@@ -403,7 +402,7 @@ def force_refresh_continuous_aggregates(
         should_close_connection: bool = False
         isolation_level_before = conn.isolation_level
     else:
-        conn = get_conn(c, db="timescale")
+        conn = get_conn(db="timescale")
         should_close_connection = True
         isolation_level_before = None
 
@@ -419,7 +418,7 @@ def force_refresh_continuous_aggregates(
                 view, date_begin=after_this_date, min_window=min_time_delta
             )
             # AUTOCOMMIT is set, so commit is irrelevant
-            run_query(c, sql, db="timescale", commit=False, conn=conn, raise_error=True)
+            run_query(sql, db="timescale", commit=False, conn=conn, raise_error=True)
             time.sleep(0.5)
         except psycopg2.errors.InvalidParameterValue:
             logger.exception(
@@ -472,7 +471,7 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    conn_ts = get_conn(c, db="timescale")
+    conn_ts = get_conn(db="timescale")
 
     try:
         # Get the gateway: power unit mapping dictionary, which has all gateway: power unit pairs,

@@ -161,7 +161,7 @@ def update_structures_table_gps(
         c, power_unit_id, power_unit_shadow_str, structure, aws_thing
     )
     _, rows = run_query(
-        c, sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
+        sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
     )
     dict_ = rows[0]
 
@@ -190,7 +190,7 @@ def update_structures_table_gps(
 
     # Don't run this automatically since it undoes my manual updates with the
     # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
-    run_query(c, sql_update, db="ijack", fetchall=False, execute=execute, commit=commit)
+    run_query(sql_update, db="ijack", fetchall=False, execute=execute, commit=commit)
 
     return None
 
@@ -293,7 +293,7 @@ def is_power_unit_already_in_use(c, power_unit_id: int) -> Tuple[bool, str]:
         from public.gw
         where power_unit_id = {power_unit_id}
     """
-    _, rows = run_query(c, SQL, db="ijack", fetchall=True)
+    _, rows = run_query(SQL, db="ijack", fetchall=True)
 
     if isinstance(rows, list) and len(rows) > 0:
         gateway = rows[0]["gateway"]
@@ -317,7 +317,7 @@ def already_emailed_recently(
             and power_unit_str = '{power_unit_str}'
             and aws_thing = '{aws_thing}'
     """
-    _, rows = run_query(c, SQL, db="ijack", fetchall=True)
+    _, rows = run_query(SQL, db="ijack", fetchall=True)
 
     if isinstance(rows, list) and len(rows) > 0:
         count = rows[0]["count"]
@@ -337,7 +337,7 @@ def record_email_sent(c, alert_type: str, power_unit_str: str, aws_thing: str) -
         (alert_type, power_unit_str, aws_thing)
         values ('{alert_type}', '{power_unit_str}', '{aws_thing}')
     """
-    run_query(c, SQL, db="ijack", fetchall=False, commit=True)
+    run_query(SQL, db="ijack", fetchall=False, commit=True)
     return None
 
 
@@ -361,7 +361,7 @@ def set_power_unit_to_gateway(c, power_unit_id_shadow: int, aws_thing: str) -> b
         set power_unit_id = {power_unit_id_shadow}
         where aws_thing = '{aws_thing}'
     """
-    _, rows = run_query(c, SQL, db="ijack", fetchall=False, commit=True)
+    _, rows = run_query(SQL, db="ijack", fetchall=False, commit=True)
 
     return True
 
@@ -402,7 +402,7 @@ def get_gateway_records(c, conn) -> list:
             t1.aws_thing,
             t1.id
     """
-    _, gw_rows = run_query(c, sql_gw, db="ijack", fetchall=True, conn=conn)
+    _, gw_rows = run_query(sql_gw, db="ijack", fetchall=True, conn=conn)
     return gw_rows
 
 
@@ -414,7 +414,7 @@ def get_gateway_records(c, conn) -> list:
 #             power_unit
 #         from public.power_units
 #     """
-#     _, pu_rows = run_query(c=c, sql=sql_pu, db="ijack", fetchall=True, conn=conn)
+#     _, pu_rows = run_query(sql=sql_pu, db="ijack", fetchall=True, conn=conn)
 #     return pu_rows
 
 
@@ -442,7 +442,7 @@ def get_gateway_records(c, conn) -> list:
 #         where t1.power_unit_id is not null
 #     """
 #     _, structure_rows = run_query(
-#         c, sql_structures, db="ijack", fetchall=True, conn=conn
+#         sql_structures, db="ijack", fetchall=True, conn=conn
 #     )
 #     return structure_rows
 
@@ -676,7 +676,6 @@ def upsert_gw_info(
     #     print("")
 
     run_query(
-        c,
         sql,
         db="ijack",
         fetchall=False,
@@ -704,7 +703,7 @@ def record_can_bus_cellular_test(
         where id = {gateway_id}
     """
     # """).format(cell_good=Literal(cellular_good), can_good=Literal(can_bus_good), gateway_id=Literal(gateway_id))
-    run_query(c, sql_gw, db="ijack", fetchall=False, commit=True)
+    run_query(sql_gw, db="ijack", fetchall=False, commit=True)
 
     if cellular_good:
         user_id_shop_auto = 788  # SHOP automated user
@@ -721,7 +720,7 @@ def record_can_bus_cellular_test(
         #     gateway_id=Literal(gateway_id),
         #     network_id=Literal(network_id_sasktel)
         # )
-        run_query(c, sql_gw_tested, db="ijack", fetchall=False, commit=True)
+        run_query(sql_gw_tested, db="ijack", fetchall=False, commit=True)
 
     return True
 
@@ -739,7 +738,7 @@ def main(c: Config, commit: bool = False) -> None:
     exit_if_already_running(c, Path(__file__).name)
 
     # Get DB connection since we're running several queries (might as well have just one connection)
-    conn = get_conn(c, db="ijack")
+    conn = get_conn(db="ijack")
 
     time_start = time.time()
     # Start a try/except/finally block so we close the database connection

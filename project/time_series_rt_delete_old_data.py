@@ -23,7 +23,7 @@ def main(c: Config) -> None:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    run_query(c=c, sql=SQL, db="timescale", commit=True)
+    run_query(sql=SQL, db="timescale", commit=True)
 
     return None
 

@@ -72,7 +72,7 @@ class TestAll(unittest.TestCase):
         )
 
         _, rows = run_query(
-            c, sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
+            sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
         )
         mock_run_query.return_value = (["col1", "col2"], rows)
 
@@ -385,7 +385,7 @@ class TestAll(unittest.TestCase):
         aws_thing = "lambda_access"
         gateway_id = 93
 
-        conn = get_conn(c, db="ijack")
+        conn = get_conn(db="ijack")
         try:
             # Update the record
             os_pretty_name_updated = "some pretty OS"
@@ -396,12 +396,12 @@ class TestAll(unittest.TestCase):
                 ON CONFLICT (gateway_id) DO UPDATE
                     set os_name = null, os_pretty_name = '{os_pretty_name_updated}'
             """
-            run_query(c, sql, db="ijack", fetchall=False, conn=conn, commit=True)
+            run_query(sql, db="ijack", fetchall=False, conn=conn, commit=True)
 
             # Check the record
             sql = f"select os_name, os_pretty_name from public.gw_info where gateway_id = {gateway_id}"
             columns, rows = run_query(
-                c, sql, db="ijack", fetchall=True, conn=conn, commit=False
+                sql, db="ijack", fetchall=True, conn=conn, commit=False
             )
             self.assertEqual(columns, ["os_name", "os_pretty_name"])
             self.assertIsNone(rows[0]["os_name"])
@@ -462,7 +462,7 @@ class TestAll(unittest.TestCase):
             # Check the record
             sql = f"select os_name, os_pretty_name from public.gw_info where gateway_id = {gateway_id}"
             columns, rows = run_query(
-                c, sql, db="ijack", fetchall=True, conn=conn, commit=False
+                sql, db="ijack", fetchall=True, conn=conn, commit=False
             )
             self.assertTrue(rows)
             self.assertEqual(rows[0]["os_name"], os_wanted)
@@ -499,7 +499,6 @@ class TestAll(unittest.TestCase):
         def test_gw_table(gateway_id) -> Tuple[bool, bool]:
             """Check what's in the public.gw table"""
             columns, rows = run_query(
-                c,
                 SQL(
                     "select test_can_bus, test_cellular from public.gw where id = {gateway_id}"
                 ).format(gateway_id=Literal(gateway_id)),
@@ -514,7 +513,6 @@ class TestAll(unittest.TestCase):
         def test_gw_inserted_table(gateway_id) -> Tuple[bool, bool]:
             """Check what's in the public.gw_tested_cellular table"""
             columns, rows = run_query(
-                c,
                 SQL(
                     """SELECT id, user_id, timestamp_utc, gateway_id, network_id FROM public.gw_tested_cellular where gateway_id = {gateway_id}"""
                 ).format(gateway_id=Literal(gateway_id)),
@@ -538,13 +536,12 @@ class TestAll(unittest.TestCase):
             ).format(gateway_id=Literal(gateway_id))
             print(sql)
             run_query(
-                c,
                 sql=sql,
                 fetchall=False,
                 commit=True,
             )
 
-        conn = get_conn(c, db="ijack")
+        conn = get_conn(db="ijack")
         try:
             bool_return = update_info_from_shadows.record_can_bus_cellular_test(
                 c, gateway_id_lambda_access, cellular_good=False, can_bus_good=False

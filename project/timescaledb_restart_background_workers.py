@@ -19,7 +19,7 @@ def restart_background_workers_timescaledb(c) -> bool:
     """Restart the TimescaleDB background workers"""
 
     SQL = "SELECT _timescaledb_internal.start_background_workers();"
-    run_query(c, SQL, db="timescale", commit=True)
+    run_query(SQL, db="timescale", commit=True)
 
     return True
 

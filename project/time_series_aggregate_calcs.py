@@ -51,7 +51,7 @@ def get_time_series_data(
     group by power_unit, date_trunc('month', timestamp_utc)
     """
     columns, rows = run_query(
-        c, sql, db="timescale", fetchall=True, raise_error=True, log_query=False
+        sql, db="timescale", fetchall=True, raise_error=True, log_query=False
     )
     df = pd.DataFrame(rows, columns=columns)
     df["month_date"] = pd.to_datetime(df["month_date"])
@@ -68,7 +68,7 @@ def get_distinct_months_for_power_unit(c, power_unit_str: str) -> list:
         where power_unit = '{power_unit_str}'
     """
     columns, rows = run_query(
-        c, sql, db="timescale", fetchall=True, raise_error=True, log_query=False
+        sql, db="timescale", fetchall=True, raise_error=True, log_query=False
     )
     df = pd.DataFrame(rows, columns=columns)
     df["month_date"] = pd.to_datetime(df["month_date"])
@@ -125,7 +125,6 @@ def upsert_time_series_agg(
         .replace("None", "null")
     )
     run_query(
-        c,
         sql_upsert,
         db="timescale",
         commit=True,
@@ -142,7 +141,7 @@ def main(c: Config) -> bool:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    power_unit_uno_egas_dict: dict = get_power_units_and_unit_types(c)
+    power_unit_uno_egas_dict: dict = get_power_units_and_unit_types()
 
     n_power_units = len(power_unit_uno_egas_dict)
     for index, (power_unit_str, is_egas_type) in enumerate(

@@ -76,7 +76,7 @@ def utcfromtimestamp_naive(timestamp: float) -> datetime:
     return utcfromtimestamp_aware(timestamp).replace(tzinfo=None)
 
 
-def get_conn(c, db="ijack", cursor_factory=None):
+def get_conn(db="ijack", cursor_factory=None):
     """Get connection to IJACK database"""
 
     if db == "ijack":
@@ -110,7 +110,6 @@ def get_conn(c, db="ijack", cursor_factory=None):
 
 
 def run_query(
-    c,
     sql: str = None,
     db: str = "ijack",
     fetchall: bool = False,
@@ -128,7 +127,7 @@ def run_query(
 
     is_close_conn = False
     if conn is None:
-        conn = get_conn(c, db)
+        conn = get_conn(db)
         is_close_conn = True
 
     columns = None
@@ -650,7 +649,7 @@ def get_all_power_units_config_metrics(c) -> list:
             and gw.aws_thing is not null
             and cust.id is distinct from 21 -- demo customer
     """
-    _, rows = run_query(c, SQL, db="ijack", fetchall=True)
+    _, rows = run_query(SQL, db="ijack", fetchall=True)
     if not rows:
         raise ValueError("No rows found in the database for the power units!!!")
 
@@ -768,7 +767,7 @@ def seconds_since_last_any_msg(c, shadow) -> Tuple[float, str, str]:
     return seconds_elapsed_total, msg, key_latest
 
 
-def get_power_units_and_unit_types(c, conn=None) -> dict:
+def get_power_units_and_unit_types(conn=None) -> dict:
     """Get the power units and unit types mapping"""
     sql = """
     SELECT
@@ -794,7 +793,7 @@ def get_power_units_and_unit_types(c, conn=None) -> dict:
             and gateway_id is not null
     """
     columns, rows = run_query(
-        c, sql, db="ijack", conn=conn, fetchall=True, raise_error=True, log_query=False
+        sql, db="ijack", conn=conn, fetchall=True, raise_error=True, log_query=False
     )
     df = pd.DataFrame(rows, columns=columns)
     dict_ = dict(zip(df["power_unit_str"], df["is_egas_type"]))

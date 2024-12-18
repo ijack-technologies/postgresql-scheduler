@@ -33,7 +33,7 @@ def main(c: Config) -> None:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    run_query(c, SQL, commit=True)
+    run_query(SQL, commit=True)
 
     return None
 
