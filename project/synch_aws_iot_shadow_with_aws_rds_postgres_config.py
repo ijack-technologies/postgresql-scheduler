@@ -19,7 +19,7 @@ from project.utils import (
 
 
 def update_device_shadows_in_threadpool(
-    c: Config, gateways_to_update: dict, client_iot: boto3.client
+    gateways_to_update: dict, client_iot: boto3.client
 ) -> list:
     """Use concurrent.futures.ThreadPoolExecutor to efficiently gather all AWS IoT device shadows"""
 
@@ -180,7 +180,7 @@ def main(c: Config) -> None:
         #         "ERROR updating AWS IoT shadow for aws_thing '%s'", aws_thing
         #     )
 
-    update_device_shadows_in_threadpool(c, gateways_to_update, client_iot)
+    update_device_shadows_in_threadpool(gateways_to_update, client_iot)
 
     time_finish = time.time()
     logger.info(

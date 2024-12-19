@@ -7,7 +7,6 @@ from pathlib import Path
 
 def configure_logging(
     name: str = __name__,
-    logfile_name: str = "scheduler",
     log_directory: str = "/project/logs/",
     log_level: int = logging.INFO,
     # want_file_handler: bool = True,
@@ -39,7 +38,7 @@ def configure_logging(
         path_to_log_directory: Path = Path(log_directory)
         path_to_log_directory.mkdir(parents=True, exist_ok=True)
 
-        log_filename = f"{logfile_name}.log"
+        log_filename = f"{Path(__file__).name}.log"
         log_filepath = path_to_log_directory.joinpath(log_filename)
 
         # file_handler = logging.FileHandler(filename=log_filepath)
