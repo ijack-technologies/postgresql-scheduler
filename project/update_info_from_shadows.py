@@ -725,7 +725,7 @@ def record_can_bus_cellular_test(
     return True
 
 
-@error_wrapper()
+@error_wrapper(filename=Path(__file__).name)
 def main(c: Config, commit: bool = False) -> None:
     """
     Query unit data from AWS RDS "IJACK" PostgreSQL database,

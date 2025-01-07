@@ -90,7 +90,7 @@ def update_device_shadows_in_threadpool(
     return success_dict
 
 
-@error_wrapper()
+@error_wrapper(filename=Path(__file__).name)
 def main(c: Config) -> None:
     """
     Query unit data from AWS RDS "IJACK" PostgreSQL database,

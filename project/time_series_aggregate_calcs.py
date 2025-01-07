@@ -135,7 +135,7 @@ def upsert_time_series_agg(
     return True
 
 
-@error_wrapper()
+@error_wrapper(filename=Path(__file__).name)
 def main(c: Config) -> bool:
     """Main entrypoint function"""
 

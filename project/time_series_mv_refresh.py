@@ -465,7 +465,7 @@ def ad_hoc_maybe_refresh_continuous_aggs() -> None:
     return None
 
 
-@error_wrapper()
+@error_wrapper(filename=Path(__file__).name)
 def main(c: Config, by_power_unit: bool = False) -> bool:
     """Main entrypoint function"""
 

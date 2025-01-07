@@ -16,7 +16,7 @@ SQL = """
 """
 
 
-@error_wrapper()
+@error_wrapper(filename=Path(__file__).name)
 def main(c: Config) -> None:
     """Main entrypoint function"""
     global SQL

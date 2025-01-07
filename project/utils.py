@@ -421,7 +421,7 @@ def exit_if_already_running(c, filename) -> None:
             sys.exit(0)
 
 
-def kill_pids(c, list_of_pids) -> List:
+def kill_pids(list_of_pids) -> List:
     """Kill all process IDs (PIDs) in the list_of_pids"""
     assert isinstance(list_of_pids, list)
 
@@ -429,28 +429,15 @@ def kill_pids(c, list_of_pids) -> List:
     for pid in list_of_pids:
         try:
             int_pid = int(pid)
+            os.kill(int_pid, signal.SIGTERM)
+            logger.info(f"PID {pid} killed")
+            list_of_pids_killed.append(pid)
         except Exception:
             logger.exception(
                 f"PID {pid} cannot be cast to an integer for os.kill(), which requires an integer"
             )
 
-        os.kill(int_pid, signal.SIGTERM)
-        logger.info(f"PID {pid} killed")
-        list_of_pids_killed.append(pid)
-
     return list_of_pids_killed
-
-
-# def error_wrapper(func):
-
-# 	@functools.wraps(func)
-# 	def wrapper_decorator(*args, **kwargs):
-# 		# Do something before
-# 		value = func(*args, **kwargs)
-# 		# Do something after
-# 		return value
-
-#     return wrapper_decorator
 
 
 def check_if_c_in_args(args) -> Config:
@@ -502,12 +489,12 @@ def send_error_messages(
             end_time=dt_time(hour=9, minute=3),
             check_time=check_dt.time(),
         ) and "server closed the connection" in str(err):
+            # Don't send an email if it's the morning and the error is about the server closing the connection
             return None
     except Exception as err_inner:
         logger.exception(
             f"ERROR checking the time of the error... \nError msg: {err_inner}"
         )
-        f"{err}\n\nWhile processing the initial error, another error happened while checking the time of the error: \n\n{err_inner}"
 
     logger.error(f"ERROR running program! Closing now... \nError msg: {err}")
     alertees_email = ["smccarthy@myijack.com"]
@@ -541,7 +528,7 @@ def send_error_messages(
     return None
 
 
-def error_wrapper():
+def error_wrapper(filename: str):
     def wrapper_outer(func):
         @functools.wraps(func)
         def wrapper_inner(*args, **kwargs):
@@ -562,8 +549,8 @@ def error_wrapper():
             # Do something after
             except Exception as err:
                 # Send error messages to email and/or SMS
-                filename = Path(__file__).name
-                send_error_messages(c, err, filename, want_email=True, want_sms=True)
+                filename2 = filename or Path(__file__).name
+                send_error_messages(c, err, filename2, want_email=True, want_sms=True)
 
                 raise
 

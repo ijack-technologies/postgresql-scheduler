@@ -1610,7 +1610,7 @@ def entrypoint(
     logger.info(f"\n\nALL DONE at {end_time}. Total time: {mins_elapsed} minutes")
 
 
-@error_wrapper()
+@error_wrapper(filename=Path(__file__).name)
 def main(c: Config = None) -> None:
     """Main entrypoint function"""
 

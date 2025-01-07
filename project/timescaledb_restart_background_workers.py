@@ -24,7 +24,7 @@ def restart_background_workers_timescaledb(c) -> bool:
     return True
 
 
-@error_wrapper()
+@error_wrapper(filename=Path(__file__).name)
 def main(c: Config) -> bool:
     """Main entrypoint function"""
     global SQL
