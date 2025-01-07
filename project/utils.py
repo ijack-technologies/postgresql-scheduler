@@ -12,7 +12,7 @@ from datetime import time as dt_time
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import List, Tuple
-
+from unittest.mock import MagicMock
 import boto3
 import pandas as pd
 import psycopg2
@@ -20,6 +20,7 @@ import pytz
 import requests
 from psycopg2.extras import RealDictCursor
 from twilio.rest import Client
+from twilio.rest.api.v2010.account.message import MessageInstance
 
 from project.logger_config import logger
 
@@ -182,9 +183,9 @@ def error_wrapper_old(c, func, *args, **kwargs):
     return None
 
 
-def send_twilio_sms(c, sms_phone_list, body) -> str:
+def send_twilio_sms(c, sms_phone_list, body) -> MessageInstance:
     """Send SMS messages with Twilio from +13067003245 or +13069884140"""
-    message = ""
+    message = MagicMock(spec=MessageInstance)
     if c.TEST_FUNC:
         return message
 
@@ -201,7 +202,7 @@ def send_twilio_sms(c, sms_phone_list, body) -> str:
         os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
     )
     for phone_num in sms_phone_list:
-        message = twilio_client.messages.create(
+        message: MessageInstance = twilio_client.messages.create(
             to=phone_num,
             # from_="+13067003245",
             from_="+13069884140",  # new number Apr 20, 2021
@@ -209,7 +210,7 @@ def send_twilio_sms(c, sms_phone_list, body) -> str:
         )
         logger.info(f"SMS sent to {phone_num}")
 
-    return str(message)
+    return message
 
 
 def send_twilio_phone(c, phone_list, body):
@@ -481,7 +482,9 @@ def send_error_messages(
     # Every morning at 9:01 UTC I get an email that says "server closed the connection unexpectedly.
     # This probably means the server terminated abnormally before or while processing the request."
     check_dt: datetime = utcnow_naive()
-    check_dt_sk_time: datetime = utcnow_aware().astimezone(pytz.timezone("America/Regina"))
+    check_dt_sk_time: datetime = utcnow_aware().astimezone(
+        pytz.timezone("America/Regina")
+    )
     logger.info(f"The time of the error is {check_dt_sk_time} SK time")
     try:
         if is_time_between(
