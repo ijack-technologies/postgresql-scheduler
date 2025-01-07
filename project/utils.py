@@ -182,7 +182,7 @@ def error_wrapper_old(c, func, *args, **kwargs):
     return None
 
 
-def send_twilio_sms(c, sms_phone_list, body):
+def send_twilio_sms(c, sms_phone_list, body) -> str:
     """Send SMS messages with Twilio from +13067003245 or +13069884140"""
     message = ""
     if c.TEST_FUNC:
@@ -209,7 +209,7 @@ def send_twilio_sms(c, sms_phone_list, body):
         )
         logger.info(f"SMS sent to {phone_num}")
 
-    return message
+    return str(message)
 
 
 def send_twilio_phone(c, phone_list, body):
@@ -240,7 +240,7 @@ def send_twilio_phone(c, phone_list, body):
 
 def send_mailgun_email(
     c, text="", html="", emailees_list=None, subject="IJACK Alert", images=None
-):
+) -> requests.models.Response:
     """Send email using Mailgun"""
     # Initialize the return code
     rc = ""
@@ -480,9 +480,9 @@ def is_time_between(
 
 
 def send_error_messages(
-    c: Config = None,
-    err: Exception = None,
-    filename: Path = None,
+    c: Config | None = None,
+    err: Exception | None = None,
+    filename: Path | None = None,
     want_email: bool = True,
     want_sms: bool = False,
 ) -> None:
@@ -493,8 +493,9 @@ def send_error_messages(
 
     # Every morning at 9:01 UTC I get an email that says "server closed the connection unexpectedly.
     # This probably means the server terminated abnormally before or while processing the request."
-    check_dt = utcnow_naive()
-    logger.info(f"The time of the error is {check_dt}")
+    check_dt: datetime = utcnow_naive()
+    check_dt_sk_time: datetime = utcnow_aware().astimezone(pytz.timezone("America/Regina"))
+    logger.info(f"The time of the error is {check_dt_sk_time} SK time")
     try:
         if is_time_between(
             begin_time=dt_time(hour=9, minute=0),
@@ -506,22 +507,24 @@ def send_error_messages(
         logger.exception(
             f"ERROR checking the time of the error... \nError msg: {err_inner}"
         )
-        err += f"\n\nWhile processing the initial error, another error happened while checking the time of the error: \n\n{err_inner}"
+        f"{err}\n\nWhile processing the initial error, another error happened while checking the time of the error: \n\n{err_inner}"
 
-    logger.exception(f"ERROR running program! Closing now... \nError msg: {err}")
+    logger.error(f"ERROR running program! Closing now... \nError msg: {err}")
     alertees_email = ["smccarthy@myijack.com"]
     alertees_sms = ["+14036897250"]
     subject = f"IJACK {filename} ERROR!!!"
-    msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error at {check_dt} UTC time!"
+    msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error at {check_dt_sk_time} SK time!"
     msg_email = (
         msg_sms
         + f"\n\nError type: {type(err).__name__}. Class: {err.__class__.__name__}. \n\nArgs: {err.args}. \n\nError message: {err}"
     )
     msg_email += f"\n\nTraceback: {traceback.format_exc()}"
 
+    message: str = ""
     if want_sms:
         message = send_twilio_sms(c, alertees_sms, msg_sms)
 
+    rc: requests.models.Response | None = None
     if want_email:
         rc = send_mailgun_email(
             c,
