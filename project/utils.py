@@ -171,18 +171,6 @@ def run_query(
     return columns, rows
 
 
-def error_wrapper_old(c, func, *args, **kwargs):
-    """So the loop can continue even if a function fails"""
-
-    try:
-        func(*args, **kwargs)
-    except Exception:
-        logger.exception(f"Problem running function: {func}")
-        # Keep going regardless
-
-    return None
-
-
 def send_twilio_sms(c, sms_phone_list, body) -> MessageInstance:
     """Send SMS messages with Twilio from +13067003245 or +13069884140"""
     message = MagicMock(spec=MessageInstance)
@@ -502,7 +490,7 @@ def send_error_messages(
     logger.error(f"ERROR running program! Closing now... \nError msg: {err}")
     alertees_email = ["smccarthy@myijack.com"]
     alertees_sms = ["+14036897250"]
-    subject = f"IJACK {filename} ERROR!!!"
+    subject = f"{filename} ERROR!"
     msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error at {check_dt_sk_time} SK time!"
     msg_email = (
         msg_sms
