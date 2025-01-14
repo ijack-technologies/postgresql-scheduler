@@ -176,9 +176,16 @@ def run_query(
                     if copy_expert_kwargs:
                         # Insert data into the table using the COPY command
                         if log_query:
-                            sql_string = copy_expert_kwargs.get("sql").as_string(cursor)
+                            try:
+                                sql_string = copy_expert_kwargs.get(
+                                    "sql", "No SQL found"
+                                ).as_string(cursor)
+                            except AttributeError:
+                                sql_string = copy_expert_kwargs.get(
+                                    "sql", "No SQL found"
+                                )
                             logger.info(
-                                f"Running PostgreSQL COPY command with query: {sql_string}"
+                                f"Running PostgreSQL COPY EXPERT command with query: '{sql_string}'"
                             )
                         cursor.copy_expert(**copy_expert_kwargs)
                     elif sql_command:

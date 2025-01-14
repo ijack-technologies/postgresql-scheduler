@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from psycopg2.sql import SQL, Identifier
 
 from project.logger_config import logger
 from project.utils import (
@@ -318,23 +319,27 @@ def get_and_insert_latest_values(
     minutes_taken = round((time.time() - time_start) / 60, 1)
     logger.info(f"{minutes_taken} minutes to create the string buffer of the CSV data.")
 
+    # Copy the string buffer to the AWS PostgreSQL table
+    query = SQL(
+        """
+        COPY {table} ({columns})
+        FROM STDIN
+        WITH (FORMAT 'csv', HEADER false, DELIMITER ',', NULL '', ENCODING 'UTF-8')
+    """
+    ).format(
+        table=Identifier("public", "time_series_locf"),
+        columns=SQL(", ").join([Identifier(c) for c in df.columns]),
+    )
+
     time_start = time.time()
     try:
         run_query(
             sql=None,
             db="timescale",
+            fetchall=False,
             commit=True,
-            # Need to see the errors if they occur!
             raise_error=True,
-            copy_expert_kwargs={
-                "file": sio,
-                # For some reason it doesn't work if you put the schema in the table name
-                "table": "time_series_locf",
-                "sep": ",",
-                "null": "",
-                "size": 8192,
-                "columns": df.columns,
-            },
+            copy_expert_kwargs={"sql": query, "file": sio, "size": 8192},
         )
     except Exception as err:
         if "UniqueViolation" in str(err):
