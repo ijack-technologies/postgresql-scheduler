@@ -38,6 +38,7 @@ from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
+    get_conn,
 )
 
 # Load the .env file
@@ -1481,14 +1482,7 @@ def entrypoint(
     # c = c or Config()
 
     start_time = datetime.now()
-    with psycopg2.connect(
-        host=HOST_IJ,
-        port=int(PORT_IJ),
-        dbname=DB_IJ,
-        user=USER_IJ,
-        password=PASS_IJ,
-        connect_timeout=10,
-    ) as conn:
+    with get_conn(db="aws_rds") as conn:
         # Just print how many parts are in the database before we start
         # We'll re-create this dictionary after new parts have been upserted
         part_id_dict: dict = get_distinct_parts_and_ids(conn=conn)
