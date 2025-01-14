@@ -38,9 +38,8 @@ class TestAll(unittest.TestCase):
         self, mock_exit_if_already_running, mock_time_sleep
     ):
         """Test the main program"""
-        global c
         time_series_mv_refresh.force_refresh_continuous_aggregates(
-            c, after_this_date=datetime(2024, 7, 1)
+            after_this_date=datetime(2024, 7, 1)
         )
 
 

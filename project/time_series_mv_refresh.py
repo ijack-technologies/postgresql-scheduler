@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
 from project.logger_config import logger
 from project.utils import (
@@ -41,12 +42,10 @@ LOGFILE_NAME = "time_series_mv_refresh"
 
 
 def get_latest_timestamp_in_table(
-    c,
     table: str = "time_series_locf",
     raise_error: bool = True,
     threshold: timedelta = None,
     power_unit_str: str = None,
-    conn=None,
 ) -> datetime:
     """Get the most recent timestamp in public.time_series_locf"""
 
@@ -71,9 +70,7 @@ def get_latest_timestamp_in_table(
         # if datetime.today() < datetime(2024, 9, 11):
         #     sql += " and timestamp_utc < '2024-09-10'"
 
-        _, rows = run_query(
-            sql, db="timescale", conn=conn, fetchall=True, raise_error=raise_error
-        )
+        _, rows = run_query(sql, db="timescale", fetchall=True, raise_error=raise_error)
 
         timestamp = rows[0]["timestamp_utc"]
         if timestamp:
@@ -118,7 +115,7 @@ def check_table_timestamps(
     for table in tables:
         try:
             get_latest_timestamp_in_table(
-                c, table=table, raise_error=True, threshold=time_delta, conn=conn
+                table=table, raise_error=True, threshold=time_delta
             )
         except Exception as err:
             filename = Path(__file__).name
@@ -129,7 +126,7 @@ def check_table_timestamps(
     return True
 
 
-def get_gateway_power_unit_dict(c, conn=None) -> dict:
+def get_gateway_power_unit_dict() -> dict:
     """Get the gateway and power unit mapping"""
     SQL_GW_PU = """
         select
@@ -141,15 +138,13 @@ def get_gateway_power_unit_dict(c, conn=None) -> dict:
         where t1.power_unit_str is not null
             and t2.gateway is not null
     """
-    columns, rows = run_query(
-        SQL_GW_PU, db="ijack", conn=conn, fetchall=True, raise_error=True
-    )
+    columns, rows = run_query(SQL_GW_PU, db="ijack", fetchall=True, raise_error=True)
     df = pd.DataFrame(rows, columns=columns)
     dict_ = dict(zip(df["gateway"], df["power_unit_str"]))
     return dict_
 
 
-def get_power_units_in_service(c) -> list:
+def get_power_units_in_service() -> list:
     """Get the gateway and power unit mapping, for power units that are in service"""
     SQL_POWER_UNITS = """
         select 
@@ -169,11 +164,9 @@ def get_power_units_in_service(c) -> list:
 
 
 def get_and_insert_latest_values(
-    c,
     after_this_date: datetime,
     power_unit_str: str,
     gateway_power_unit_dict: dict,
-    conn=None,
 ) -> bool:
     """
     Get the latest values from the "last one carried forward" materialized view,
@@ -202,7 +195,7 @@ def get_and_insert_latest_values(
         SQL_OLD_DATA += f" and power_unit = '{power_unit_str}'"
 
     columns_old, rows_old = run_query(
-        SQL_OLD_DATA, db="timescale", conn=conn, fetchall=True, raise_error=True
+        SQL_OLD_DATA, db="timescale", fetchall=True, raise_error=True
     )
     logger.info("Sleeping for 1 second to allow the server to catch up...")
     time.sleep(1)
@@ -212,17 +205,17 @@ def get_and_insert_latest_values(
     logger.info(
         "Getting new data from the regular time_series table (which contains nulls), to be efficiently inserted into the LOCF table we previously queried above..."
     )
-    SQL_LATEST_DATA = f"""
+    sql_latest_data = f"""
     select *
     from public.time_series
     where timestamp_utc > '{after_this_date_str}'
         and timestamp_utc <= '{max_date_str}'
     """
     if power_unit_str:
-        SQL_LATEST_DATA += f" and power_unit = '{power_unit_str}'"
+        sql_latest_data += f" and power_unit = '{power_unit_str}'"
 
     columns_new, rows_new = run_query(
-        SQL_LATEST_DATA, db="timescale", conn=conn, fetchall=True, raise_error=True
+        sql_latest_data, db="timescale", fetchall=True, raise_error=True
     )
     logger.info("Sleeping for 1 second to allow the server to catch up...")
     time.sleep(1)
@@ -331,10 +324,9 @@ def get_and_insert_latest_values(
             sql=None,
             db="timescale",
             commit=True,
-            conn=conn,
             # Need to see the errors if they occur!
             raise_error=True,
-            copy_from_kwargs={
+            copy_expert_kwargs={
                 "file": sio,
                 # For some reason it doesn't work if you put the schema in the table name
                 "table": "time_series_locf",
@@ -386,8 +378,8 @@ def get_refresh_continuous_aggregate_sql(
 
 
 def force_refresh_continuous_aggregates(
-    c, after_this_date: datetime, views_to_update: dict = None, conn=None
-):
+    after_this_date: datetime, views_to_update: dict | None = None
+) -> bool:
     """Force the continuous aggregates to refresh with the latest data"""
 
     views_to_update = views_to_update or {
@@ -398,43 +390,31 @@ def force_refresh_continuous_aggregates(
         "time_series_mvca_24_hour_interval": timedelta(hours=48),
     }
 
-    if conn:
-        should_close_connection: bool = False
-        isolation_level_before = conn.isolation_level
-    else:
-        conn = get_conn(db="timescale")
-        should_close_connection = True
-        isolation_level_before = None
-
-    # Continuous aggregates cannot be run inside transaction blocks.
-    # Set AUTOCOMMIT so no transaction block is started
-    conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     for view, min_time_delta in views_to_update.items():
         try:
             logger.info(
-                "Force-refreshing continuously-aggregating materialized view '%s'", view
+                "Force-refreshing continuously-aggregating materialized view '%s'",
+                view,
             )
             sql = get_refresh_continuous_aggregate_sql(
                 view, date_begin=after_this_date, min_window=min_time_delta
             )
             # AUTOCOMMIT is set, so commit is irrelevant
-            run_query(sql, db="timescale", commit=False, conn=conn, raise_error=True)
-            time.sleep(0.5)
-        except psycopg2.errors.InvalidParameterValue:
-            logger.exception(
-                "ERROR force-refreshing continuously-aggregating materialized view '%s'",
-                view,
+            run_query(
+                sql,
+                db="timescale",
+                commit=False,
+                raise_error=True,
+                # Continuous aggregates cannot be run inside transaction blocks.
+                # Set AUTOCOMMIT so no transaction block is started
+                isolation_level=ISOLATION_LEVEL_AUTOCOMMIT,
             )
+            time.sleep(0.5)
         except Exception:
             logger.exception(
                 "ERROR force-refreshing continuously-aggregating materialized view '%s'",
                 view,
             )
-
-    if should_close_connection:
-        conn.close()
-    else:
-        conn.set_isolation_level(isolation_level_before)
 
     return True
 
@@ -451,7 +431,6 @@ def ad_hoc_maybe_refresh_continuous_aggs() -> None:
         # Run this with the "real_time_series_mv_refresh.py" module, if you like.
         refresh_all_after_this_date = datetime(2020, 1, 1)
         force_refresh_continuous_aggregates(
-            c,
             after_this_date=refresh_all_after_this_date,
             views_to_update={
                 "time_series_mvca_1_hour_interval": timedelta(hours=2),
@@ -471,24 +450,23 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    conn_ts = get_conn(db="timescale")
-
-    try:
+    with get_conn(db="timescale") as conn_ts:
         # Get the gateway: power unit mapping dictionary, which has all gateway: power unit pairs,
         # even if the power unit is no longer in service with a structure ID.
-        gateway_power_unit_dict: dict = get_gateway_power_unit_dict(c)
+        gateway_power_unit_dict: dict = get_gateway_power_unit_dict()
 
         if by_power_unit:
             # Do it one power unit as a time, instead of all at once in a big DataFrame
             # if datetime.today() < datetime(2024, 9, 11):
             #     power_units_in_service = {"": "200480"}
             # else:
-            power_units_in_service: list = get_power_units_in_service(c)
+            power_units_in_service: list = get_power_units_in_service()
             n_power_units = str(len(power_units_in_service))
         else:
             power_units_in_service = [None]
             n_power_units = "All power units at the same time"
 
+        timestamp = None
         for index, power_unit_str in enumerate(power_units_in_service):
             logger.info(
                 "Power unit %s of %s: %s",
@@ -504,11 +482,9 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
                 # Even if the process below corrects the situation. This ensures
                 # we know about the error even if the process below FAILS!
                 timestamp = get_latest_timestamp_in_table(
-                    c,
                     table="time_series_locf",
                     raise_error=True,
                     power_unit_str=power_unit_str,
-                    conn=conn_ts,
                 )
             except Exception as err:
                 if by_power_unit:
@@ -525,24 +501,20 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
 
             try:
                 get_and_insert_latest_values(
-                    c,
                     after_this_date=timestamp,
                     power_unit_str=power_unit_str,
                     gateway_power_unit_dict=gateway_power_unit_dict,
-                    conn=conn_ts,
                 )
             except psycopg2.errors.UniqueViolation as err:
                 logger.error(err)
                 conn_ts.rollback()
 
         # Force the continuous aggregates to refresh, including the latest data
-        force_refresh_continuous_aggregates(c, after_this_date=timestamp, conn=conn_ts)
+        force_refresh_continuous_aggregates(after_this_date=timestamp)
 
         # Check the table timestamps to see if they're recent.
         # Do this last so the processes above at least get a chance to correct the situation first.
         check_table_timestamps(c, conn=conn_ts)
-    finally:
-        conn_ts.close()
 
     return True
 

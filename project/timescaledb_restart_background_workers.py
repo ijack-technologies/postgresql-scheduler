@@ -15,7 +15,7 @@ from project.utils import (
 LOGFILE_NAME = "timescaledb_restart_background_workers"
 
 
-def restart_background_workers_timescaledb(c) -> bool:
+def restart_background_workers_timescaledb() -> bool:
     """Restart the TimescaleDB background workers"""
 
     SQL = "SELECT _timescaledb_internal.start_background_workers();"
@@ -31,7 +31,7 @@ def main(c: Config) -> bool:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    is_good = restart_background_workers_timescaledb(c)
+    is_good = restart_background_workers_timescaledb()
 
     return is_good
 

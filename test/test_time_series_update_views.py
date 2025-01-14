@@ -66,7 +66,7 @@ class TestAll(unittest.TestCase):
             ],
         )
 
-        timestamp = get_latest_timestamp_in_table(c)
+        timestamp = get_latest_timestamp_in_table()
 
         assert isinstance(timestamp, datetime)
         assert timestamp < utcnow_naive()
@@ -87,7 +87,7 @@ class TestAll(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            _: datetime = get_latest_timestamp_in_table(c)
+            _: datetime = get_latest_timestamp_in_table()
 
         # The function should have been called 8 times
         self.assertEqual(mock_run_query.call_count, 8)
@@ -108,7 +108,7 @@ class TestAll(unittest.TestCase):
 
         with self.assertRaises(Exception) as error:
             get_latest_timestamp_in_table(
-                c, table="time_series_locf_copy", threshold=timedelta(hours=1)
+                table="time_series_locf_copy", threshold=timedelta(hours=1)
             )
 
         the_exception = error.exception
@@ -194,11 +194,10 @@ class TestAll(unittest.TestCase):
         global c
 
         try:
-            gateway_power_unit_dict: dict = get_gateway_power_unit_dict(c)
-            power_units_in_service: list = get_power_units_in_service(c)
+            gateway_power_unit_dict: dict = get_gateway_power_unit_dict()
+            power_units_in_service: list = get_power_units_in_service()
             power_unit_str: str = power_units_in_service[0]
             boolean = get_and_insert_latest_values(
-                c,
                 after_this_date=utcnow_naive(),
                 power_unit_str=power_unit_str,
                 gateway_power_unit_dict=gateway_power_unit_dict,
@@ -216,9 +215,8 @@ class TestAll(unittest.TestCase):
         mock_run_query,
     ):
         """Test the force_refresh_continuous_aggregates() function"""
-        global c
 
-        boolean = force_refresh_continuous_aggregates(c, after_this_date=utcnow_naive())
+        boolean = force_refresh_continuous_aggregates(after_this_date=utcnow_naive())
         assert boolean is True
         assert mock_run_query.call_count == 5
 

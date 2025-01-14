@@ -9,7 +9,7 @@ import unittest
 from datetime import date
 from pathlib import Path
 from typing import OrderedDict, Tuple
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # from psycopg2.extras import DictCursor
 from psycopg2.sql import SQL, Literal
@@ -71,9 +71,7 @@ class TestAll(unittest.TestCase):
             c, power_unit_id, power_unit_shadow, structure, aws_thing
         )
 
-        _, rows = run_query(
-            sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
-        )
+        _, rows = run_query(sql_get_info_str, db="ijack", fetchall=True, commit=False)
         mock_run_query.return_value = (["col1", "col2"], rows)
 
         # Run the main function we're testing
@@ -385,8 +383,7 @@ class TestAll(unittest.TestCase):
         aws_thing = "lambda_access"
         gateway_id = 93
 
-        conn = get_conn(db="ijack")
-        try:
+        with get_conn(db="aws_rds"):
             # Update the record
             os_pretty_name_updated = "some pretty OS"
             sql = f"""
@@ -396,13 +393,11 @@ class TestAll(unittest.TestCase):
                 ON CONFLICT (gateway_id) DO UPDATE
                     set os_name = null, os_pretty_name = '{os_pretty_name_updated}'
             """
-            run_query(sql, db="ijack", fetchall=False, conn=conn, commit=True)
+            run_query(sql, db="ijack", fetchall=False, commit=True)
 
             # Check the record
             sql = f"select os_name, os_pretty_name from public.gw_info where gateway_id = {gateway_id}"
-            columns, rows = run_query(
-                sql, db="ijack", fetchall=True, conn=conn, commit=False
-            )
+            columns, rows = run_query(sql, db="ijack", fetchall=True, commit=False)
             self.assertEqual(columns, ["os_name", "os_pretty_name"])
             self.assertIsNone(rows[0]["os_name"])
             self.assertEqual(rows[0]["os_pretty_name"], os_pretty_name_updated)
@@ -454,16 +449,14 @@ class TestAll(unittest.TestCase):
             }
 
             bool_return = update_info_from_shadows.upsert_gw_info(
-                c, gateway_id, aws_thing, shadow, conn
+                c, gateway_id, aws_thing, shadow
             )
 
             self.assertTrue(bool_return)
 
             # Check the record
             sql = f"select os_name, os_pretty_name from public.gw_info where gateway_id = {gateway_id}"
-            columns, rows = run_query(
-                sql, db="ijack", fetchall=True, conn=conn, commit=False
-            )
+            columns, rows = run_query(sql, db="ijack", fetchall=True, commit=False)
             self.assertTrue(rows)
             self.assertEqual(rows[0]["os_name"], os_wanted)
 
@@ -471,10 +464,6 @@ class TestAll(unittest.TestCase):
             os_pretty_name_in_db = rows[0]["os_pretty_name"]
             self.assertNotEqual(os_pretty_name_in_db, os_pretty_name_not_updated)
             self.assertEqual(os_pretty_name_in_db, os_pretty_name_updated)
-        except Exception:
-            raise
-        finally:
-            conn.close()
 
     def test_upsert_gw_info_no_aws_thing_no_gateway_id(self):
         """Test the 'upsert_gw_info' function"""
@@ -482,12 +471,12 @@ class TestAll(unittest.TestCase):
         c.TEST_FUNC = False
 
         bool_return = update_info_from_shadows.upsert_gw_info(
-            c, gateway_id=None, aws_thing="something", shadow={}, conn=MagicMock()
+            c, gateway_id=None, aws_thing="something", shadow={}
         )
         self.assertFalse(bool_return)
 
         bool_return = update_info_from_shadows.upsert_gw_info(
-            c, gateway_id="something", aws_thing=None, shadow={}, conn=MagicMock()
+            c, gateway_id="something", aws_thing=None, shadow={}
         )
         self.assertFalse(bool_return)
 
@@ -541,10 +530,9 @@ class TestAll(unittest.TestCase):
                 commit=True,
             )
 
-        conn = get_conn(db="ijack")
         try:
             bool_return = update_info_from_shadows.record_can_bus_cellular_test(
-                c, gateway_id_lambda_access, cellular_good=False, can_bus_good=False
+                gateway_id_lambda_access, cellular_good=False, can_bus_good=False
             )
             can_bus, cellular = test_gw_table(gateway_id_lambda_access)
             self.assertFalse(can_bus)
@@ -563,7 +551,7 @@ class TestAll(unittest.TestCase):
             self.assertIsNone(network_id)
 
             bool_return = update_info_from_shadows.record_can_bus_cellular_test(
-                c, gateway_id_lambda_access, cellular_good=True, can_bus_good=True
+                gateway_id_lambda_access, cellular_good=True, can_bus_good=True
             )
             can_bus, cellular = test_gw_table(gateway_id_lambda_access)
             self.assertTrue(can_bus)
@@ -579,7 +567,6 @@ class TestAll(unittest.TestCase):
 
         finally:
             delete_test_insert(gateway_id_lambda_access)
-            conn.close()
 
         self.assertTrue(bool_return)
 

@@ -22,7 +22,7 @@ LOGFILE_NAME = "time_series_aggregate_calcs"
 
 
 def get_time_series_data(
-    c, power_unit_str: str, start_date_str: str, end_date_str: str
+    power_unit_str: str, start_date_str: str, end_date_str: str
 ) -> pd.DataFrame:
     """
     Get the time series data for a given power unit
@@ -59,7 +59,7 @@ def get_time_series_data(
     return df
 
 
-def get_distinct_months_for_power_unit(c, power_unit_str: str) -> list:
+def get_distinct_months_for_power_unit(power_unit_str: str) -> list:
     """Get the distinct months for a given power unit"""
     sql = f"""
         select
@@ -76,7 +76,7 @@ def get_distinct_months_for_power_unit(c, power_unit_str: str) -> list:
 
 
 def upsert_time_series_agg(
-    c, power_unit_str: str, month_date_str: str, df_month_date: pd.DataFrame
+    power_unit_str: str, month_date_str: str, df_month_date: pd.DataFrame
 ) -> bool:
     """
     Upsert the time series aggregate data for a given power unit
@@ -160,7 +160,7 @@ def main(c: Config) -> bool:
             # If in production, only recalculate the latest month
             month_dates: list = [date.today().replace(day=1)]
         else:
-            month_dates: list = get_distinct_months_for_power_unit(c, power_unit_str)
+            month_dates: list = get_distinct_months_for_power_unit(power_unit_str)
 
         num_months = len(month_dates)
         for index, month_date in enumerate(month_dates):
@@ -176,7 +176,6 @@ def main(c: Config) -> bool:
             )
 
             df_month_date: pd.DataFrame = get_time_series_data(
-                c,
                 power_unit_str=power_unit_str,
                 start_date_str=month_date_str,
                 end_date_str=next_month_date_str,
@@ -190,7 +189,6 @@ def main(c: Config) -> bool:
 
             # Do an upsert to update the data in the database
             upsert_time_series_agg(
-                c=c,
                 power_unit_str=power_unit_str,
                 month_date_str=month_date_str,
                 df_month_date=df_month_date,

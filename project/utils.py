@@ -7,18 +7,20 @@ import subprocess
 import sys
 import time
 import traceback
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from datetime import time as dt_time
 from pathlib import Path
 from subprocess import PIPE, STDOUT
-from typing import List, Tuple
+from typing import Generator, List, Tuple
 from unittest.mock import MagicMock
+
 import boto3
 import pandas as pd
 import psycopg2
 import pytz
 import requests
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import DictCursor, RealDictCursor
 from twilio.rest import Client
 from twilio.rest.api.v2010.account.message import MessageInstance
 
@@ -77,10 +79,16 @@ def utcfromtimestamp_naive(timestamp: float) -> datetime:
     return utcfromtimestamp_aware(timestamp).replace(tzinfo=None)
 
 
-def get_conn(db="ijack", cursor_factory=None):
+@contextmanager
+def get_conn(
+    db: str = "aws_rds", options_dict: dict | None = None, cursor_factory=None
+) -> Generator[psycopg2.extensions.connection, None, None]:
     """Get connection to IJACK database"""
 
-    if db == "ijack":
+    if db not in ("ijack", "aws_rds", "timescale"):
+        raise ValueError("db must be one of 'ijack', 'aws_rds', or 'timescale'")
+
+    if db in ("ijack", "aws_rds"):
         host = os.getenv("HOST_IJ")
         port = int(os.getenv("PORT_IJ"))
         dbname = os.getenv("DB_IJ")
@@ -92,6 +100,27 @@ def get_conn(db="ijack", cursor_factory=None):
         dbname = os.getenv("DB_TS")
         user = os.getenv("USER_TS")
         password = os.getenv("PASS_TS")
+    elif db == "timescale_old":
+        host = os.getenv("HOST_TS_OLD")
+        port = int(os.getenv("PORT_TS_OLD"))
+        dbname = os.getenv("DB_TS_OLD")
+        user = os.getenv("USER_TS_OLD")
+        password = os.getenv("PASS_TS_OLD")
+
+    options_dict = options_dict or {
+        "connect_timeout": 5,
+        # whether client-side TCP keepalives are used
+        "keepalives": 1,
+        # seconds of inactivity after which TCP should send a keepalive message to the server
+        "keepalives_idle": 20,
+        # seconds after which a TCP keepalive message that is not acknowledged by the server should be retransmitted
+        "keepalives_interval": 10,
+        # TCP keepalives that can be lost before the client's connection to the server is considered dead
+        "keepalives_count": 5,
+        # milliseconds that transmitted data may remain unacknowledged before a connection is forcibly closed
+        "tcp_user_timeout": 0,
+    }
+    options_dict["cursor_factory"] = cursor_factory or DictCursor
 
     conn = psycopg2.connect(
         host=host,
@@ -99,74 +128,91 @@ def get_conn(db="ijack", cursor_factory=None):
         dbname=dbname,
         user=user,
         password=password,
-        connect_timeout=5,
-        cursor_factory=cursor_factory,
-        keepalives=1,  # is default
-        keepalives_idle=30,
-        keepalives_interval=10,
-        keepalives_count=5,
+        **options_dict,
     )
 
-    return conn
+    try:
+        yield conn
+    except Exception:
+        logger.exception("ERROR with database connection!")
+        conn.rollback()
+    finally:
+        # Ensure that the connection is closed after usage
+        conn.close()
 
 
 def run_query(
     sql: str = None,
-    db: str = "ijack",
-    fetchall: bool = False,
+    db: str = "aws_rds",
+    fetchall: bool = True,
     commit: bool = False,
-    conn=None,
-    execute: bool = True,
-    raise_error: bool = False,
-    values_dict: dict = None,
+    raise_error: bool = True,
+    data: dict | tuple = None,
     log_query: bool = True,
-    copy_from_kwargs: dict = None,
-    # No need to convert to list of dicts, since we're using RealDictCursor
-    # as_list_of_dicts: bool = False,
-) -> Tuple[List, List]:
-    """Run and time the SQL query"""
+    # For super-efficient bulk inserts
+    copy_expert_kwargs: dict = None,
+    options_dict: dict = None,
+    cursor_factory: int = None,
+    isolation_level: int | None = None,
+    sql_commands_list: list = None,
+) -> Tuple[list, list]:
+    """Run the SQL query and return the results as a tuple of columns and rows"""
 
-    is_close_conn = False
-    if conn is None:
-        conn = get_conn(db)
-        is_close_conn = True
+    # Initialize the variables
+    columns, rows = [], []
+    options_dict = options_dict or {}
+    cursor_factory = cursor_factory or RealDictCursor
 
-    columns = None
-    rows = None
+    if not sql_commands_list:
+        sql_commands_list = [sql]
 
-    # with conn.cursor(cursor_factory=DictCursor) as cursor:
-    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-        if log_query:
-            logger.info("Running query now... SQL to run: \n%s", sql)
-        time_start = time.time()
-        if execute:
-            try:
-                if copy_from_kwargs:
-                    cursor.copy_from(**copy_from_kwargs)
+    time_start = time.time()
+    with get_conn(db=db, cursor_factory=cursor_factory) as conn:
+        if isolation_level is not None and isinstance(isolation_level, int):
+            conn.set_isolation_level(isolation_level)
+        with conn.cursor(cursor_factory=cursor_factory) as cursor:
+            for sql_command in sql_commands_list:
+                try:
+                    if copy_expert_kwargs:
+                        # Insert data into the table using the COPY command
+                        if log_query:
+                            sql_string = copy_expert_kwargs.get("sql").as_string(cursor)
+                            logger.info(
+                                f"Running PostgreSQL COPY command with query: {sql_string}"
+                            )
+                        cursor.copy_expert(**copy_expert_kwargs)
+                    elif sql_command:
+                        if log_query:
+                            logger.info(
+                                f"Running query now... SQL to run: {sql_command}"
+                            )
+                        cursor.execute(sql_command, data)
+                except psycopg2.Error as err:
+                    logger.info(
+                        f"ERROR executing SQL: '{sql_command}'\n\n Error: {err}"
+                    )
+                    if raise_error:
+                        raise
+                    conn.rollback()
                 else:
-                    cursor.execute(sql, values_dict)
-            except Exception as err:
-                logger.error(f"ERROR executing SQL: '{sql}'\n\n Error: {err}")
-                if raise_error:
-                    raise
-            else:
-                if commit:
-                    conn.commit()
-                if fetchall:
-                    columns = [str.lower(x[0]) for x in cursor.description]
-                    rows: list = cursor.fetchall()
-                    # No need to convert to list of dicts, since we're using RealDictCursor
-                    # if as_list_of_dicts:
-                    #     rows: list = get_list_of_dicts(columns, rows)
+                    if commit:
+                        # Is commit necessary with auto-commit? Doesn't seem to hurt, anyway...
+                        conn.commit()
+                    if fetchall:
+                        description = getattr(cursor, "description", None)
+                        if not description:
+                            logger.info("No data to fetch from cursor")
+                        else:
+                            columns = [str.lower(x[0]) for x in description]
+                            rows: list = cursor.fetchall()
+                            # return columns, rows
+                            # Make the DataFrame
+                            # df = pd.DataFrame(rows, columns=columns)
 
     time_finish = time.time()
     execution_time = round(time_finish - time_start, 1)
-    if execution_time > 10:
+    if execution_time > 1:
         logger.info(f"Time to execute query: {execution_time} seconds")
-
-    if is_close_conn:
-        conn.close()
-        del conn
 
     return columns, rows
 
@@ -552,7 +598,7 @@ def error_wrapper(filename: str):
     return wrapper_outer
 
 
-def get_all_power_units_config_metrics(c) -> list:
+def get_all_power_units_config_metrics() -> list:
     """
     Get all power units from database, and all the fields we're going
     to update in the AWS IoT device shadow with C__{METRIC}
@@ -748,7 +794,7 @@ def seconds_since_last_any_msg(c, shadow) -> Tuple[float, str, str]:
     return seconds_elapsed_total, msg, key_latest
 
 
-def get_power_units_and_unit_types(conn=None) -> dict:
+def get_power_units_and_unit_types() -> dict:
     """Get the power units and unit types mapping"""
     sql = """
     SELECT
@@ -774,7 +820,7 @@ def get_power_units_and_unit_types(conn=None) -> dict:
             and gateway_id is not null
     """
     columns, rows = run_query(
-        sql, db="ijack", conn=conn, fetchall=True, raise_error=True, log_query=False
+        sql, db="ijack", fetchall=True, raise_error=True, log_query=False
     )
     df = pd.DataFrame(rows, columns=columns)
     dict_ = dict(zip(df["power_unit_str"], df["is_egas_type"]))

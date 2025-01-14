@@ -109,7 +109,7 @@ def main(c: Config) -> None:
 
     # Get all gateways from database, and all the fields we're going
     # to update in the AWS IoT device shadow with C__{METRIC}
-    rows: list = get_all_power_units_config_metrics(c)
+    rows: list = get_all_power_units_config_metrics()
 
     # Dict to which we'll add aws_thing: shadow pairs,
     # which we'll then update efficiently in a thread pool

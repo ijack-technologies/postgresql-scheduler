@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Tuple
 
 import pytz
-from psycopg2 import connect as psycopg2_connect
 
 from project.logger_config import logger
 from project.utils import (
@@ -150,7 +149,6 @@ def update_structures_table_gps(
     gps_lon_old: float,
     structure: int,
     aws_thing: str,
-    # for testing
     execute: bool = True,
     commit: bool = False,
 ) -> None:
@@ -160,9 +158,7 @@ def update_structures_table_gps(
     sql_get_info_str = sql_get_info(
         c, power_unit_id, power_unit_shadow_str, structure, aws_thing
     )
-    _, rows = run_query(
-        sql_get_info_str, db="ijack", execute=True, fetchall=True, commit=False
-    )
+    _, rows = run_query(sql_get_info_str, db="ijack", fetchall=True, commit=False)
     dict_ = rows[0]
 
     sql_update = get_sql_update(
@@ -190,7 +186,8 @@ def update_structures_table_gps(
 
     # Don't run this automatically since it undoes my manual updates with the
     # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
-    run_query(sql_update, db="ijack", fetchall=False, execute=execute, commit=commit)
+    if execute:
+        run_query(sql_update, db="ijack", fetchall=False, commit=commit)
 
     return None
 
@@ -281,7 +278,7 @@ def compare_shadow_and_db_gps(
     return None
 
 
-def is_power_unit_already_in_use(c, power_unit_id: int) -> Tuple[bool, str]:
+def is_power_unit_already_in_use(power_unit_id: int | None) -> Tuple[bool, str]:
     """Check if the power unit is already assigned to another gateway"""
     if not isinstance(power_unit_id, int):
         error_msg = f"power_unit_id '{power_unit_id}' is not an integer so can't check if a gateway is already using it..."
@@ -319,7 +316,7 @@ def already_emailed_recently(
     """
     _, rows = run_query(SQL, db="ijack", fetchall=True)
 
-    if isinstance(rows, list) and len(rows) > 0:
+    if isinstance(rows, list) and len(rows) > 0:  # type: ignore
         count = rows[0]["count"]
         if count > 0:
             logger.warning(
@@ -361,12 +358,12 @@ def set_power_unit_to_gateway(c, power_unit_id_shadow: int, aws_thing: str) -> b
         set power_unit_id = {power_unit_id_shadow}
         where aws_thing = '{aws_thing}'
     """
-    _, rows = run_query(SQL, db="ijack", fetchall=False, commit=True)
+    run_query(SQL, db="ijack", fetchall=False, commit=True)
 
     return True
 
 
-def get_gateway_records(c, conn) -> list:
+def get_gateway_records() -> list:
     """Get gateway records"""
     sql_gw = """
         select
@@ -402,7 +399,7 @@ def get_gateway_records(c, conn) -> list:
             t1.aws_thing,
             t1.id
     """
-    _, gw_rows = run_query(sql_gw, db="ijack", fetchall=True, conn=conn)
+    _, gw_rows = run_query(sql_gw, db="ijack", fetchall=True)
     return gw_rows
 
 
@@ -414,7 +411,7 @@ def get_gateway_records(c, conn) -> list:
 #             power_unit
 #         from public.power_units
 #     """
-#     _, pu_rows = run_query(sql=sql_pu, db="ijack", fetchall=True, conn=conn)
+#     _, pu_rows = run_query(sql=sql_pu, db="ijack", fetchall=True)
 #     return pu_rows
 
 
@@ -442,7 +439,7 @@ def get_gateway_records(c, conn) -> list:
 #         where t1.power_unit_id is not null
 #     """
 #     _, structure_rows = run_query(
-#         sql_structures, db="ijack", fetchall=True, conn=conn
+#         sql_structures, db="ijack", fetchall=True
 #     )
 #     return structure_rows
 
@@ -554,7 +551,6 @@ def upsert_gw_info(
     gateway_id: int,
     aws_thing: str,
     shadow: dict,
-    conn: psycopg2_connect,
 ) -> bool:
     """Update (or insert) the gateway-reported info from the shadow into the RDS database"""
 
@@ -679,11 +675,10 @@ def upsert_gw_info(
         sql,
         db="ijack",
         fetchall=False,
+        commit=True,
+        data=values_dict,
         # Need a new connection each time, in case the transaction fails?
         # Or just raise_error=True?
-        conn=conn,
-        commit=True,
-        values_dict=values_dict,
         raise_error=True,
     )
 
@@ -691,7 +686,7 @@ def upsert_gw_info(
 
 
 def record_can_bus_cellular_test(
-    c: Config, gateway_id: int, cellular_good: bool, can_bus_good: bool
+    gateway_id: int, cellular_good: bool, can_bus_good: bool
 ) -> bool:
     """Record that the CAN bus and cellular have been tested and are working, or not!"""
 
@@ -738,12 +733,9 @@ def main(c: Config, commit: bool = False) -> None:
     exit_if_already_running(c, Path(__file__).name)
 
     # Get DB connection since we're running several queries (might as well have just one connection)
-    conn = get_conn(db="ijack")
-
-    time_start = time.time()
-    # Start a try/except/finally block so we close the database connection
-    try:
-        gw_rows: list = get_gateway_records(c, conn)
+    with get_conn(db="aws_rds"):
+        time_start = time.time()
+        gw_rows: list = get_gateway_records()
         # pu_rows: list = get_power_unit_records(c, conn)
         pu_dict = {row["power_unit_str"]: row["power_unit_id"] for row in gw_rows}
         # structure_rows: list = get_structure_records(c, conn)
@@ -798,7 +790,7 @@ def main(c: Config, commit: bool = False) -> None:
                 continue
 
             # Update the public.gw_info table using info reported in the shadow
-            upsert_gw_info(c, gateway_id, aws_thing, shadow, conn)
+            upsert_gw_info(c, gateway_id, aws_thing, shadow)
 
             reported = shadow.get("state", {}).get("reported", {})
             latitude_shadow = reported.get("LATITUDE", None)
@@ -859,7 +851,7 @@ def main(c: Config, commit: bool = False) -> None:
             gateway_already_has_power_unit = bool(power_unit_id_gw)
 
             is_power_unit_in_use, gateway_already_linked = is_power_unit_already_in_use(
-                c, power_unit_id_shadow
+                power_unit_id_shadow
             )
             if is_power_unit_in_use:
                 if already_emailed_recently(
@@ -938,7 +930,7 @@ def main(c: Config, commit: bool = False) -> None:
                 html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
 
                 record_can_bus_cellular_test(
-                    c, gateway_id, cellular_good=True, can_bus_good=True
+                    gateway_id, cellular_good=True, can_bus_good=True
                 )
 
             # Add HTML link to clear the power unit info from the gateway's shadow
@@ -990,16 +982,12 @@ def main(c: Config, commit: bool = False) -> None:
                 c, text="", html=html, emailees_list=emailees_list, subject=subject
             )
 
-        time_finish = time.time()
-        logger.info(
-            f"Time to update all gateways to their reported power units: {round(time_finish - time_start)} seconds"
-        )
+            time_finish = time.time()
+            logger.info(
+                f"Time to update all gateways to their reported power units: {round(time_finish - time_start)} seconds"
+            )
 
-        del client_iot
-    except Exception:
-        raise
-    finally:
-        conn.close()
+            del client_iot
 
     return None
 
