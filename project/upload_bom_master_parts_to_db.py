@@ -586,10 +586,10 @@ def deleted_unused_finished_goods(finished_goods_df: pd.DataFrame, conn) -> None
             db_table_name = f"{worksheet}_part_rel"
             # Raise an error if the part_id record is null
             if rel_df_new["part_id"].isnull().any():
-                raise ValueError(
-                    f"Error: Part ID is null in the '{db_table_name}' table!"
-                )
-
+                null_records = rel_df_new[rel_df_new["part_id"].isnull()]
+                msg = f"Error: Part ID is null in some records in the '{db_table_name}' table! \n{null_records.head()}"
+                logger.critical(msg)
+                raise ValueError(msg)
             unique_parts_new = rel_df_new["part_id"].drop_duplicates().to_list()
             # Convert the list of IDs to a comma-separated string
             unique_parts_str: str = ",".join(str(id) for id in unique_parts_new)
@@ -1549,21 +1549,22 @@ def entrypoint(
 
         #     parts_df_no_newline: pd.DataFrame = check_for_newline_chars(parts_table_df)
 
+        # Upload all parts to database 'parts' table.
+        update_parts_table(new_parts_df=parts_df_no_newline, conn=conn)
+
+        # Re-create the part_id_dict after NEW parts have been upserted
+        part_id_dict: dict = get_distinct_parts_and_ids(conn=conn)
+
         # Use this to manually search for parts, to see if they're related to a finished good
         finished_goods_df: pd.DataFrame = make_finished_goods_dataframe(
             finished_goods_dict, part_id_dict
         )
         logger.info(finished_goods_df.head())
 
+        # Do this AFTER uploading the parts, so we can get the NEW part IDs first
         deleted_unused_finished_goods(finished_goods_df=finished_goods_df, conn=conn)
 
         delete_and_mark_unused_parts(new_parts_df=parts_df_no_newline, conn=conn)
-
-        # Upload all parts to database 'parts' table.
-        update_parts_table(new_parts_df=parts_df_no_newline, conn=conn)
-
-        # Re-create the part_id_dict after new parts have been upserted
-        part_id_dict: dict = get_distinct_parts_and_ids(conn=conn)
 
         # Now that the parts are uploaded, get their part IDs and upload the part_num/pump_top_id pairs
         # for preventative maintenance
