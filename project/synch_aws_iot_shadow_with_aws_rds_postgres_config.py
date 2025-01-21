@@ -98,15 +98,16 @@ def get_all_power_units_config_metrics() -> list:
 
     # These are all the metrics that will be put in the AWS IoT device shadow as "C__{METRIC}"
     SQL = """
-        with modbus as (           
+        with modbus as (
             select 
 				power_unit_id,
                 STRING_AGG(
                     CONCAT(ip_address, '>', subnet, '>', gateway),
                     ','
-                ) as modbus_networks
+                ) as modbus_networks,
+                never_default as modbus_never_default
             from power_units_modbus_networks
-            group by power_unit_id
+            group by power_unit_id, never_default
         ),
         fixed_ip as (
             select 
@@ -114,9 +115,10 @@ def get_all_power_units_config_metrics() -> list:
                 STRING_AGG(
                     CONCAT(ip_address, '>', subnet, '>', gateway),
                     ','
-                ) as fixed_ip_networks
+                ) as fixed_ip_networks,
+                never_default as fixed_ip_never_default
             from power_units_fixed_ip_networks
-            group by power_unit_id
+            group by power_unit_id, never_default
         )
         select gw.aws_thing, 
             gw.gateway, 
@@ -158,7 +160,9 @@ def get_all_power_units_config_metrics() -> list:
             pu.stboxf,
             pu.hyd_temp,
             modbus.modbus_networks,
-            fixed_ip.fixed_ip_networks
+            modbus.modbus_never_default,
+            fixed_ip.fixed_ip_networks,
+            fixed_ip.fixed_ip_never_default
         FROM gw gw
         LEFT JOIN power_units pu ON gw.power_unit_id = pu.id
         LEFT JOIN structures str ON pu.id = str.power_unit_id
