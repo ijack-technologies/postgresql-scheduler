@@ -29,7 +29,6 @@ class TestAll(unittest.TestCase):
         c.DEV_TEST_PRD = "development"
         # This c.TEST_FUNC just disables SMS, email, and phone call alerts
         c.TEST_FUNC = True
-        LOGFILE_NAME = "test_synch_aws_iot_shadow_with_aws_rds_postgres_config"
 
         synch_aws_iot_shadow_with_aws_rds_postgres_config.main(c)
 

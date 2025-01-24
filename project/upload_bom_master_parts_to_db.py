@@ -13,7 +13,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -881,6 +881,17 @@ def add_unique_finished_good(db_table_name: str, unique_name: str, cursor) -> in
     return id
 
 
+def clean_part_number(part_num: Union[int, float, str]) -> str:
+    """
+    Clean up part numbers by removing leading/trailing whitespace and converting to string,
+    and removing trailing .0 while preserving significant digits
+    """
+    if isinstance(part_num, (int, float)):
+        # Removes trailing .0 while preserving significant digits
+        return f"{part_num:g}"
+    return str(part_num).strip()
+
+
 def go_through_all_sheets(
     sheets_w_part_nums: dict, wb: Workbook, cad_per_usd: float
 ) -> Tuple[List[dict], dict]:
@@ -995,7 +1006,7 @@ def go_through_all_sheets(
                 part_num = ws.cell(row_num, part_num_col).value
                 if part_num is None:
                     continue
-                part_num = str(part_num).strip().rstrip('.0')
+                part_num = clean_part_number(part_num)
                 description = ws.cell(row_num, description_col).value
                 msrp_mult_cad = ws.cell(row_num, msrp_mult_cad_col).value
                 transfer_mult_cad_dealer = ws.cell(
@@ -1062,7 +1073,7 @@ def go_through_all_sheets(
                     d = {
                         "worksheet": ws_name,
                         "ws_row": row_num,
-                        "part_num": str(part_num).strip().rstrip('.0'),
+                        "part_num": clean_part_number(part_num),
                         "description": description,
                         "msrp_mult_cad": float(msrp_mult_cad),
                         "transfer_mult_cad_dealer": float(transfer_mult_cad_dealer),
@@ -1098,7 +1109,7 @@ def go_through_all_sheets(
                         if unique_name is None:
                             # No part number in row 1 of this column, so move on to the next column
                             continue
-                        unique_name = str(unique_name).strip().rstrip('.0')
+                        unique_name = str(unique_name).strip().rstrip(".0")
                         if len(unique_name) == 0 or unique_name in (" ", "blank"):
                             continue
                         # Get the quantity for this part row and column
@@ -1120,7 +1131,7 @@ def go_through_all_sheets(
                         # Store the values from this row in a dictionary for relational many-to-many table upload
                         d2 = dict(
                             finished_good_name=unique_name,
-                            part_num=str(part_num).strip().rstrip('.0'),
+                            part_num=clean_part_number(part_num),
                             quantity=quantity,
                         )
                         finished_goods_dict[db_table_name].append(d2)
