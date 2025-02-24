@@ -25,12 +25,13 @@ services:
         # condition: on-failure
         condition: any
       placement: 
-        constraints: 
+        constraints:
+          - node.platform.os == linux
           # These jobs take some time, and they're not critical,
           # so we don't want them on the manager node.
           # - node.role != manager
           # "Backup server" (which is a manager as well)
-          - node.id == n6ft9t731ty64r28muac1540j          
+          # - node.id == n6ft9t731ty64r28muac1540j          
       resources:
         limits:
           # The container can use up to X% of a single CPU
