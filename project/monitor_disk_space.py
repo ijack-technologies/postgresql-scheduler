@@ -153,7 +153,7 @@ def send_email_alert(c: Config, disk_info: list, critical_filesystems: list) -> 
 
 
 @error_wrapper(filename=Path(__file__).name)
-def monitor_disk_space_main(c: Config) -> None:
+def monitor_disk_space_main(c: Config, threshold: int = 90) -> None:
     """
     Main function to check disk space and send alerts if needed.
 
@@ -166,11 +166,7 @@ def monitor_disk_space_main(c: Config) -> None:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    # Read configuration from config object
     try:
-        # Get disk space threshold from config or use default
-        threshold = c.get("monitoring", "disk_space_threshold", 90)
-
         # Check if we're above the threshold
         alert_needed, disk_info, critical_filesystems = check_disk_space(
             threshold_percentage=threshold
