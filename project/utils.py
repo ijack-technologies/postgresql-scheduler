@@ -85,9 +85,6 @@ def get_conn(
 ) -> Generator[psycopg2.extensions.connection, None, None]:
     """Get connection to IJACK database"""
 
-    if db not in ("ijack", "aws_rds", "timescale"):
-        raise ValueError("db must be one of 'ijack', 'aws_rds', or 'timescale'")
-
     if db in ("ijack", "aws_rds"):
         host = os.getenv("HOST_IJ")
         port = int(os.getenv("PORT_IJ"))
@@ -106,6 +103,8 @@ def get_conn(
         dbname = os.getenv("DB_TS_OLD")
         user = os.getenv("USER_TS_OLD")
         password = os.getenv("PASS_TS_OLD")
+    else:
+        raise ValueError("db must be one of 'ijack', 'aws_rds', or 'timescale'")
 
     options_dict = options_dict or {
         "connect_timeout": 5,

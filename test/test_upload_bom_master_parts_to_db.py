@@ -26,6 +26,8 @@ class TestCleanPartNumber(unittest.TestCase):
         self.assertEqual(clean_part_number("1.2e5"), "1.2e5")
 
     def test_strings(self):
+        self.assertEqual(clean_part_number("070-0470"), "070-0470")
+        self.assertEqual(clean_part_number("430-1418r0"), "430-1418r0")
         self.assertEqual(clean_part_number("123"), "123")
         self.assertEqual(clean_part_number("007"), "007")
         self.assertEqual(clean_part_number(" 123 "), "123")

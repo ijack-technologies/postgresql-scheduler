@@ -4,7 +4,7 @@
     "/usr/local/lib/python3.11/site-packages",
   ],
   "files.eol": "\n",
-  "python.languageServer": "Pylance",
+  "python.languageServer": "Default",
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": [
