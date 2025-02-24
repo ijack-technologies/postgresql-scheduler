@@ -163,7 +163,7 @@ def send_email_alert(c: Config, disk_info: list, critical_filesystems: list) -> 
 
 
 @error_wrapper(filename=Path(__file__).name)
-def monitor_disk_space_main(c: Config, threshold: int = 90) -> None:
+def monitor_disk_space_main(c: Config, threshold: int = 70) -> None:
     """
     Main function to check disk space and send alerts if needed.
 
