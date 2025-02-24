@@ -57,7 +57,7 @@ RUN /venv/bin/poetry config virtualenvs.create false && \
 # ENV PATH="/project/node_modules/.bin:$PATH"
 ENV PATH="/venv/bin:$PATH"
 
-COPY .env entrypoint.sh ./
+COPY .env ./
 # Copy the project files into the container, in the /project workdir
 COPY project ./
 
@@ -103,7 +103,7 @@ WORKDIR /project
 
 # Make the logs directory writable by the non-root user
 RUN mkdir -p /project/logs && \
-    # chmod 777 /project/logs
+    chmod 755 /project/logs && \
     chown -R $USER_UID:$USER_GID /project && \
     echo "Main directory permissions: $(ls -la /project)"
 
