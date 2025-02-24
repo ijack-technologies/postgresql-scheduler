@@ -121,4 +121,4 @@ RUN echo PATH = $PATH
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /$USERNAME
 
-CMD ["/venv/bin/python3", "/project/main_scheduler.py"]
+# CMD ["/venv/bin/python3", "/project/main_scheduler.py"]

@@ -14,7 +14,7 @@ except ValueError:
 from project.logger_config import logger
 from project.utils import Config
 
-LOGFILE_NAME = "test_main_scheduler"
+LOGFILE_NAME = "test_scheduler_jobs"
 
 c = Config()
 c.DEV_TEST_PRD = "development"

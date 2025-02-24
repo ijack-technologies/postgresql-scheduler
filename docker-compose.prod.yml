@@ -1,5 +1,6 @@
 services:
-  postgresql_scheduler:
+  # Main service for running the PostgreSQL scheduler jobs
+  scheduler_jobs:
     # Name and tag of image the Dockerfile creates
     image: mccarthysean/ijack:postgresql_scheduler_final
     # this will signal that the connection is alive after 200 seconds,
@@ -47,7 +48,6 @@ services:
       timeout: 5m
       retries: 3
       start_period: 30s
-
     volumes:
       - type: volume
         source: postgresql_scheduler_logs_prod
@@ -55,6 +55,61 @@ services:
         read_only: false
         volume:
           nocopy: true
+    command: ["/venv/bin/python3", "/project/scheduler_jobs.py"]
+
+  # Second service for monitoring the EC2 instances' disk space
+  scheduler_monitor:
+    # Name and tag of image the Dockerfile creates
+    image: mccarthysean/ijack:postgresql_scheduler_final
+    # this will signal that the connection is alive after 200 seconds,
+    # which is less than the time it takes to drop the connection (300 seconds?), thus preventing it from being dropped.
+    # https://stackoverflow.com/questions/56289874/postgres-closes-connection-during-query-after-a-few-hundred-seconds-when-using-p
+    # https://github.com/moby/moby/issues/31208#issuecomment-303905737
+    sysctls:
+      - net.ipv4.tcp_keepalive_time=200
+      - net.ipv4.tcp_keepalive_intvl=30
+      - net.ipv4.tcp_keepalive_probes=10
+    env_file: .env
+    networks:
+      - traefik-public
+    deploy:
+      # Either global (exactly one container per physical node) or
+      # replicated (a specified number of containers). The default is replicated
+      mode: global
+      # For stateless applications using "replicated" mode,
+      # the total number of replicas to create
+      # replicas: 1
+      # Don't use a restart policy. Let Docker Swarm handle it.
+      restart_policy:
+        # condition: on-failure
+        condition: any
+      placement: 
+        constraints:
+          - node.platform.os == linux
+      resources:
+        limits:
+          # The container can use up to X% of a single CPU
+          cpus: '0.25'
+          # # The container can use up to X amount of memory (might need lots when reading from the database)
+          # memory: 2048M
+      # labels:
+      #   # Enable logging to Grafana Loki with Promtail
+      #   logging: promtail
+      #   logging_jobname: postgresql_scheduler
+    healthcheck:
+      test: [ "CMD", "ping", "-c", "1", "google.com" ]
+      interval: 1m
+      timeout: 5m
+      retries: 3
+      start_period: 30s
+    volumes:
+      - type: volume
+        source: global_monitor_logs_prod
+        target: /project/logs
+        read_only: false
+        volume:
+          nocopy: true
+    command: ["/venv/bin/python3", "/project/scheduler_monitor.py"]
 
 networks:
   # Use the previously created public network "traefik-public", shared with other services
@@ -63,3 +118,4 @@ networks:
 
 volumes:
   postgresql_scheduler_logs_prod:
+  global_monitor_logs_prod:
