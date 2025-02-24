@@ -439,7 +439,7 @@ def subprocess_run(
     return rc, stdout
 
 
-def find_pids(c, search_string):
+def find_pids(c: Config, search_string: str) -> List:
     """Find the PID of the running process based on the search string, and return a list of PIDs"""
     rc, stdout = subprocess_run(c, ["/usr/bin/pgrep", "-f", search_string])
     list_of_pids = []
@@ -451,7 +451,7 @@ def find_pids(c, search_string):
     return list_of_pids
 
 
-def exit_if_already_running(c, filename) -> None:
+def exit_if_already_running(c: Config, filename: str) -> None:
     """If this program is already running, exit"""
     list_of_pids = find_pids(c, filename)
     if len(list_of_pids) > 1:
