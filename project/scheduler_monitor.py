@@ -2,7 +2,6 @@ import sys
 import time
 from pathlib import Path
 
-import pytz
 import schedule
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
@@ -14,15 +13,7 @@ except ValueError:
 
 
 from project import (
-    alarm_log_delete_duplicates,
     monitor_disk_space,
-    synch_aws_iot_shadow_with_aws_rds_postgres_config,
-    time_series_aggregate_calcs,
-    time_series_mv_refresh,
-    time_series_rt_delete_old_data,
-    timescaledb_restart_background_workers,
-    update_info_from_shadows,
-    upload_bom_master_parts_to_db,
 )
 from project.logger_config import logger
 from project.utils import Config
@@ -31,31 +22,9 @@ from project.utils import Config
 def make_schedule(c: Config) -> None:
     """Make a cron-like schedule for running tasks"""
 
-    logger.info("Making the cron-like schedule...")
+    logger.info("Making the cron-like schedule for the EC2 monitoring jobs...")
 
-    schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
-    schedule.every(10).minutes.do(update_info_from_shadows.main, c=c, commit=True)
-
-    schedule.every().hour.at(":03").do(
-        synch_aws_iot_shadow_with_aws_rds_postgres_config.main, c=c
-    )
     schedule.every().hour.at(":06").do(monitor_disk_space.monitor_disk_space_main, c=c)
-
-    schedule.every().day.at("01:01", pytz.timezone("America/Regina")).do(
-        alarm_log_delete_duplicates.main, c=c
-    )
-    schedule.every().day.at("01:11", pytz.timezone("America/Regina")).do(
-        time_series_aggregate_calcs.main, c=c
-    )
-    schedule.every().day.at("01:21", pytz.timezone("America/Regina")).do(
-        time_series_rt_delete_old_data.main, c=c
-    )
-    schedule.every().day.at("01:31", pytz.timezone("America/Regina")).do(
-        upload_bom_master_parts_to_db.main, c=c
-    )
-    schedule.every().day.at("01:41", pytz.timezone("America/Regina")).do(
-        timescaledb_restart_background_workers.main, c=c
-    )
 
     return None
 

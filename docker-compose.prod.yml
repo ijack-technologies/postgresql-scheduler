@@ -104,7 +104,7 @@ services:
       start_period: 30s
     volumes:
       - type: volume
-        source: global_monitor_logs_prod
+        source: postgresql_scheduler_monitor_logs_prod
         target: /project/logs
         read_only: false
         volume:
@@ -118,4 +118,4 @@ networks:
 
 volumes:
   postgresql_scheduler_logs_prod:
-  global_monitor_logs_prod:
+  postgresql_scheduler_monitor_logs_prod:
