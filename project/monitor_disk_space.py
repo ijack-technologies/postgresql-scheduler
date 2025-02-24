@@ -190,3 +190,11 @@ def monitor_disk_space_main(c: Config) -> None:
         logger.error(f"Error in disk space monitoring: {e}")
 
     return None
+
+
+if __name__ == "__main__":
+    # Load configuration
+    config = Config()
+
+    # Run the main function
+    monitor_disk_space_main(c=config)
