@@ -57,7 +57,7 @@ services:
     #       nocopy: true
     command: ["/venv/bin/python3", "/project/scheduler_jobs.py"]
 
-  # Second service for monitoring the EC2 instances' disk space
+  # Second service for globally monitoring the EC2 instances' disk space
   monitor:
     # Name and tag of image the Dockerfile creates
     image: mccarthysean/ijack:postgresql_scheduler_final
