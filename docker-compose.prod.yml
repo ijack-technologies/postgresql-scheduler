@@ -1,6 +1,6 @@
 services:
   # Main service for running the PostgreSQL scheduler jobs
-  scheduler_jobs:
+  jobs:
     # Name and tag of image the Dockerfile creates
     image: mccarthysean/ijack:postgresql_scheduler_final
     # this will signal that the connection is alive after 200 seconds,
@@ -58,7 +58,7 @@ services:
     command: ["/venv/bin/python3", "/project/scheduler_jobs.py"]
 
   # Second service for monitoring the EC2 instances' disk space
-  scheduler_monitor:
+  monitor:
     # Name and tag of image the Dockerfile creates
     image: mccarthysean/ijack:postgresql_scheduler_final
     # this will signal that the connection is alive after 200 seconds,
