@@ -39,7 +39,7 @@ def make_schedule(c: Config) -> None:
     schedule.every().hour.at(":03").do(
         synch_aws_iot_shadow_with_aws_rds_postgres_config.main, c=c
     )
-    schedule.every().hour.at(":06").do(monitor_disk_space.monitor_disk_space_main, c=c)
+    schedule.every().hour.at(":39").do(monitor_disk_space.monitor_disk_space_main, c=c)
 
     schedule.every().day.at("01:01", pytz.timezone("America/Regina")).do(
         alarm_log_delete_duplicates.main, c=c
