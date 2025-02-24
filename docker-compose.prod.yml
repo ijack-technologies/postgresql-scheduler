@@ -27,9 +27,8 @@ services:
       placement: 
         constraints:
           - node.platform.os == linux
-          # These jobs take some time, and they're not critical,
-          # so we don't want them on the manager node.
-          # - node.role != manager
+          # We need this to monitor the main AWS EC2 instance's disk space
+          - node.role == manager
           # "Backup server" (which is a manager as well)
           # - node.id == n6ft9t731ty64r28muac1540j          
       resources:
