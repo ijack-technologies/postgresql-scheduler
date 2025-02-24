@@ -33,29 +33,29 @@ def configure_logging(
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
 
-    # if want_file_handler and platform.system() == "Linux":
-    if os.getenv("ENVIRONMENT", "production") == "production":
-        path_to_log_directory: Path = Path(log_directory)
-        path_to_log_directory.mkdir(parents=True, exist_ok=True)
+    # # if want_file_handler and platform.system() == "Linux":
+    # if os.getenv("ENVIRONMENT", "production") == "production":
+    #     path_to_log_directory: Path = Path(log_directory)
+    #     path_to_log_directory.mkdir(parents=True, exist_ok=True)
 
-        log_filename = f"{Path(__file__).name}.log"
-        log_filepath = path_to_log_directory.joinpath(log_filename)
+    #     log_filename = f"{Path(__file__).name}.log"
+    #     log_filepath = path_to_log_directory.joinpath(log_filename)
 
-        # file_handler = logging.FileHandler(filename=log_filepath)
-        file_handler = TimedRotatingFileHandler(
-            filename=log_filepath,
-            when="H",
-            interval=1,
-            backupCount=48,
-            encoding=None,
-            delay=False,
-            utc=False,
-            atTime=None,
-        )
-        file_handler.setLevel(log_level)
-        file_handler.setFormatter(formatter)
-        root_logger.addHandler(file_handler)
-        root_logger.info("Added fileHandler to logger: %s", log_filepath)
+    #     # file_handler = logging.FileHandler(filename=log_filepath)
+    #     file_handler = TimedRotatingFileHandler(
+    #         filename=log_filepath,
+    #         when="H",
+    #         interval=1,
+    #         backupCount=48,
+    #         encoding=None,
+    #         delay=False,
+    #         utc=False,
+    #         atTime=None,
+    #     )
+    #     file_handler.setLevel(log_level)
+    #     file_handler.setFormatter(formatter)
+    #     root_logger.addHandler(file_handler)
+    #     root_logger.info("Added fileHandler to logger: %s", log_filepath)
 
     # Add handlers
     root_logger.addHandler(console_handler)

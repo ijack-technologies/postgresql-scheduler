@@ -48,13 +48,13 @@ services:
       timeout: 5m
       retries: 3
       start_period: 30s
-    volumes:
-      - type: volume
-        source: postgresql_scheduler_logs_prod
-        target: /project/logs
-        read_only: false
-        volume:
-          nocopy: true
+    # volumes:
+    #   - type: volume
+    #     source: postgresql_scheduler_logs_prod
+    #     target: /project/logs
+    #     read_only: false
+    #     volume:
+    #       nocopy: true
     command: ["/venv/bin/python3", "/project/scheduler_jobs.py"]
 
   # Second service for monitoring the EC2 instances' disk space
@@ -102,13 +102,13 @@ services:
       timeout: 5m
       retries: 3
       start_period: 30s
-    volumes:
-      - type: volume
-        source: postgresql_scheduler_monitor_logs_prod
-        target: /project/logs
-        read_only: false
-        volume:
-          nocopy: true
+    # volumes:
+    #   - type: volume
+    #     source: postgresql_scheduler_monitor_logs_prod
+    #     target: /project/logs
+    #     read_only: false
+    #     volume:
+    #       nocopy: true
     command: ["/venv/bin/python3", "/project/scheduler_monitor.py"]
 
 networks:
@@ -116,6 +116,6 @@ networks:
   traefik-public:
     external: true
 
-volumes:
-  postgresql_scheduler_logs_prod:
-  postgresql_scheduler_monitor_logs_prod:
+# volumes:
+#   postgresql_scheduler_logs_prod:
+#   postgresql_scheduler_monitor_logs_prod:
