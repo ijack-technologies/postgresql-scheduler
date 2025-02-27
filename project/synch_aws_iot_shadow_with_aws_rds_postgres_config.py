@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
@@ -7,6 +8,13 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
+
+# Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
+pythonpath = str(Path(__file__).parent.parent)
+try:
+    sys.path.index(pythonpath)
+except ValueError:
+    sys.path.insert(0, pythonpath)
 
 from project.logger_config import logger
 from project.utils import (
@@ -80,7 +88,7 @@ def update_device_shadows_in_threadpool(
 
     n_success_dict = len(success_dict)
     logger.info(
-        f"{n_success_dict} of {n_gateways} AWS IoT shadows successfully updated in {(time2-time1)/60:.1f} minutes!"
+        f"{n_success_dict} of {n_gateways} AWS IoT shadows successfully updated in {(time2 - time1) / 60:.1f} minutes!"
     )
     for aws_thing, response_payload in errors_dict.items():
         logger.error(
