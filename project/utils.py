@@ -135,6 +135,7 @@ def get_conn(
     except Exception:
         logger.exception("ERROR with database connection!")
         conn.rollback()
+        raise
     finally:
         # Ensure that the connection is closed after usage
         conn.close()
