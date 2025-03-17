@@ -617,7 +617,9 @@ def upsert_gw_info(
     
     # If SWV >= 412, this indicates the mode of operation
     # where 2 = 'VRU Mode' and 4 = 'Vessel Level Mode'
-    values_dict["suction_range"] = reported.get("SUCTION_RANGE", None)
+    suction_range: int | None = reported.get("SUCTION_RANGE", None)
+    if isinstance(suction_range, (int, float)):
+        values_dict["suction_range"] = suction_range
 
     # Does the unit have a master/slave configuration? Either 0 or 1
     has_slave: int = reported.get("HAS_SLAVE", 0)
