@@ -614,6 +614,10 @@ def upsert_gw_info(
         spm = reported.get("SPM", None)
     if spm:
         values_dict["spm"] = spm
+    
+    # If SWV >= 412, this indicates the mode of operation
+    # where 2 = 'VRU Mode' and 4 = 'Vessel Level Mode'
+    values_dict["suction_range"] = reported.get("SUCTION_RANGE", None)
 
     # These are all capitalized in the AWS IoT device shadow.
     # The key is the public.gw_info database column name.
