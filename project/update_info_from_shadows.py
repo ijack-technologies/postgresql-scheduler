@@ -620,7 +620,9 @@ def upsert_gw_info(
     values_dict["suction_range"] = reported.get("SUCTION_RANGE", None)
 
     # Does the unit have a master/slave configuration? Either 0 or 1
-    values_dict["has_slave"] = reported.get("HAS_SLAVE", 0)
+    has_slave: int = reported.get("HAS_SLAVE", 0)
+    # Convert it to a boolean for the database
+    values_dict["has_slave"] = float(has_slave) == 1.0
 
     # These are all capitalized in the AWS IoT device shadow.
     # The key is the public.gw_info database column name.
