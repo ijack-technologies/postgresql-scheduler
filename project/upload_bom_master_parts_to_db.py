@@ -1099,9 +1099,12 @@ def go_through_all_sheets(
                             "harmonization_code": harmonization_code,
                             "country_of_origin": country_of_origin,
                         }
-                    except Exception:
-                        logger.exception(f"Error creating dictionary with cell {cell}")
-                        raise
+                    except Exception as err:
+                        error_msg = f"Error creating dictionary with cell {cell}"
+                        logger.exception(error_msg)
+                        # Raise with the original exception and add the error message
+                        raise Exception(error_msg) from err
+                        
                     part_list_of_dicts.append(d)
                     worksheet_list_of_dicts.append(d)
                     worksheet_parts_counter += 1
