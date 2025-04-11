@@ -176,7 +176,8 @@ def get_all_power_units_config_metrics() -> list:
         LEFT JOIN structures str ON pu.id = str.power_unit_id
         LEFT JOIN myijack.structure_customer_rel str_cust_rel ON str_cust_rel.structure_id = str.id
         LEFT JOIN myijack.customers cust ON str_cust_rel.customer_id = cust.id
-        LEFT JOIN myijack.cust_sub_groups cust_sub ON cust_sub.id = str.cust_sub_group_id
+        LEFT JOIN myijack.structure_cust_sub_group_rel csr ON csr.structure_id = str.id
+        LEFT JOIN myijack.cust_sub_groups cust_sub ON cust_sub.id = csr.cust_sub_group_id
         LEFT JOIN myijack.time_zones tz ON str.time_zone_id = tz.id
         LEFT JOIN myijack.model_types mt ON str.model_type_id = mt.id
         LEFT JOIN myijack.unit_types ut ON str.unit_type_id = ut.id
