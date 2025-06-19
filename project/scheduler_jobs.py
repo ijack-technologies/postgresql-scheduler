@@ -57,7 +57,7 @@ def make_schedule(c: Config) -> None:
         timescaledb_restart_background_workers.main, c=c
     )
     schedule.every().day.at("01:51", pytz.timezone("America/Regina")).do(
-        update_fx_exchange_rates_daily.main
+        update_fx_exchange_rates_daily.main, c=c
     )
 
     return None

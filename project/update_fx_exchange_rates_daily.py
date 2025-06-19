@@ -26,6 +26,7 @@ import logging
 import os
 import sys
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import requests
@@ -33,6 +34,12 @@ from sqlalchemy import Column, Date, ForeignKey, Integer, Numeric, create_engine
 from sqlalchemy.dialects.postgresql import TEXT, VARCHAR
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
+from project.utils import (
+    Config,
+    error_wrapper,
+    exit_if_already_running,
+)
 
 # Create a minimal base for our models
 Base = declarative_base()
@@ -352,8 +359,12 @@ def get_sqla_conn_string(
     return f"postgresql+psycopg2://{user}:{passw}@{host}:{port}/{db}"
 
 
-def main():
+@error_wrapper(filename=Path(__file__).name)
+def main(c: Config) -> None:
     """Command line interface"""
+
+    exit_if_already_running(c, Path(__file__).name)
+
     parser = argparse.ArgumentParser(
         description="Update historical USD/CAD exchange rates from Bank of Canada"
     )
