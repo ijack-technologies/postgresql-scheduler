@@ -38,6 +38,7 @@ def get_time_series_data(
         avg(GREATEST(hp_raising_avg, hp_lowering_avg)) as hp_avg,
         --derate discharge setpoint (mgp)
         avg(mgp) as mgp_avg,
+        avg(cgp) as cgp_avg,
         avg(dgp) as dgp_avg,
         --Max discharge temperature before derates (C)
         avg(agf_dis_temp_max) as agf_dis_temp_max_avg,
@@ -88,7 +89,7 @@ def upsert_time_series_agg(
         f"""
     INSERT INTO public.time_series_agg(
         power_unit, month_date, timestamp_utc_modified, sample_size,
-        stroke_speed_avg, hp_limit, hp_avg, mgp_avg, dgp_avg,
+        stroke_speed_avg, hp_limit, hp_avg, mgp_avg, cgp_avg, dgp_avg,
         agf_dis_temp_max_avg, agf_dis_temp_avg,
         dtp_avg, dtp_max_avg
     )
@@ -96,30 +97,32 @@ def upsert_time_series_agg(
         '{power_unit_str}',
         '{month_date_str}',
         '{timestamp_utc_modified_str}',
-        {df_month_date['sample_size'].iloc[0]},
-        {df_month_date['stroke_speed_avg'].iloc[0]},
-        {df_month_date['hp_limit'].iloc[0]},
-        {df_month_date['hp_avg'].iloc[0]},
-        {df_month_date['mgp_avg'].iloc[0]},
-        {df_month_date['dgp_avg'].iloc[0]},
-        {df_month_date['agf_dis_temp_max_avg'].iloc[0]},
-        {df_month_date['agf_dis_temp_avg'].iloc[0]},
-        {df_month_date['dtp_avg'].iloc[0]},
-        {df_month_date['dtp_max_avg'].iloc[0]}
+        {df_month_date["sample_size"].iloc[0]},
+        {df_month_date["stroke_speed_avg"].iloc[0]},
+        {df_month_date["hp_limit"].iloc[0]},
+        {df_month_date["hp_avg"].iloc[0]},
+        {df_month_date["mgp_avg"].iloc[0]},
+        {df_month_date["cgp_avg"].iloc[0]},
+        {df_month_date["dgp_avg"].iloc[0]},
+        {df_month_date["agf_dis_temp_max_avg"].iloc[0]},
+        {df_month_date["agf_dis_temp_avg"].iloc[0]},
+        {df_month_date["dtp_avg"].iloc[0]},
+        {df_month_date["dtp_max_avg"].iloc[0]}
     )
     ON CONFLICT (power_unit, month_date) DO UPDATE
     SET
         timestamp_utc_modified = '{timestamp_utc_modified_str}',
-        sample_size = {df_month_date['sample_size'].iloc[0]},
-        stroke_speed_avg = {df_month_date['stroke_speed_avg'].iloc[0]},
-        hp_limit = {df_month_date['hp_limit'].iloc[0]},
-        hp_avg = {df_month_date['hp_avg'].iloc[0]},
-        mgp_avg = {df_month_date['mgp_avg'].iloc[0]},
-        dgp_avg = {df_month_date['dgp_avg'].iloc[0]},
-        agf_dis_temp_max_avg = {df_month_date['agf_dis_temp_max_avg'].iloc[0]},
-        agf_dis_temp_avg = {df_month_date['agf_dis_temp_avg'].iloc[0]},
-        dtp_avg = {df_month_date['dtp_avg'].iloc[0]},
-        dtp_max_avg = {df_month_date['dtp_max_avg'].iloc[0]}
+        sample_size = {df_month_date["sample_size"].iloc[0]},
+        stroke_speed_avg = {df_month_date["stroke_speed_avg"].iloc[0]},
+        hp_limit = {df_month_date["hp_limit"].iloc[0]},
+        hp_avg = {df_month_date["hp_avg"].iloc[0]},
+        mgp_avg = {df_month_date["mgp_avg"].iloc[0]},
+        cgp_avg = {df_month_date["cgp_avg"].iloc[0]},
+        dgp_avg = {df_month_date["dgp_avg"].iloc[0]},
+        agf_dis_temp_max_avg = {df_month_date["agf_dis_temp_max_avg"].iloc[0]},
+        agf_dis_temp_avg = {df_month_date["agf_dis_temp_avg"].iloc[0]},
+        dtp_avg = {df_month_date["dtp_avg"].iloc[0]},
+        dtp_max_avg = {df_month_date["dtp_max_avg"].iloc[0]}
     """.replace("\n", " ")
         .replace("nan", "null")
         .replace("None", "null")
