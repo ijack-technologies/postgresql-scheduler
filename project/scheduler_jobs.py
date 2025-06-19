@@ -15,12 +15,13 @@ except ValueError:
 
 from project import (
     alarm_log_delete_duplicates,
-    monitor_disk_space,
+    monitor_disk_space,  # type: ignore  # noqa: F401
     synch_aws_iot_shadow_with_aws_rds_postgres_config,
     time_series_aggregate_calcs,
     time_series_mv_refresh,
     time_series_rt_delete_old_data,
     timescaledb_restart_background_workers,
+    update_fx_exchange_rates_daily,
     update_info_from_shadows,
     upload_bom_master_parts_to_db,
 )
@@ -54,6 +55,9 @@ def make_schedule(c: Config) -> None:
     )
     schedule.every().day.at("01:41", pytz.timezone("America/Regina")).do(
         timescaledb_restart_background_workers.main, c=c
+    )
+    schedule.every().day.at("01:51", pytz.timezone("America/Regina")).do(
+        update_fx_exchange_rates_daily.main
     )
 
     return None
