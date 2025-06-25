@@ -432,9 +432,9 @@ def get_gateway_records() -> list:
 #             unit_type,
 #             structure_install_date
 #         from public.vw_structures_joined t1
-#         --left join myijack.structure_customer_rel t2
+#         --left join public.structure_customer_rel t2
 #         --    on t2.structure_id = t1.id
-#         --left join myijack.customers t3
+#         --left join public.customers t3
 #         --    on t3.id = t2.customer_id
 #         where t1.power_unit_id is not null
 #     """
@@ -614,7 +614,7 @@ def upsert_gw_info(
         spm = reported.get("SPM", None)
     if spm:
         values_dict["spm"] = spm
-    
+
     # If SWV >= 412, this indicates the mode of operation
     # where 2 = 'VRU Mode' and 4 = 'Vessel Level Mode'
     suction_range: int | None = reported.get("SUCTION_RANGE", None)
