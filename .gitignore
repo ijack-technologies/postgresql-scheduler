@@ -4,3 +4,5 @@ instance/
 .env
 .venv
 o365_token.txt
+.pnpm-store
+node_modules

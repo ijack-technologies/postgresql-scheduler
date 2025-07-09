@@ -1,0 +1,1 @@
+Rebase my current feature branch onto the main origin branch so the current feature branch is up-to-date with the main branch, and ready to make a pull request to the main origin branch in the future. For each merge conflict, summarize and show me the differences between each version, and suggest which version you think I should keep.

@@ -1,0 +1,1 @@
+Make a detailed plan, research and use best practices, always use context7 for the latest package documentation, give it your all, and don't hold back. Keep it DRY, SOLID, and simple if possible.

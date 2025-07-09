@@ -1,0 +1,1 @@
+Git commit my changes in logical groups
