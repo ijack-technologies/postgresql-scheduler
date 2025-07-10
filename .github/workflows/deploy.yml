@@ -19,7 +19,7 @@ jobs:
         port: 22
         script: |
           # Navigate to project directory
-          cd ${{ secrets.PROJECT_PATH }}
+          cd /home/ubuntu/git/postgresql-scheduler
           
           # Run the deployment script
           ./deploy.sh
