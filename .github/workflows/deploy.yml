@@ -21,5 +21,6 @@ jobs:
           # Navigate to project directory
           cd /home/ubuntu/git/postgresql-scheduler
           
-          # Run the deployment script
+          # Make deploy.sh executable and run it
+          chmod +x deploy.sh
           ./deploy.sh
