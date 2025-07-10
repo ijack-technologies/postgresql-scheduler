@@ -133,16 +133,28 @@ def send_email_alert(c: Config, disk_info: list, critical_filesystems: list) -> 
         try:
             # Get token for IMDSv2
             token = subprocess.check_output(
-                ["curl", "-s", "-X", "PUT", "http://169.254.169.254/latest/api/token", 
-                "-H", "X-aws-ec2-metadata-token-ttl-seconds: 60"],
-                universal_newlines=True
+                [
+                    "curl",
+                    "-s",
+                    "-X",
+                    "PUT",
+                    "http://169.254.169.254/latest/api/token",
+                    "-H",
+                    "X-aws-ec2-metadata-token-ttl-seconds: 60",
+                ],
+                universal_newlines=True,
             )
-            
+
             # Use token to get instance ID
             instance_id = subprocess.check_output(
-                ["curl", "-s", "http://169.254.169.254/latest/meta-data/instance-id", 
-                "-H", f"X-aws-ec2-metadata-token: {token}"],
-                universal_newlines=True
+                [
+                    "curl",
+                    "-s",
+                    "http://169.254.169.254/latest/meta-data/instance-id",
+                    "-H",
+                    f"X-aws-ec2-metadata-token: {token}",
+                ],
+                universal_newlines=True,
             )
 
             body += f"\nEC2 Instance ID: {instance_id}\n"

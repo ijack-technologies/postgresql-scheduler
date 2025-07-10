@@ -718,9 +718,9 @@ def update_parts_table(new_parts_df: pd.DataFrame, conn) -> None:
 
     logger.info("\n\nUpdating parts data in the AWS RDS database...")
     n_rows = len(new_parts_df)
-    assert (
-        n_rows > 100
-    ), f"Not enough rows in new spreadsheet. Only {n_rows}, so not deleting or updating anything!"
+    assert n_rows > 100, (
+        f"Not enough rows in new spreadsheet. Only {n_rows}, so not deleting or updating anything!"
+    )
 
     with conn.cursor() as cursor:
         counter = 0
@@ -1081,7 +1081,9 @@ def go_through_all_sheets(
                             "msrp_mult_cad": float(msrp_mult_cad),
                             "transfer_mult_cad_dealer": float(transfer_mult_cad_dealer),
                             "msrp_mult_usd": float(msrp_mult_usd),
-                            "transfer_mult_inc_to_corp": float(transfer_mult_inc_to_corp),
+                            "transfer_mult_inc_to_corp": float(
+                                transfer_mult_inc_to_corp
+                            ),
                             "transfer_mult_usd_dealer": float(transfer_mult_usd_dealer),
                             "warehouse_mult": float(warehouse_mult),
                             "cost_cad": float(cost_cad),
@@ -1104,7 +1106,7 @@ def go_through_all_sheets(
                         logger.exception(error_msg)
                         # Raise with the original exception and add the error message
                         raise Exception(error_msg) from err
-                        
+
                     part_list_of_dicts.append(d)
                     worksheet_list_of_dicts.append(d)
                     worksheet_parts_counter += 1

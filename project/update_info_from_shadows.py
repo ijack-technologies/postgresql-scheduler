@@ -116,7 +116,7 @@ aws_thing = {aws_thing}
 def get_html(power_unit_shadow_str: str, sql_update, dict_: dict) -> str:
     """Get HTML for the email"""
 
-    unit_str = f'{dict_["customer"]} {dict_["surface"]} {power_unit_shadow_str}'
+    unit_str = f"{dict_['customer']} {dict_['surface']} {power_unit_shadow_str}"
     html = f"""
         <html>
         <body>
@@ -478,7 +478,7 @@ def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
     n_shadows = len(shadows)
     # logger.info(pd.Series(shadows).value_counts())
     logger.info(
-        f"'{n_shadows}' AWS IoT shadows collected out of '{n_gateways}' gateways in {(time2-time1)/60:.2f} minutes!"
+        f"'{n_shadows}' AWS IoT shadows collected out of '{n_gateways}' gateways in {(time2 - time1) / 60:.2f} minutes!"
     )
 
     return shadows
@@ -704,8 +704,8 @@ def record_can_bus_cellular_test(
     # sql_gw = SQL("""
     sql_gw = f"""
         update public.gw
-        set test_cellular={'true' if cellular_good else 'false'},
-            test_can_bus={'true' if can_bus_good else 'false'}
+        set test_cellular={"true" if cellular_good else "false"},
+            test_can_bus={"true" if can_bus_good else "false"}
         where id = {gateway_id}
     """
     # """).format(cell_good=Literal(cellular_good), can_good=Literal(can_bus_good), gateway_id=Literal(gateway_id))

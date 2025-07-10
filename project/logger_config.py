@@ -1,8 +1,5 @@
 import logging
-import os
 import sys
-from logging.handlers import TimedRotatingFileHandler
-from pathlib import Path
 
 
 def configure_logging(

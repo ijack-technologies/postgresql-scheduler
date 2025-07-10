@@ -241,7 +241,10 @@ class TestSendEmailAlert(unittest.TestCase):
         self.assertIn("Unable to determine EC2 Instance ID", kwargs["text"])
 
     @patch("subprocess.check_output")
-    @patch("project.monitor_disk_space.send_mailgun_email", side_effect=Exception("SMTP error"))
+    @patch(
+        "project.monitor_disk_space.send_mailgun_email",
+        side_effect=Exception("SMTP error"),
+    )
     def test_email_sending_failure(self, mock_send_email, mock_check_output):
         """Test handling of email sending failures."""
         # Mock configuration
@@ -351,7 +354,8 @@ class TestMonitorDiskSpaceMain(unittest.TestCase):
 
     @patch("project.monitor_disk_space.exit_if_already_running")
     @patch(
-        "project.monitor_disk_space.check_disk_space", side_effect=Exception("Test exception")
+        "project.monitor_disk_space.check_disk_space",
+        side_effect=Exception("Test exception"),
     )
     def test_exception_handling(self, mock_check_disk, mock_exit_check):
         """Test handling of exceptions in the main function."""
