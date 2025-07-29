@@ -420,55 +420,92 @@ class AlertBulkProcessor:
             batch_end = min(batch_start + batch_size, len(power_unit_ids))
             batch_ids = power_unit_ids[batch_start:batch_end]
 
-            # Build values for batch insert
+            # Build values for batch insert using named parameters for clarity
             values_list = []
-            params = []
-            for power_unit_id in batch_ids:
-                # Add all the values for this power unit
+            params_dict = {}
+
+            for idx, power_unit_id in enumerate(batch_ids):
+                # Create unique parameter names for this power unit
+                prefix = f"pu{idx}_"
+
+                # Add placeholders for this power unit
                 values_list.append(
-                    "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                    f"(%({prefix}user_id)s, %({prefix}power_unit_id)s, %({prefix}timestamp_utc_inserted)s, "
+                    f"%({prefix}wants_sms)s, %({prefix}wants_email)s, %({prefix}wants_phone)s, %({prefix}wants_short_sms)s, "
+                    f"%({prefix}wants_short_email)s, %({prefix}wants_short_phone)s, %({prefix}wants_whatsapp)s, "
+                    f"%({prefix}heartbeat)s, %({prefix}online_hb)s, %({prefix}warn1)s, %({prefix}warn2)s, "
+                    f"%({prefix}suction)s, %({prefix}discharge)s, %({prefix}mtr)s, %({prefix}spm)s, "
+                    f"%({prefix}stboxf)s, %({prefix}hyd_temp)s, %({prefix}wants_card_ml)s, "
+                    f"%({prefix}change_suction)s, %({prefix}change_hyd_temp)s, %({prefix}change_dgp)s, %({prefix}change_hp_delta)s, "
+                    f"%({prefix}hyd_oil_lvl)s, %({prefix}hyd_filt_life)s, %({prefix}hyd_oil_life)s, "
+                    f"%({prefix}chk_mtr_ovld)s, %({prefix}pwr_fail)s, %({prefix}soft_start_err)s, "
+                    f"%({prefix}grey_wire_err)s, %({prefix}ae011)s)"
                 )
-                params.extend(
-                    [
-                        bulk_alert["user_id"],
-                        power_unit_id,
-                        utcnow_naive(),
+
+                # Add named parameters for this power unit
+                params_dict.update(
+                    {
+                        f"{prefix}user_id": bulk_alert["user_id"],
+                        f"{prefix}power_unit_id": power_unit_id,
+                        f"{prefix}timestamp_utc_inserted": utcnow_naive(),
                         # Delivery preferences
-                        bulk_alert.get("wants_sms", True),
-                        bulk_alert.get("wants_email", False),
-                        bulk_alert.get("wants_phone", False),
-                        bulk_alert.get("wants_short_sms", False),
-                        bulk_alert.get("wants_short_email", False),
-                        bulk_alert.get("wants_short_phone", True),
-                        bulk_alert.get("wants_whatsapp", False),
+                        f"{prefix}wants_sms": bulk_alert.get("wants_sms", True),
+                        f"{prefix}wants_email": bulk_alert.get("wants_email", False),
+                        f"{prefix}wants_phone": bulk_alert.get("wants_phone", False),
+                        f"{prefix}wants_short_sms": bulk_alert.get(
+                            "wants_short_sms", False
+                        ),
+                        f"{prefix}wants_short_email": bulk_alert.get(
+                            "wants_short_email", False
+                        ),
+                        f"{prefix}wants_short_phone": bulk_alert.get(
+                            "wants_short_phone", True
+                        ),
+                        f"{prefix}wants_whatsapp": bulk_alert.get(
+                            "wants_whatsapp", False
+                        ),
                         # Regular alerts
-                        bulk_alert.get("heartbeat", True),
-                        bulk_alert.get("online_hb", False),
-                        bulk_alert.get("warn1", False),
-                        bulk_alert.get("warn2", False),
-                        bulk_alert.get("suction", False),
-                        bulk_alert.get("discharge", False),
-                        bulk_alert.get("mtr", False),
-                        bulk_alert.get("spm", False),
-                        bulk_alert.get("stboxf", False),
-                        bulk_alert.get("hyd_temp", False),
-                        bulk_alert.get("wants_card_ml", False),
+                        f"{prefix}heartbeat": bulk_alert.get("heartbeat", True),
+                        f"{prefix}online_hb": bulk_alert.get("online_hb", False),
+                        f"{prefix}warn1": bulk_alert.get("warn1", False),
+                        f"{prefix}warn2": bulk_alert.get("warn2", False),
+                        f"{prefix}suction": bulk_alert.get("suction", False),
+                        f"{prefix}discharge": bulk_alert.get("discharge", False),
+                        f"{prefix}mtr": bulk_alert.get("mtr", False),
+                        f"{prefix}spm": bulk_alert.get("spm", False),
+                        f"{prefix}stboxf": bulk_alert.get("stboxf", False),
+                        f"{prefix}hyd_temp": bulk_alert.get("hyd_temp", False),
+                        f"{prefix}wants_card_ml": bulk_alert.get(
+                            "wants_card_ml", False
+                        ),
                         # Change detection alerts
-                        bulk_alert.get("change_suction", True),
-                        bulk_alert.get("change_hyd_temp", False),
-                        bulk_alert.get("change_dgp", True),
-                        bulk_alert.get("change_hp_delta", True),
+                        f"{prefix}change_suction": bulk_alert.get(
+                            "change_suction", True
+                        ),
+                        f"{prefix}change_hyd_temp": bulk_alert.get(
+                            "change_hyd_temp", False
+                        ),
+                        f"{prefix}change_dgp": bulk_alert.get("change_dgp", True),
+                        f"{prefix}change_hp_delta": bulk_alert.get(
+                            "change_hp_delta", True
+                        ),
                         # Hydraulic oil alerts
-                        bulk_alert.get("hyd_oil_lvl", False),
-                        bulk_alert.get("hyd_filt_life", False),
-                        bulk_alert.get("hyd_oil_life", False),
+                        f"{prefix}hyd_oil_lvl": bulk_alert.get("hyd_oil_lvl", False),
+                        f"{prefix}hyd_filt_life": bulk_alert.get(
+                            "hyd_filt_life", False
+                        ),
+                        f"{prefix}hyd_oil_life": bulk_alert.get("hyd_oil_life", False),
                         # Other alerts
-                        bulk_alert.get("chk_mtr_ovld", False),
-                        bulk_alert.get("pwr_fail", False),
-                        bulk_alert.get("soft_start_err", False),
-                        bulk_alert.get("grey_wire_err", False),
-                        bulk_alert.get("ae011", False),
-                    ]
+                        f"{prefix}chk_mtr_ovld": bulk_alert.get("chk_mtr_ovld", False),
+                        f"{prefix}pwr_fail": bulk_alert.get("pwr_fail", False),
+                        f"{prefix}soft_start_err": bulk_alert.get(
+                            "soft_start_err", False
+                        ),
+                        f"{prefix}grey_wire_err": bulk_alert.get(
+                            "grey_wire_err", False
+                        ),
+                        f"{prefix}ae011": bulk_alert.get("ae011", False),
+                    }
                 )
 
             # Build the batch SQL query
@@ -525,7 +562,7 @@ class AlertBulkProcessor:
                     db="ijack",
                     fetchall=True,
                     commit=True,
-                    data=tuple(params),
+                    data=params_dict,
                     log_query=False,
                 )
 

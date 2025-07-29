@@ -391,8 +391,17 @@ class TestAlertBulkProcessor(unittest.TestCase):
 
         # Check that all power units are in the parameters
         params = call_args[1]["data"]
+        # Should be a dictionary with named parameters
+        self.assertIsInstance(params, dict)
         # Each power unit has 32 parameters, so 5 power units = 160 parameters
         self.assertEqual(len(params), 160)
+        # Verify some named parameters exist
+        self.assertIn("pu0_user_id", params)
+        self.assertIn("pu0_power_unit_id", params)
+        self.assertIn("pu4_power_unit_id", params)
+        self.assertEqual(params["pu0_user_id"], 100)
+        self.assertEqual(params["pu0_power_unit_id"], 1001)
+        self.assertEqual(params["pu4_power_unit_id"], 1005)
 
     @patch("project.alerts_bulk_processor.run_query")
     def test_batch_upsert_alerts_large_batch(self, mock_run_query):
@@ -468,8 +477,15 @@ class TestAlertBulkProcessor(unittest.TestCase):
         third_call = mock_run_query.call_args_list[2]
         # Should be a batch insert for 2 power units
         params = third_call[1]["data"]
+        # Should be a dictionary with named parameters
+        self.assertIsInstance(params, dict)
         # 2 power units * 32 parameters each = 64 parameters
         self.assertEqual(len(params), 64)
+        # Verify the correct power units are processed
+        self.assertIn("pu0_power_unit_id", params)
+        self.assertIn("pu1_power_unit_id", params)
+        self.assertEqual(params["pu0_power_unit_id"], 1002)
+        self.assertEqual(params["pu1_power_unit_id"], 1004)
 
     @patch("project.alerts_bulk_processor.run_query")
     def test_get_matching_power_units_with_update_existing_false(self, mock_run_query):
