@@ -15,6 +15,7 @@ except ValueError:
 
 from project import (
     alarm_log_delete_duplicates,
+    alerts_bulk_processor,
     monitor_disk_space,  # type: ignore  # noqa: F401
     synch_aws_iot_shadow_with_aws_rds_postgres_config,
     time_series_aggregate_calcs,
@@ -58,6 +59,9 @@ def make_schedule(c: Config) -> None:
     )
     schedule.every().day.at("01:51", pytz.timezone("America/Regina")).do(
         update_fx_exchange_rates_daily.main, c=c
+    )
+    schedule.every().day.at("02:01", pytz.timezone("America/Regina")).do(
+        alerts_bulk_processor.main, c=c
     )
 
     return None
