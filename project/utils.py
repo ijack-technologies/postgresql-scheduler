@@ -315,8 +315,8 @@ def send_mailgun_email(
             auth=("api", os.environ["MAILGUN_API_KEY"]),
             files=images2,
             data={
-                "h:sender": "alerts@myijack.com",
-                "from": "alerts@myijack.com",
+                "h:sender": "no_reply@myijack.com",
+                "from": "no_reply@myijack.com",
                 "to": emailees_list,
                 "subject": subject,
                 key: value,
