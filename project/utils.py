@@ -148,7 +148,7 @@ def run_query(
     commit: bool = False,
     raise_error: bool = True,
     data: dict | tuple = None,
-    log_query: bool = True,
+    log_query: bool = False,
     # For super-efficient bulk inserts
     copy_expert_kwargs: dict = None,
     options_dict: dict = None,
