@@ -1,3 +1,9 @@
+"""
+Refresh the time series materialized views in TimescaleDB.
+This should be run at least every 15 minutes or so, to ensure the
+continuously-aggregated materialized views are up to date.
+"""
+
 import time
 from datetime import datetime, timedelta
 from io import StringIO

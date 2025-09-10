@@ -1,3 +1,10 @@
+"""
+Run a cron-like schedule for running EC2 monitoring tasks.
+this is a separate scheduler from the main scheduler since disk monitoring
+needs to run on ALL (i.e. global deployment in Docker Compose) AWS EC2 instances,
+not just the one running the main program.
+"""
+
 import sys
 import time
 from pathlib import Path
@@ -12,9 +19,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 
-from project import (
-    monitor_disk_space,
-)
+from project import monitor_disk_space
 from project.logger_config import logger
 from project.utils import Config
 

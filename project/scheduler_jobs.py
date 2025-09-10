@@ -1,3 +1,9 @@
+"""
+Run a cron-like schedule for running various tasks.
+This is the main scheduler for the project, and runs on the main AWS EC2 instance
+that runs the main program.
+"""
+
 import sys
 import time
 from pathlib import Path
@@ -16,7 +22,6 @@ except ValueError:
 from project import (
     alarm_log_delete_duplicates,
     alerts_bulk_processor,
-    monitor_disk_space,  # type: ignore  # noqa: F401
     synch_aws_iot_shadow_with_aws_rds_postgres_config,
     time_series_aggregate_calcs,
     time_series_mv_refresh,
