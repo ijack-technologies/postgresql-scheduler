@@ -50,7 +50,7 @@ This is a PostgreSQL Scheduler application that runs scheduled jobs for database
 poetry install
 
 # Install Node.js dependencies (for Claude Code)
-pnpm install
+bun install
 ```
 
 ### Code Quality & Testing
@@ -100,4 +100,4 @@ docker-compose -f docker-compose.dev.yml build
 - We're inside a @Dockerfile.dev docker development container in wsl2, so don't optimize anything for windows 11 since we're working in debian inside a docker container
 - Virtual environment is automatically created at `/workspace/.venv`
 - All Python dependencies managed through Poetry
-- Node.js dependencies managed through pnpm
+- Node.js dependencies managed through bun

@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 # Install cron for scheduled jobs and procps for "ps" tool to check running procs
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install curl git cron nano procps wget dos2unix jq && \
+    apt-get -y --no-install-recommends install curl git cron nano procps wget dos2unix jq unzip && \
     # Clean up
     apt-get autoremove -y && \
     apt-get clean -y && \
@@ -26,17 +26,20 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     apt-get update && \
     apt-get install -y gh
 
-# Install Node.js dependencies
-RUN npm install --global pnpm
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash && \
+    mv /root/.bun/bin/bun /usr/local/bin/bun && \
+    ln -sf /usr/local/bin/bun /usr/local/bin/node && \
+    ln -sf /usr/local/bin/bun /usr/local/bin/npm && \
+    ln -sf /usr/local/bin/bun /usr/local/bin/npx
 # Add node_modules/.bin to PATH for both build-time and runtime
 ENV PATH="/workspace/node_modules/.bin:$PATH"
 RUN echo 'export PATH="/workspace/node_modules/.bin:$PATH"' >> /etc/profile && \
     echo 'export PATH="/workspace/node_modules/.bin:$PATH"' >> /root/.bashrc
-RUN corepack enable pnpm
-# Copy installation files for pnpm
-COPY package.json pnpm-lock.yaml ./
-RUN --mount=type=cache,target=/root/.pnpm-store,id=my_pnpm \
-    pnpm install
+# Copy installation files for bun
+COPY package.json bun.lockb* ./
+RUN --mount=type=cache,target=/root/.bun/install/cache,id=my_bun \
+    bun install
 
 # Install Docker and Docker Compose so we can access Windows 11 Docker Desktop
 RUN \
