@@ -21,6 +21,7 @@ except ValueError:
 from project import (
     alarm_log_delete_duplicates,
     alerts_bulk_processor,
+    aws_rds_db_delete_old_data,
     refresh_dev_database,
     synch_aws_iot_shadow_with_aws_rds_postgres_config,
     time_series_aggregate_calcs,
@@ -55,6 +56,9 @@ def make_schedule(c: Config) -> None:
     )
     schedule.every().day.at("01:21", pytz.timezone("America/Regina")).do(
         time_series_rt_delete_old_data.main, c=c
+    )
+    schedule.every().day.at("01:26", pytz.timezone("America/Regina")).do(
+        aws_rds_db_delete_old_data.main, c=c
     )
     schedule.every().day.at("01:31", pytz.timezone("America/Regina")).do(
         upload_bom_master_parts_to_db.main, c=c
