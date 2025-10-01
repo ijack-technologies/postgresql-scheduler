@@ -172,7 +172,7 @@ def get_power_units_in_service() -> list:
 
 def get_and_insert_latest_values(
     after_this_date: datetime,
-    power_unit_str: str,
+    power_unit_str: str | None,
     gateway_power_unit_dict: dict,
 ) -> bool:
     """
@@ -192,17 +192,17 @@ def get_and_insert_latest_values(
     logger.info(
         "Getting data from LOCF table so we almost certainly have something to fill forward..."
     )
-    SQL_OLD_DATA = f"""
+    sql_old_data = f"""
     select *
     from public.time_series_locf
     where timestamp_utc > '{dt_x_days_back_str}'
         and timestamp_utc <= '{after_this_date_str}'
     """
     if power_unit_str:
-        SQL_OLD_DATA += f" and power_unit = '{power_unit_str}'"
+        sql_old_data += f" and power_unit = '{power_unit_str}'"
 
     columns_old, rows_old = run_query(
-        SQL_OLD_DATA, db="timescale", fetchall=True, raise_error=True
+        sql_old_data, db="timescale", fetchall=True, raise_error=True
     )
     logger.info("Sleeping for 1 second to allow the server to catch up...")
     time.sleep(1)

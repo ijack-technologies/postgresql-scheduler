@@ -1,6 +1,6 @@
 """
 Run a cron-like schedule for running EC2 monitoring tasks.
-this is a separate scheduler from the main scheduler since disk monitoring
+NOTE this is a separate scheduler from the main scheduler since disk monitoring
 needs to run on ALL (i.e. global deployment in Docker Compose) AWS EC2 instances,
 not just the one running the main program.
 """
