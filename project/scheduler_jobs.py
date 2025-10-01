@@ -18,10 +18,10 @@ try:
 except ValueError:
     sys.path.insert(0, pythonpath)
 
-
 from project import (
     alarm_log_delete_duplicates,
     alerts_bulk_processor,
+    refresh_dev_database,
     synch_aws_iot_shadow_with_aws_rds_postgres_config,
     time_series_aggregate_calcs,
     time_series_mv_refresh,
@@ -67,6 +67,9 @@ def make_schedule(c: Config) -> None:
     )
     schedule.every().day.at("02:01", pytz.timezone("America/Regina")).do(
         alerts_bulk_processor.main, c=c
+    )
+    schedule.every().day.at("02:11", pytz.timezone("America/Regina")).do(
+        refresh_dev_database.main, c=c
     )
 
     return None
