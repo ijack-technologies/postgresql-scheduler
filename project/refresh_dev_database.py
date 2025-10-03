@@ -117,12 +117,12 @@ def refresh_dev_database(use_existing_snapshot: bool = True) -> dict:
             DBInstanceIdentifier=dev_instance_id,
             DBSnapshotIdentifier=snapshot_id,
             DBInstanceClass="db.t3.micro",
+            DBSubnetGroupName="default-vpc-04e3a1d5122511275",  # Same VPC as production
+            VpcSecurityGroupIds=["sg-0d06ea2081316ed65"],  # Same security group as production
+            DBParameterGroupName="ijack-postgresql-16-parameter-group",  # Same parameters as production
             MultiAZ=False,
             PubliclyAccessible=False,
             StorageType="gp3",
-            StorageEncrypted=True,
-            AllocatedStorage=20,  # Start small
-            MaxAllocatedStorage=50,  # Allow autoscaling
             CopyTagsToSnapshot=True,
             DeletionProtection=False,  # Allow easy deletion for refresh
             Tags=[
@@ -202,7 +202,7 @@ def refresh_dev_database(use_existing_snapshot: bool = True) -> dict:
 
 
 @error_wrapper(filename=Path(__file__).name)
-def main(c: Config) -> None:
+def main(c: Config, use_existing_snapshot: bool = True) -> None:
     """Main entrypoint function for development database refresh"""
 
     exit_if_already_running(c, Path(__file__).name)
@@ -210,7 +210,7 @@ def main(c: Config) -> None:
     logger.info("🚀 Starting development database refresh...")
 
     try:
-        result = refresh_dev_database(use_existing_snapshot=True)
+        result = refresh_dev_database(use_existing_snapshot=use_existing_snapshot)
 
         if result["success"]:
             logger.info("✅ Development database refresh completed successfully!")

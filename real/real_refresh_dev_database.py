@@ -41,7 +41,7 @@ class TestAll(unittest.TestCase):
         """Test the main program"""
         global c
 
-        refresh_dev_database.main(use_existing_snapshot=True)
+        refresh_dev_database.main(c=c, use_existing_snapshot=True)
 
         mock_exit_if_already_running.assert_called_once()
 
