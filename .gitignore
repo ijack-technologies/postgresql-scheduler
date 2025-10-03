@@ -6,3 +6,4 @@ instance/
 o365_token.txt
 .pnpm-store
 node_modules
+.claude/settings.local.json
