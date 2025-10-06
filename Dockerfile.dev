@@ -41,6 +41,12 @@ COPY package.json bun.lockb* ./
 RUN --mount=type=cache,target=/root/.bun/install/cache,id=my_bun \
     bun install
 
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws/
+
 # Install Docker and Docker Compose so we can access Windows 11 Docker Desktop
 RUN \
     apt update && \
