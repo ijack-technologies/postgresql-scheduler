@@ -3,10 +3,12 @@ Daily Development Database Refresh Job
 Creates fresh development database from production snapshot for IJACK RCOM project
 """
 
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import boto3
+import psycopg2
 
 from project.logger_config import logger
 from project.utils import (
@@ -14,6 +16,82 @@ from project.utils import (
     error_wrapper,
     exit_if_already_running,
 )
+
+
+def sync_schema_objects(
+    prod_endpoint: str, dev_endpoint: str, db_name: str = "ijack"
+) -> None:
+    """
+    Copy functions, triggers, and other schema objects from production to dev
+
+    Args:
+        prod_endpoint: Production database endpoint
+        dev_endpoint: Development database endpoint
+        db_name: Database name (default: 'ijack')
+    """
+    logger.info("🔄 Syncing schema objects (functions, triggers, etc.)...")
+
+    try:
+        # Dump only schema objects (no table structures, only procedures/functions/triggers)
+        dump_cmd = [
+            "pg_dump",
+            "-h",
+            prod_endpoint,
+            "-U",
+            "postgres",
+            "-d",
+            db_name,
+            "--schema-only",
+            "--no-owner",
+            "--no-privileges",
+            "-t",
+            "''",  # Empty table pattern - excludes all tables
+            "-f",
+            "/tmp/schema_objects.sql",
+        ]
+
+        logger.info("📥 Dumping schema objects from production...")
+        result = subprocess.run(
+            dump_cmd, capture_output=True, text=True, timeout=300, check=True
+        )
+
+        if result.stderr:
+            logger.warning(f"pg_dump warnings: {result.stderr}")
+
+        # Restore schema objects to dev
+        restore_cmd = [
+            "psql",
+            "-h",
+            dev_endpoint,
+            "-U",
+            "postgres",
+            "-d",
+            db_name,
+            "-f",
+            "/tmp/schema_objects.sql",
+        ]
+
+        logger.info("📤 Restoring schema objects to development...")
+        result = subprocess.run(
+            restore_cmd, capture_output=True, text=True, timeout=300, check=True
+        )
+
+        if result.stderr:
+            logger.warning(f"psql warnings: {result.stderr}")
+
+        logger.info("✅ Schema objects synced successfully!")
+
+    except subprocess.TimeoutExpired:
+        logger.error("❌ Schema sync timed out after 5 minutes")
+        raise
+    except subprocess.CalledProcessError as e:
+        logger.error(f"❌ Schema sync failed: {e}")
+        logger.error(f"stdout: {e.stdout}")
+        logger.error(f"stderr: {e.stderr}")
+        raise
+    except Exception as e:
+        logger.error(f"❌ Unexpected error during schema sync: {e}")
+        raise
 
 
 def refresh_dev_database(use_existing_snapshot: bool = True) -> dict:
@@ -147,9 +225,25 @@ def refresh_dev_database(use_existing_snapshot: bool = True) -> dict:
         dev_endpoint = dev_response["DBInstances"][0]["Endpoint"]["Address"]
         dev_size = dev_response["DBInstances"][0]["AllocatedStorage"]
 
-        logger.info("✅ Development database refresh completed!")
+        logger.info("✅ Development database restoration completed!")
         logger.info(f"📍 Development endpoint: {dev_endpoint}")
         logger.info(f"💾 Database size: {dev_size} GB")
+
+        # Step 7.5: Get production endpoint and sync schema objects
+        prod_response = rds.describe_db_instances(DBInstanceIdentifier="ijack")
+        prod_endpoint = prod_response["DBInstances"][0]["Endpoint"]["Address"]
+
+        try:
+            sync_schema_objects(
+                prod_endpoint=prod_endpoint,
+                dev_endpoint=dev_endpoint,
+                db_name="ijack",
+            )
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Schema sync failed (database still functional): {e}"
+            )
+            # Don't fail the entire refresh if schema sync fails
 
         # Step 8: Cleanup old snapshots (keep last 7 days)
         logger.info("🧹 Cleaning up old development snapshots...")
