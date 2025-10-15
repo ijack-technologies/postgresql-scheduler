@@ -113,7 +113,9 @@ def get_all_power_units_config_metrics() -> list:
                     CONCAT(ip_address, '>', subnet, '>', gateway),
                     ','
                 ) as modbus_networks,
-                never_default as modbus_never_default
+                never_default as modbus_never_default,
+                vpn_subnets,
+                auto_vpn_routing
             from power_units_modbus_networks
             group by power_unit_id, never_default
         ),
@@ -169,6 +171,8 @@ def get_all_power_units_config_metrics() -> list:
             pu.hyd_temp,
             modbus.modbus_networks,
             modbus.modbus_never_default,
+            modbus.vpn_subnets,
+            modbus.auto_vpn_routing,
             fixed_ip.fixed_ip_networks,
             fixed_ip.fixed_ip_never_default
         FROM gw gw
