@@ -117,7 +117,7 @@ def get_all_power_units_config_metrics() -> list:
                 vpn_subnets as modbus_vpn_subnets,
                 auto_vpn_routing as modbus_auto_vpn_routing
             from power_units_modbus_networks
-            group by power_unit_id, never_default
+            group by power_unit_id, never_default, vpn_subnets, auto_vpn_routing
         ),
         fixed_ip as (
             select 
