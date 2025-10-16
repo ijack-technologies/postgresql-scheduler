@@ -114,10 +114,10 @@ def get_all_power_units_config_metrics() -> list:
                     ','
                 ) as modbus_networks,
                 never_default as modbus_never_default,
-                vpn_subnets as modbus_vpn_subnets,
-                auto_vpn_routing as modbus_auto_vpn_routing
+                vpn_subnets as modbus_vpn_subnets
+                -- auto_vpn_routing as modbus_auto_vpn_routing
             from power_units_modbus_networks
-            group by power_unit_id, never_default, vpn_subnets, auto_vpn_routing
+            group by power_unit_id, never_default, vpn_subnets
         ),
         fixed_ip as (
             select 
@@ -174,7 +174,7 @@ def get_all_power_units_config_metrics() -> list:
             modbus.modbus_networks,
             modbus.modbus_never_default,
             modbus.modbus_vpn_subnets,
-            modbus.modbus_auto_vpn_routing,
+            -- modbus.modbus_auto_vpn_routing,
             fixed_ip.fixed_ip_networks,
             fixed_ip.fixed_ip_never_default
         FROM gw gw
