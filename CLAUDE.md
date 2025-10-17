@@ -101,3 +101,91 @@ docker-compose -f docker-compose.dev.yml build
 - Virtual environment is automatically created at `/workspace/.venv`
 - All Python dependencies managed through Poetry
 - Node.js dependencies managed through bun
+
+## Principles
+
+- Write high quality, general purpose solutions. Implement solutions that work correctly for all valid inputs, not just the test cases. Do not hard-code values or create solutions that only work for specific test inputs. Instead, implement the actual logic that solves the problems generally
+- Focus on understanding the problem requirements and implementing the correct algorithm. Tests are there to verify correctness, not to define the solution. Provide a principled implementation that follows best practices and software design principles
+- If the task is unreasonable or infeasible, or if any of the tests are incorrect, please tell me. The solution should be robust, maintainable, and extendable
+
+## Documentation Organization
+
+All project documentation can be found in the `/project/docs` folder, organized by category:
+
+- **`/docs/architecture/`** - System architecture, setup guides, READMEs, and core documentation
+- **`/docs/implementation/`** - Migration plans, feature implementation guides, and deployment procedures
+- **`/docs/analysis/`** - Analysis reports, system studies, and research documentation
+- **`/docs/procedures/`** - Testing guides, operational procedures, and user guides
+
+Files are named with `YYYY-MM-DD-HHMM` prefix based on creation date and time for chronological organization.
+
+**Getting today's timestamp for file naming:**
+
+```bash
+date +"%Y-%m-%d-%H%M"
+```
+
+## GitHub Issue Management
+
+**CRITICAL:** All issues for this project should be managed through the **IJACK Roadmap project board** (Project #12) at https://github.com/orgs/ijack-technologies/projects/12/views/, regardless of which repository they originate from.
+
+**DEFAULT PROJECT:** IJACK Roadmap (Project #12) is the default project board for ALL issues - features, bugs, epics, user stories, service requests, and ideas.
+
+### Issue Location Guidelines
+
+- **Create issues** in the relevant repository (`rcom`, `ijack-technologies/planning`, etc.)
+- **ALWAYS add ALL issues to the IJACK Roadmap project board (Project #12)** for centralized tracking
+- The IJACK Roadmap project board is the single source of truth for all project management across repositories
+
+### Creating Issues with Templates
+
+**ALWAYS use the appropriate issue template** when creating GitHub issues:
+
+- **🐛 Bug Reports**: Use the bug report template for defects and issues
+- **📍 Features**: Use the feature template for new functionality
+- **💡 Ideas**: Use the idea template for suggestions and improvements
+- **🙋 Service Requests**: Use the service request template for support needs
+- **🏌️ User Stories**: Use the user story template for user-focused requirements
+- **⛳ Epics**: Use the epic template for large initiatives
+
+Templates ensure consistent issue formatting and capture all necessary information. Templates are located in `.github/ISSUE_TEMPLATE/`.
+
+### Adding Issues to Project Board
+
+**MANDATORY:** ALL issues must be added to the IJACK Roadmap project board (Project #12):
+
+```bash
+# ALWAYS add every issue to the IJACK Roadmap project board (Project #12)
+gh project item-add 12 --owner ijack-technologies --url <ISSUE_URL>
+
+# Standard workflow for ALL issues:
+# 1. Create issue with appropriate template
+gh issue create --title "Issue Title" --assignee "username" --body "..."
+# 2. IMMEDIATELY add to IJACK Roadmap project (REQUIRED)
+gh project item-add 12 --owner ijack-technologies --url https://github.com/ijack-technologies/rcom/issues/XXX
+# 3. Move to appropriate status via project board UI
+
+# Examples:
+gh project item-add 12 --owner ijack-technologies --url https://github.com/ijack-technologies/rcom/issues/976
+gh project item-add 12 --owner ijack-technologies --url https://github.com/ijack-technologies/planning/issues/45
+```
+
+**Why this approach?**
+
+- Technical issues stay close to the codebase where developers work
+- Centralized project management across all repositories
+- Better sprint planning and feature tracking
+- Improved visibility for stakeholders and project managers
+
+## Quick Reference
+
+### Always Do
+
+- Think ultra hard and make detailed plans
+- Keep code DRY and SOLID while following the KISS principle
+- Run linters before committing
+- Use bun instead of npm
+- Activate virtual environments before running code
+- Always use IDE diagnostics to validate code after implementation
+- Use Context7 for all package documentation lookups
+- Add all issues to the ijack-technologies project board for tracking
