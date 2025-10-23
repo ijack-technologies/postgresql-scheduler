@@ -132,17 +132,19 @@ def get_all_power_units_config_metrics() -> list:
             from power_units_fixed_ip_networks
             group by power_unit_id, never_default
         )
-        select gw.aws_thing, 
-            gw.gateway, 
-            cust.customer, 
-            cust.mqtt_topic, 
+        select gw.aws_thing,
+            gw.gateway,
+            cust.customer,
+            cust.mqtt_topic,
             cust_sub.abbrev AS cust_sub_group_abbrev,
-            ut.unit_type, 
+            ut.unit_type,
             pu.apn,
+            pu.apn_web,
+            pu.apn_web_locked,
             CASE WHEN str.downhole IS NULL OR str.downhole = ''::text THEN str.surface
                 ELSE (str.downhole || ' @ '::text) || str.surface
-            END AS location, 
-            pu.power_unit, 
+            END AS location,
+            pu.power_unit,
             mt.model,
             tz.time_zone,
             -- Alert settings
