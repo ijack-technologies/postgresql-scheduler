@@ -1,45 +1,63 @@
+# syntax=docker/dockerfile:1.6
 FROM nikolaik/python-nodejs:python3.11-nodejs22-slim
 
 # Use Docker BuildKit for better caching and faster builds
 ARG DOCKER_BUILDKIT=1
 ARG BUILDKIT_INLINE_CACHE=1
-# Enable BuildKit for Docker-Compose
 ARG COMPOSE_DOCKER_CLI_BUILD=1
 
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+# Set Python environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    # UV configuration
+    UV_CACHE_DIR=/root/.cache/uv \
+    UV_SYSTEM_PYTHON=1 \
+    # Environment
+    HOST=0.0.0.0
 
-# Install cron for scheduled jobs and procps for "ps" tool to check running procs
-RUN apt-get update && \
-    apt-get -y --no-install-recommends install curl git cron nano procps wget dos2unix jq unzip && \
+# Add binaries to PATH (including Bun global packages)
+ENV PATH="/root/.local/bin:/root/.bun/bin:/root/.bun/install/global/node_modules/.bin:/workspace/node_modules/.bin:/workspace/.venv/bin:$PATH"
+
+# Install system dependencies in a single layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Basic utilities
+    curl \
+    wget \
+    unzip \
+    git \
+    nano \
+    dos2unix \
+    jq \
+    # Development tools
+    gcc \
+    cron \
+    procps \
+    # Database libraries (for psycopg2-binary)
+    libpq-dev \
+    # Build dependencies
+    libwebp-dev \
+    # Network utilities
+    iputils-ping \
+    # Required for CLIs
+    lsb-release \
+    gnupg \
+    apt-transport-https \
+    ca-certificates \
     # Clean up
-    apt-get autoremove -y && \
-    apt-get clean -y && \
-    rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install GitHub CLI (gh)
-RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
-    chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
-    apt-get update && \
-    apt-get install -y gh
-
-# Install Bun
-RUN curl -fsSL https://bun.sh/install | bash && \
-    mv /root/.bun/bin/bun /usr/local/bin/bun && \
-    ln -sf /usr/local/bin/bun /usr/local/bin/node && \
-    ln -sf /usr/local/bin/bun /usr/local/bin/npm && \
-    ln -sf /usr/local/bin/bun /usr/local/bin/npx
-# Add node_modules/.bin to PATH for both build-time and runtime
-ENV PATH="/workspace/node_modules/.bin:$PATH"
-RUN echo 'export PATH="/workspace/node_modules/.bin:$PATH"' >> /etc/profile && \
-    echo 'export PATH="/workspace/node_modules/.bin:$PATH"' >> /root/.bashrc
-# Copy installation files for bun
-COPY package.json bun.lockb* ./
-RUN --mount=type=cache,target=/root/.bun/install/cache,id=my_bun \
-    bun install
+# Install GitHub CLI
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends gh \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
@@ -47,51 +65,82 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     ./aws/install && \
     rm -rf awscliv2.zip aws/
 
-# Install Docker and Docker Compose so we can access Windows 11 Docker Desktop
-RUN \
-    apt update && \
-    apt-get install ca-certificates curl && \
-    install -m 0755 -d /etc/apt/keyrings && \
-    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
-    chmod a+r /etc/apt/keyrings/docker.asc && \
-    # Add the repository to Apt sources:
-    echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
-    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-    tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    apt-get update && \
-    apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
-    # Add root user to docker group for socket access
-    groupadd -f docker && usermod -aG docker root && \
-    # Create docker-cli-plugin directory
-    mkdir -p /root/.docker/cli-plugins
+# Install Docker CLI (for connecting to host Docker)
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        docker-ce-cli \
+        docker-compose-plugin \
+        docker-buildx-plugin \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    # Create docker group and add root user
+    && groupadd -f docker \
+    && usermod -aG docker root \
+    # Create docker CLI plugins directory
+    && mkdir -p /root/.docker/cli-plugins
 
-# Ensure Docker uses the mounted socket
-ENV DOCKER_HOST=unix:///var/run/docker.sock
+# Install UV (Python package manager)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Install Bun (JavaScript runtime and package manager)
+RUN curl -fsSL https://bun.sh/install | bash
+
+# Install Claude Code globally (always latest version)
+RUN /root/.bun/bin/bun install -g @anthropic-ai/claude-code@latest
+
+# Set working directory
 WORKDIR /workspace
 
-# Install Poetry with the root user
-# Ensure pip is the latest version
-ENV POETRY_HOME=/usr/local
-RUN pip install --upgrade pip && \
-    # Install Poetry
-    curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python && \
-    cd /usr/local/bin && \
-    ln -sf /opt/poetry/bin/poetry && \
-    poetry config virtualenvs.create false && \
-    # Clean up
-    apt-get autoremove -y && \
-    apt-get clean -y && \
-    rm -rf /var/lib/apt/lists/* && \
-    # Make the logs folder
-    mkdir -p /project/logs
+# Create logs directory (maintaining compatibility with existing structure)
+RUN mkdir -p /workspace/logs /project/logs
 
-# Switch back to dialog for any ad-hoc use of apt-get
-ENV DEBIAN_FRONTEND=
+# Copy JavaScript dependency files if they exist (for caching)
+COPY package.json* bun.lockb* ./
+RUN --mount=type=cache,target=/root/.bun/install/cache,id=bun_cache \
+    if [ -f package.json ]; then \
+        /root/.bun/bin/bun install; \
+    fi
 
-# Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
-COPY .bashrc /root/
+# Copy Python dependency files if they exist
+COPY pyproject.toml* uv.lock* requirements*.txt* poetry.lock* ./
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv_cache \
+    if [ -f pyproject.toml ] && [ -f poetry.lock ]; then \
+        echo "Converting Poetry dependencies to UV format..."; \
+        uv venv /workspace/.venv; \
+        . /workspace/.venv/bin/activate; \
+        uv pip install poetry-plugin-export; \
+        poetry export -f requirements.txt --without-hashes -o requirements.txt; \
+        uv pip install -r requirements.txt; \
+    elif [ -f pyproject.toml ]; then \
+        uv venv /workspace/.venv; \
+        . /workspace/.venv/bin/activate; \
+        uv pip install -e .[dev] || echo "UV install from pyproject.toml skipped"; \
+    elif [ -f requirements.txt ]; then \
+        uv venv /workspace/.venv; \
+        . /workspace/.venv/bin/activate; \
+        uv pip install -r requirements.txt || echo "UV install from requirements.txt skipped"; \
+    fi
+
+# Configure shell environment
+RUN echo 'export PATH="/root/.bun/install/global/node_modules/.bin:/workspace/node_modules/.bin:/workspace/.venv/bin:$PATH"' >> /etc/profile \
+    && echo 'export PATH="/root/.bun/install/global/node_modules/.bin:/workspace/node_modules/.bin:/workspace/.venv/bin:$PATH"' >> /root/.bashrc \
+    && echo 'alias python="/workspace/.venv/bin/python"' >> /root/.bashrc \
+    && echo 'alias pip="/workspace/.venv/bin/pip"' >> /root/.bashrc
+
+# Copy custom .bashrc if it exists
+COPY .bashrc* /root/
+
+# Set Docker to use the mounted socket
+ENV DOCKER_HOST=unix:///var/run/docker.sock
+
+# Set PYTHONPATH for the workspace
+ENV PYTHONPATH=/workspace
 
 # Copy the entrypoint script to install the Python and Node dependencies if the .venv or node_modules directories don't exist
 COPY entrypoint.dev.sh /entrypoint.dev.sh

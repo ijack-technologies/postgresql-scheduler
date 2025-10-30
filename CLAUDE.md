@@ -47,7 +47,7 @@ This is a PostgreSQL Scheduler application that runs scheduled jobs for database
 ### Environment Setup
 ```bash
 # Install Python dependencies
-poetry install
+uv pip install -e .[dev]
 
 # Install Node.js dependencies (for Claude Code)
 bun install
@@ -99,7 +99,7 @@ docker-compose -f docker-compose.dev.yml build
 ## Development Container Considerations
 - We're inside a @Dockerfile.dev docker development container in wsl2, so don't optimize anything for windows 11 since we're working in debian inside a docker container
 - Virtual environment is automatically created at `/workspace/.venv`
-- All Python dependencies managed through Poetry
+- All Python dependencies managed through UV (fast Python package manager)
 - Node.js dependencies managed through bun
 
 ## Principles

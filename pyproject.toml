@@ -1,41 +1,41 @@
-[tool.poetry]
+[project]
 name = "postgresql_scheduler"
 version = "0.2.0"
 description = "IJACK Scheduled Jobs, mostly for database updating/refreshing/inserting"
-authors = ["Sean McCarthy <smccarthy@myijack.com>"]
-packages = [{include = "project"}]  # Point to the project directory
+authors = [{name = "Sean McCarthy", email = "smccarthy@myijack.com"}]
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "pandas>=2.2.2",
+    "numpy>=2.1.0",
+    "boto3>=1.35.3",
+    "psycopg2-binary>=2.9.9",
+    "pyjwt==1.7.1",
+    "python-dotenv>=1.0.1",
+    "pytz>=2024.1",
+    "requests>=2.32.3",
+    "s3transfer>=0.10.2",
+    "twilio==6.54.0",
+    "schedule>=1.2.2",
+    "pyxlsb>=1.0.10",
+    "o365>=2.0.38",
+    "openpyxl>=3.1.5",
+    "sqlalchemy>=2.0.41",
+]
 
-[[tool.poetry.source]]
-name = "ijack_private"
-url = "https://pypi.myijack.com"
-priority = "explicit"
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=3.4.0",
+    "ruff>=0.9.7",
+    "pytest>=8.3.2",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.12"
-pandas = "^2.2.2"
-numpy = "^2.1.0"
-boto3 = "^1.35.3"
-psycopg2-binary = "^2.9.9"
-pyjwt = "1.7.1"
-python-dotenv = "^1.0.1"
-pytz = "^2024.1"
-requests = "^2.32.3"
-s3transfer = "^0.10.2"
-twilio = "6.54.0"
-schedule = "^1.2.2"
-pyxlsb = "^1.0.10"
-o365 = "^2.0.38"
-openpyxl = "^3.1.5"
-sqlalchemy = "^2.0.41"
+[tool.setuptools.packages.find]
+include = ["project*"]
 
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^3.4.0"
-ruff = "^0.9.7"
-pytest = "^8.3.2"
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
@@ -156,7 +156,7 @@ exclude = [
     "**/site-packages",
 ]
 verboseOutput = true
-pythonVersion = "3.6"
+pythonVersion = "3.11"
 pythonPlatform = "Linux"
 extraPaths = ["/workspace/.venv/lib/python3.11/site-packages"]
 typeCheckingMode = "strict"
