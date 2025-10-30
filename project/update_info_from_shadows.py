@@ -649,6 +649,7 @@ def upsert_gw_info(
         "drive_used_gb": "DRIVE_USED_GB",
         "memory_size_gb": "MEMORY_SIZE_GB",
         "memory_used_gb": "MEMORY_USED_GB",
+        "apn_reported": "APN",
     }
 
     for db_col_name, shadow_name in metrics_to_update.items():
