@@ -1,4 +1,0 @@
-[virtualenvs]
-# Creates a new virtualenv at .venv if it doesn't exist
-create = true
-path = "/workspace/.venv"

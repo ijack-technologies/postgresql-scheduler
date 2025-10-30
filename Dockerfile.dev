@@ -108,16 +108,9 @@ RUN --mount=type=cache,target=/root/.bun/install/cache,id=bun_cache \
     fi
 
 # Copy Python dependency files if they exist
-COPY pyproject.toml* uv.lock* requirements*.txt* poetry.lock* ./
+COPY pyproject.toml* uv.lock* requirements*.txt* ./
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv_cache \
-    if [ -f pyproject.toml ] && [ -f poetry.lock ]; then \
-        echo "Converting Poetry dependencies to UV format..."; \
-        uv venv /workspace/.venv; \
-        . /workspace/.venv/bin/activate; \
-        uv pip install poetry-plugin-export; \
-        poetry export -f requirements.txt --without-hashes -o requirements.txt; \
-        uv pip install -r requirements.txt; \
-    elif [ -f pyproject.toml ]; then \
+    if [ -f pyproject.toml ]; then \
         uv venv /workspace/.venv; \
         . /workspace/.venv/bin/activate; \
         uv pip install -e .[dev] || echo "UV install from pyproject.toml skipped"; \
