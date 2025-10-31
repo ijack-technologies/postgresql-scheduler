@@ -1740,8 +1740,6 @@ def initialize_parts_in_warehouses(conn: psycopg2.extensions.connection) -> None
                 v["quantity_desired"],
                 v["average_cost"],
                 v["last_cost"],
-                "NOW()",
-                "NOW()",
             )
             for v in insert_values
         ]
