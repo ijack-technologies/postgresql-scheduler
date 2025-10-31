@@ -1427,14 +1427,14 @@ def consolidate_inventory_to_latest_revisions(
                 cursor.execute(
                     """
                     SELECT 
-                        warehouse_min_stock,
-                        warehouse_max_stock,
-                        warehouse_reorder_point,
-                        warehouse_reorder_quantity,
-                        safety_stock,
-                        lead_time_days,
-                        avg_daily_usage,
-                        cycle_count_frequency
+                        wpr.warehouse_min_stock,
+                        wpr.warehouse_max_stock,
+                        wpr.warehouse_reorder_point,
+                        wpr.warehouse_reorder_quantity,
+                        wpr.safety_stock,
+                        wpr.lead_time_days,
+                        wpr.avg_daily_usage,
+                        wpr.cycle_count_frequency
                     FROM public.warehouses_parts_rel wpr
                     JOIN public.parts p ON p.id = wpr.part_id
                     WHERE wpr.warehouse_id = %s
