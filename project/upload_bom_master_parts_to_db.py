@@ -1506,7 +1506,10 @@ def consolidate_inventory_to_latest_revisions(
                     # Get current quantities for the latest revision (if exists)
                     cursor.execute(
                         """
-                        SELECT quantity, quantity_reserved, quantity_desired
+                        SELECT 
+                            COALESCE(quantity, 0) as quantity,
+                            COALESCE(quantity_reserved, 0) as quantity_reserved,
+                            COALESCE(quantity_desired, 0) as quantity_desired
                         FROM public.warehouses_parts_rel
                         WHERE warehouse_id = %s AND part_id = %s
                     """,
