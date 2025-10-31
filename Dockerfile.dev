@@ -15,7 +15,7 @@ ENV PYTHONUNBUFFERED=1 \
     # Environment
     HOST=0.0.0.0
 
-# Add binaries to PATH (including Bun global packages)
+# Add binaries to PATH (including Claude Code installed via official script)
 ENV PATH="/root/.local/bin:/root/.bun/bin:/root/.bun/install/global/node_modules/.bin:/workspace/node_modules/.bin:/workspace/.venv/bin:$PATH"
 
 # Install system dependencies in a single layer
@@ -91,8 +91,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
 # Install Bun (JavaScript runtime and package manager)
 RUN curl -fsSL https://bun.sh/install | bash
 
-# Install Claude Code globally (always latest version)
-RUN /root/.bun/bin/bun install -g @anthropic-ai/claude-code@latest
+# Install Claude Code using the official install script (always latest version)
+RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Set working directory
 WORKDIR /workspace
