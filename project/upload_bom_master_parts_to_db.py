@@ -24,6 +24,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils.cell import column_index_from_string, get_column_letter
 from openpyxl.worksheet.table import Table
 from psycopg2.sql import SQL, Literal
+from psycopg2.extras import execute_values
 from pyxlsb import open_workbook as open_xlsb
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
@@ -1305,6 +1306,497 @@ def upsert_finished_good_pairs(
     return None
 
 
+def consolidate_inventory_to_latest_revisions(
+    conn: psycopg2.extensions.connection,
+) -> None:
+    """
+    Consolidate warehouse inventory quantities from older part revisions to the newest revision.
+
+    This function:
+    1. Identifies parts with multiple revisions
+    2. Finds the latest revision for each part family
+    3. Transfers all inventory (actual, reserved, and desired) from older revisions to newest
+    4. Copies warehouse management fields from previous latest revision to maintain consistency:
+       - warehouse_min_stock, warehouse_max_stock, warehouse_reorder_point
+       - warehouse_reorder_quantity, safety_stock, lead_time_days
+       - avg_daily_usage, cycle_count_frequency
+    5. Sets older revisions to zero quantity
+    6. Maintains transactional integrity
+
+    Example:
+    - Part 'ABC' r0 has 3 units actual, 1 unit reserved, 2 units desired, min_stock=10
+    - Part 'ABC' r1 is added (newest revision)
+    - After consolidation: r0 has 0/0/0, r1 has 3/1/2 with min_stock=10
+    """
+    with conn.cursor() as cursor:
+        logger.info("\n=== Starting inventory consolidation to latest revisions ===")
+
+        # First, identify part families with multiple active revisions
+        cursor.execute("""
+            WITH part_revision_counts AS (
+                SELECT 
+                    part_name,
+                    COUNT(DISTINCT id) as revision_count,
+                    MAX(part_rev) as latest_rev
+                FROM public.parts
+                WHERE is_active = true 
+                AND (flagged_for_deletion IS NULL OR flagged_for_deletion = false)
+                GROUP BY part_name
+                HAVING COUNT(DISTINCT id) > 1
+            )
+            SELECT 
+                prc.part_name,
+                prc.revision_count,
+                prc.latest_rev,
+                p_latest.id as latest_part_id,
+                p_latest.part_num as latest_part_num
+            FROM part_revision_counts prc
+            JOIN public.parts p_latest 
+                ON p_latest.part_name = prc.part_name 
+                AND p_latest.part_rev = prc.latest_rev
+                AND p_latest.is_active = true
+            ORDER BY prc.part_name
+        """)
+
+        parts_to_consolidate = cursor.fetchall()
+        logger.info(
+            f"Found {len(parts_to_consolidate)} part families with multiple revisions"
+        )
+
+        if not parts_to_consolidate:
+            logger.info("No parts need consolidation - all parts have single revisions")
+            return
+
+        consolidation_count = 0
+        total_quantity_transferred = 0
+        total_reserved_transferred = 0
+        total_desired_transferred = 0
+
+        for (
+            part_name,
+            revision_count,
+            latest_rev,
+            latest_part_id,
+            latest_part_num,
+        ) in parts_to_consolidate:
+            logger.info(
+                f"\nProcessing {part_name} ({revision_count} revisions, latest: r{int(latest_rev)})"
+            )
+
+            # Get all older revision part IDs for this part family
+            cursor.execute(
+                """
+                SELECT id, part_num, part_rev
+                FROM public.parts
+                WHERE part_name = %s
+                AND id != %s
+                AND is_active = true
+                AND (flagged_for_deletion IS NULL OR flagged_for_deletion = false)
+                ORDER BY part_rev
+            """,
+                (part_name, latest_part_id),
+            )
+
+            older_parts = cursor.fetchall()
+            older_part_ids = [p[0] for p in older_parts]
+
+            if not older_part_ids:
+                continue
+
+            logger.info(
+                f"  Found {len(older_parts)} older revisions: {[f'{p[1]} (r{int(p[2])})' for p in older_parts]}"
+            )
+
+            # For each warehouse, sum quantities from older revisions and transfer to newest
+            cursor.execute(
+                """
+                SELECT DISTINCT warehouse_id, w.name
+                FROM public.warehouses_parts_rel wpr
+                JOIN public.warehouses w ON w.id = wpr.warehouse_id
+                WHERE part_id = ANY(%s::int[])
+                OR part_id = %s
+            """,
+                (older_part_ids, latest_part_id),
+            )
+
+            warehouses = cursor.fetchall()
+
+            for warehouse_id, warehouse_name in warehouses:
+                # First, get warehouse management fields from the previous latest revision
+                # (the one with the highest revision among the older parts)
+                cursor.execute(
+                    """
+                    SELECT 
+                        warehouse_min_stock,
+                        warehouse_max_stock,
+                        warehouse_reorder_point,
+                        warehouse_reorder_quantity,
+                        safety_stock,
+                        lead_time_days,
+                        avg_daily_usage,
+                        cycle_count_frequency
+                    FROM public.warehouses_parts_rel wpr
+                    JOIN public.parts p ON p.id = wpr.part_id
+                    WHERE wpr.warehouse_id = %s
+                    AND p.part_name = %s
+                    AND p.id != %s
+                    AND p.is_active = true
+                    ORDER BY p.part_rev DESC
+                    LIMIT 1
+                """,
+                    (warehouse_id, part_name, latest_part_id),
+                )
+
+                warehouse_config_result = cursor.fetchone()
+                if warehouse_config_result:
+                    (
+                        warehouse_min_stock,
+                        warehouse_max_stock,
+                        warehouse_reorder_point,
+                        warehouse_reorder_quantity,
+                        safety_stock,
+                        lead_time_days,
+                        avg_daily_usage,
+                        cycle_count_frequency,
+                    ) = warehouse_config_result
+                else:
+                    # Default values if no previous revision exists
+                    (
+                        warehouse_min_stock,
+                        warehouse_max_stock,
+                        warehouse_reorder_point,
+                        warehouse_reorder_quantity,
+                        safety_stock,
+                        lead_time_days,
+                        avg_daily_usage,
+                        cycle_count_frequency,
+                    ) = (None, None, None, None, None, None, None, None)
+
+                # Sum quantities from older revisions in this warehouse
+                cursor.execute(
+                    """
+                    SELECT 
+                        COALESCE(SUM(quantity), 0) as total_quantity,
+                        COALESCE(SUM(quantity_reserved), 0) as total_reserved,
+                        COALESCE(SUM(quantity_desired), 0) as total_desired
+                    FROM public.warehouses_parts_rel
+                    WHERE warehouse_id = %s
+                    AND part_id = ANY(%s::int[])
+                """,
+                    (warehouse_id, older_part_ids),
+                )
+
+                total_quantity, total_reserved, total_desired = cursor.fetchone()
+
+                if (
+                    total_quantity > 0
+                    or total_reserved > 0
+                    or total_desired > 0
+                    or warehouse_config_result
+                ):
+                    logger.info(
+                        f"  {warehouse_name}: Transferring {total_quantity} actual, {total_reserved} reserved, {total_desired} desired"
+                    )
+                    if warehouse_config_result:
+                        logger.info(
+                            f"    Copying warehouse config: min={warehouse_min_stock}, max={warehouse_max_stock}, "
+                            f"reorder_point={warehouse_reorder_point}, reorder_qty={warehouse_reorder_quantity}"
+                        )
+
+                    # Get current quantities for the latest revision (if exists)
+                    cursor.execute(
+                        """
+                        SELECT quantity, quantity_reserved, quantity_desired
+                        FROM public.warehouses_parts_rel
+                        WHERE warehouse_id = %s AND part_id = %s
+                    """,
+                        (warehouse_id, latest_part_id),
+                    )
+
+                    result = cursor.fetchone()
+                    if result:
+                        current_quantity, current_reserved, current_desired = result
+                        new_quantity = current_quantity + total_quantity
+                        new_reserved = current_reserved + total_reserved
+                        new_desired = current_desired + total_desired
+
+                        # Update the latest revision with consolidated quantities and warehouse config
+                        cursor.execute(
+                            """
+                            UPDATE public.warehouses_parts_rel
+                            SET quantity = %s,
+                                quantity_reserved = %s,
+                                quantity_desired = %s,
+                                warehouse_min_stock = COALESCE(%s, warehouse_min_stock),
+                                warehouse_max_stock = COALESCE(%s, warehouse_max_stock),
+                                warehouse_reorder_point = COALESCE(%s, warehouse_reorder_point),
+                                warehouse_reorder_quantity = COALESCE(%s, warehouse_reorder_quantity),
+                                safety_stock = COALESCE(%s, safety_stock),
+                                lead_time_days = COALESCE(%s, lead_time_days),
+                                avg_daily_usage = COALESCE(%s, avg_daily_usage),
+                                cycle_count_frequency = COALESCE(%s, cycle_count_frequency),
+                                timestamp_utc_updated = NOW()
+                            WHERE warehouse_id = %s AND part_id = %s
+                        """,
+                            (
+                                new_quantity,
+                                new_reserved,
+                                new_desired,
+                                warehouse_min_stock,
+                                warehouse_max_stock,
+                                warehouse_reorder_point,
+                                warehouse_reorder_quantity,
+                                safety_stock,
+                                lead_time_days,
+                                avg_daily_usage,
+                                cycle_count_frequency,
+                                warehouse_id,
+                                latest_part_id,
+                            ),
+                        )
+                    else:
+                        # Insert new record for latest revision
+                        cursor.execute(
+                            """
+                            INSERT INTO public.warehouses_parts_rel 
+                            (warehouse_id, part_id, quantity, quantity_reserved, quantity_desired,
+                             average_cost, last_cost, 
+                             warehouse_min_stock, warehouse_max_stock, warehouse_reorder_point,
+                             warehouse_reorder_quantity, safety_stock, lead_time_days,
+                             avg_daily_usage, cycle_count_frequency,
+                             timestamp_utc_inserted, timestamp_utc_updated)
+                            VALUES (%s, %s, %s, %s, %s, 0, 0, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                        """,
+                            (
+                                warehouse_id,
+                                latest_part_id,
+                                total_quantity,
+                                total_reserved,
+                                total_desired,
+                                warehouse_min_stock,
+                                warehouse_max_stock,
+                                warehouse_reorder_point,
+                                warehouse_reorder_quantity,
+                                safety_stock,
+                                lead_time_days,
+                                avg_daily_usage,
+                                cycle_count_frequency,
+                            ),
+                        )
+
+                    # Set older revisions to zero
+                    cursor.execute(
+                        """
+                        UPDATE public.warehouses_parts_rel
+                        SET quantity = 0,
+                            quantity_reserved = 0,
+                            quantity_desired = 0,
+                            timestamp_utc_updated = NOW()
+                        WHERE warehouse_id = %s 
+                        AND part_id = ANY(%s::int[])
+                    """,
+                        (warehouse_id, older_part_ids),
+                    )
+
+                    consolidation_count += 1
+                    total_quantity_transferred += total_quantity
+                    total_reserved_transferred += total_reserved
+                    total_desired_transferred += total_desired
+
+        conn.commit()
+
+        logger.info("\n=== Consolidation Summary ===")
+        logger.info(f"Part families processed: {len(parts_to_consolidate)}")
+        logger.info(f"Warehouse transfers completed: {consolidation_count}")
+        logger.info(f"Total quantity transferred: {total_quantity_transferred}")
+        logger.info(
+            f"Total quantity reserved transferred: {total_reserved_transferred}"
+        )
+        logger.info(f"Total desired quantity transferred: {total_desired_transferred}")
+
+        # Verify integrity - total quantities should remain the same
+        logger.info("\n--- Verification ---")
+        for (
+            part_name,
+            revision_count,
+            latest_rev,
+            latest_part_id,
+            latest_part_num,
+        ) in parts_to_consolidate[:5]:  # Check first 5
+            cursor.execute(
+                """
+                SELECT 
+                    SUM(wpr.quantity) as total_quantity,
+                    SUM(wpr.quantity_reserved) as total_reserved,
+                    SUM(wpr.quantity_desired) as total_desired
+                FROM public.parts p
+                JOIN public.warehouses_parts_rel wpr ON wpr.part_id = p.id
+                WHERE p.part_name = %s
+                AND p.is_active = true
+            """,
+                (part_name,),
+            )
+
+            total_qty, total_res, total_des = cursor.fetchone()
+            if total_qty or total_res or total_des:
+                logger.info(
+                    f"{part_name}: Total quantity: {total_qty}, Total reserved: {total_res}, Total desired: {total_des}"
+                )
+
+    return None
+
+
+def initialize_parts_in_warehouses(conn: psycopg2.extensions.connection) -> None:
+    """
+    Initialize all active parts in all active warehouses with zero quantity.
+    This ensures users see zero inventory instead of no records for new parts.
+
+    This function:
+    1. Gets all active warehouses
+    2. Gets all distinct active parts
+    3. Creates warehouse-part relationships with zero quantity where they don't exist
+    4. Uses efficient bulk insert with ON CONFLICT DO NOTHING
+    """
+    with conn.cursor() as cursor:
+        # First, get all active warehouses
+        logger.info("Getting all active warehouses...")
+        cursor.execute("""
+            SELECT id, name 
+            FROM public.warehouses 
+            WHERE is_active = true
+            ORDER BY id
+        """)
+        active_warehouses = cursor.fetchall()
+        logger.info(f"Found {len(active_warehouses)} active warehouses")
+
+        # Get all active parts (not flagged for deletion)
+        logger.info("Getting all active parts...")
+        cursor.execute("""
+            SELECT id, part_num 
+            FROM public.parts 
+            WHERE is_active = true 
+            AND (flagged_for_deletion IS NULL OR flagged_for_deletion = false)
+            ORDER BY id
+        """)
+        active_parts = cursor.fetchall()
+        logger.info(f"Found {len(active_parts)} active parts")
+
+        # Calculate total possible combinations
+        total_combinations = len(active_warehouses) * len(active_parts)
+        logger.info(f"Total possible warehouse-part combinations: {total_combinations}")
+
+        # Check how many relationships already exist
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM public.warehouses_parts_rel wpr
+            JOIN public.warehouses w ON w.id = wpr.warehouse_id
+            JOIN public.parts p ON p.id = wpr.part_id
+            WHERE w.is_active = true 
+            AND p.is_active = true
+            AND (p.flagged_for_deletion IS NULL OR p.flagged_for_deletion = false)
+        """)
+        existing_count = cursor.fetchone()[0]
+        logger.info(f"Existing warehouse-part relationships: {existing_count}")
+
+        # Prepare bulk insert data
+        insert_values = []
+        for warehouse_id, warehouse_name in active_warehouses:
+            for part_id, part_num in active_parts:
+                insert_values.append(
+                    {
+                        "warehouse_id": warehouse_id,
+                        "part_id": part_id,
+                        "quantity": 0,
+                        "quantity_reserved": 0,
+                        "quantity_desired": 0,
+                        "average_cost": 0,
+                        "last_cost": 0,
+                    }
+                )
+
+        # Bulk insert with ON CONFLICT DO NOTHING to avoid duplicates
+        logger.info(
+            f"Initializing up to {len(insert_values)} warehouse-part relationships..."
+        )
+
+        sql_insert = """
+            INSERT INTO public.warehouses_parts_rel 
+            (warehouse_id, part_id, quantity, quantity_reserved, quantity_desired, 
+             average_cost, last_cost, timestamp_utc_inserted, timestamp_utc_updated)
+            VALUES %s
+            ON CONFLICT (warehouse_id, part_id) DO NOTHING
+        """
+
+        # Convert dict values to tuples for execute_values
+        values_tuples = [
+            (
+                v["warehouse_id"],
+                v["part_id"],
+                v["quantity"],
+                v["quantity_reserved"],
+                v["quantity_desired"],
+                v["average_cost"],
+                v["last_cost"],
+                "NOW()",
+                "NOW()",
+            )
+            for v in insert_values
+        ]
+
+        # Execute in batches to avoid memory issues with large datasets
+        batch_size = 1000
+        for i in range(0, len(values_tuples), batch_size):
+            batch = values_tuples[i : i + batch_size]
+            execute_values(
+                cursor,
+                sql_insert,
+                batch,
+                template="(%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())",
+                page_size=100,
+            )
+            if (i + batch_size) % 10000 == 0:
+                logger.info(f"Processed {i + batch_size} records...")
+
+        conn.commit()
+
+        # Check how many were actually inserted
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM public.warehouses_parts_rel wpr
+            JOIN public.warehouses w ON w.id = wpr.warehouse_id
+            JOIN public.parts p ON p.id = wpr.part_id
+            WHERE w.is_active = true 
+            AND p.is_active = true
+            AND (p.flagged_for_deletion IS NULL OR p.flagged_for_deletion = false)
+        """)
+        final_count = cursor.fetchone()[0]
+        newly_created = final_count - existing_count
+
+        logger.info(
+            f"Successfully created {newly_created} new warehouse-part relationships"
+        )
+        logger.info(f"Total warehouse-part relationships now: {final_count}")
+
+        # Log summary by warehouse
+        cursor.execute("""
+            SELECT w.name, COUNT(*) as part_count
+            FROM public.warehouses_parts_rel wpr
+            JOIN public.warehouses w ON w.id = wpr.warehouse_id
+            JOIN public.parts p ON p.id = wpr.part_id
+            WHERE w.is_active = true 
+            AND p.is_active = true
+            AND (p.flagged_for_deletion IS NULL OR p.flagged_for_deletion = false)
+            GROUP BY w.name
+            ORDER BY w.name
+        """)
+        warehouse_summary = cursor.fetchall()
+        logger.info("\nParts per warehouse:")
+        for warehouse_name, count in warehouse_summary:
+            logger.info(f"  {warehouse_name}: {count} parts")
+
+    return None
+
+
 def upload_part_pictures(
     account: Account,
     conn: psycopg2.extensions.connection,
@@ -1601,6 +2093,14 @@ def entrypoint(
 
         # Now that the parts are uploaded, upload the part pictures
         # upload_part_pictures(conn=conn, account=account)
+
+        # Consolidate inventory to latest revisions before initializing new parts
+        logger.info("\n\nConsolidating inventory to latest part revisions...")
+        consolidate_inventory_to_latest_revisions(conn=conn)
+
+        # Initialize all active parts in all active warehouses
+        logger.info("\n\nInitializing parts in all active warehouses...")
+        initialize_parts_in_warehouses(conn=conn)
 
     if file_out_path_dups_removed.is_file():
         logger.info(
