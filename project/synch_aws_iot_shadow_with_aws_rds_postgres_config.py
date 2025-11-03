@@ -173,6 +173,11 @@ def get_all_power_units_config_metrics() -> list:
             pu.spm,
             pu.stboxf,
             pu.hyd_temp,
+            -- Cellular monitoring configuration
+            pu.cellular_monitor_enabled,
+            pu.bandwidth_alert_enabled,
+            pu.identify_bandwidth_hogs_enabled,
+            pu.cellular_data_limit_mb,
             modbus.modbus_networks,
             modbus.modbus_never_default,
             modbus.modbus_vpn_subnets,
