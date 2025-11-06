@@ -50,7 +50,6 @@ services:
       - dev-services
 
   mcp-postgres:
-    container_name: mcp-postgres
     build:
       context: ./mcp-postgres-server
       dockerfile: Dockerfile
