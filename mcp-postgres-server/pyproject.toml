@@ -1,0 +1,17 @@
+[project]
+name = "mcp-postgres-server"
+version = "0.1.0"
+description = "MCP server for PostgreSQL database operations"
+authors = [{ name = "IJACK Technologies", email = "info@myijack.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["asyncpg>=0.29.0", "fastmcp>=2.9.0", "python-dotenv>=1.0.0"]
+
+[project.scripts]
+mcp-postgres = "mcp_postgres_server:main"
+
+[tool.setuptools]
+packages = []
+
+[tool.uv]
+dev-dependencies = []

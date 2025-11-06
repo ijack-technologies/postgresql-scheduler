@@ -96,6 +96,46 @@ docker-compose -f docker-compose.dev.yml build
 - Database operations follow transaction patterns with proper rollback handling
 - TimescaleDB specific operations for time series data
 
+### PostgreSQL MCP Server Usage
+
+This repository includes a PostgreSQL MCP server for database inspection and queries.
+
+**✅ Available Tools:**
+
+- `mcp__mcp-postgres__list_tables(database="rds")` - List all tables
+- `mcp__mcp-postgres__describe_table(table_name="users", database="rds")` - Get table schema
+- `mcp__mcp-postgres__query_data(sql="SELECT * FROM users LIMIT 5", database="rds")` - Execute queries
+
+**✅ Two Databases Available:**
+
+- `database="rds"` (default) - Main app database with 300+ tables (users, work_orders, inventory)
+- `database="timescale"` - Time-series database with IoT sensor data (use LIMIT on queries!)
+
+**✅ Connection Details:**
+
+- Uses `mcp_user` account with read access to both databases
+- RDS: AWS hosted, SSL required
+- TimescaleDB: EC2 hosted on port 7815, no SSL
+- Container: `mcp-postgres` running on port 5005
+
+**Usage Examples:**
+
+```python
+# Query AWS RDS database (default)
+mcp__mcp-postgres__query_data(sql="SELECT COUNT(*) FROM users WHERE is_active = true")
+
+# Query TimescaleDB database (always use LIMIT!)
+mcp__mcp-postgres__query_data(sql="SELECT timestamp_utc, gateway, spm FROM time_series ORDER BY timestamp_utc DESC LIMIT 5", database="timescale")
+
+# List tables
+mcp__mcp-postgres__list_tables(database="rds")  # 300+ app tables
+mcp__mcp-postgres__list_tables(database="timescale")  # Time-series data
+
+# Describe table structure
+mcp__mcp-postgres__describe_table(table_name="users", database="rds")
+mcp__mcp-postgres__describe_table(table_name="time_series", database="timescale")
+```
+
 ## Development Container Considerations
 - We're inside a @Dockerfile.dev docker development container in wsl2, so don't optimize anything for windows 11 since we're working in debian inside a docker container
 - Virtual environment is automatically created at `/workspace/.venv`

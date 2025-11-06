@@ -27,7 +27,7 @@ services:
       - net.ipv4.tcp_keepalive_time=200
       - net.ipv4.tcp_keepalive_intvl=30
       - net.ipv4.tcp_keepalive_probes=10
-    environment: 
+    environment:
       ENVIRONMENT: development
     env_file: .env
       # environment:
@@ -46,11 +46,21 @@ services:
     # command: /bin/sh -c "while sleep 1000; do :; done"
     # links:
     #   - container-2
-    # networks:
-    #   - myijack-network
+    networks:
+      - dev-services
 
-# networks:
-#   myijack-network:
-#     # driver: bridge
-#     external:
-#       name: myijack-network
+  mcp-postgres:
+    container_name: mcp-postgres
+    build:
+      context: ./mcp-postgres-server
+      dockerfile: Dockerfile
+    networks:
+      - dev-services
+    env_file:
+      - mcp-postgres-server/.env
+    ports:
+      - "5005:5005"
+
+networks:
+  dev-services:
+    driver: bridge
