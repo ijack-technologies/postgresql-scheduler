@@ -57,8 +57,6 @@ services:
       - dev-services
     env_file:
       - mcp-postgres-server/.env
-    ports:
-      - "5005:5005"
 
 networks:
   dev-services:
