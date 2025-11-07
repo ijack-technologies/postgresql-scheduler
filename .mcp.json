@@ -4,13 +4,9 @@
       "type": "http",
       "url": "http://mcp-postgres:5005/mcp"
     },
-    "github": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/"
-    },
     "context7": {
-      "type": "sse",
-      "url": "https://mcp.context7.com/sse"
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
     },
     "aws-documentation": {
       "command": "uvx",
@@ -18,85 +14,6 @@
         "awslabs.aws-documentation-mcp-server@latest"
       ],
       "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "dynamodb": {
-      "command": "uvx",
-      "args": [
-        "awslabs.dynamodb-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_REGION": "us-east-1",
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "postgres-rds": {
-      "command": "uvx",
-      "args": [
-        "awslabs.postgres-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_REGION": "us-east-1",
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "aws-serverless": {
-      "command": "uvx",
-      "args": [
-        "awslabs.aws-serverless-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_REGION": "us-east-1",
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "lambda-tool": {
-      "command": "uvx",
-      "args": [
-        "awslabs.lambda-tool-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_REGION": "us-east-1",
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "sns-sqs": {
-      "command": "uvx",
-      "args": [
-        "awslabs.amazon-sns-sqs-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_REGION": "us-east-1",
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "iam": {
-      "command": "uvx",
-      "args": [
-        "awslabs.iam-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_REGION": "us-east-1",
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "cost-analysis": {
-      "command": "uvx",
-      "args": [
-        "awslabs.cost-analysis-mcp-server@latest"
-      ],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "cloudwatch-logs": {
-      "command": "uvx",
-      "args": [
-        "awslabs.cloudwatch-logs-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_REGION": "us-east-1",
         "FASTMCP_LOG_LEVEL": "ERROR"
       }
     }

@@ -16,7 +16,7 @@ ENV PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0
 
 # Add binaries to PATH (including Claude Code installed via official script)
-ENV PATH="/root/.local/bin:/root/.bun/bin:/root/.bun/install/global/node_modules/.bin:/workspace/node_modules/.bin:/workspace/.venv/bin:$PATH"
+ENV PATH="/root/.local/bin:/workspace/.venv/bin:$PATH"
 
 # Install system dependencies in a single layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -88,8 +88,7 @@ RUN mkdir -p /etc/apt/keyrings \
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Bun (JavaScript runtime and package manager)
-RUN curl -fsSL https://bun.sh/install | bash
+# Bun removed - using only the official Claude Code bash installation
 
 # Install Claude Code using the official install script (always latest version)
 RUN curl -fsSL https://claude.ai/install.sh | bash
@@ -100,12 +99,7 @@ WORKDIR /workspace
 # Create logs directory (maintaining compatibility with existing structure)
 RUN mkdir -p /workspace/logs /project/logs
 
-# Copy JavaScript dependency files if they exist (for caching)
-COPY package.json* bun.lockb* ./
-RUN --mount=type=cache,target=/root/.bun/install/cache,id=bun_cache \
-    if [ -f package.json ]; then \
-        /root/.bun/bin/bun install; \
-    fi
+# JavaScript dependencies removed - using only Python dependencies and official Claude Code binary
 
 # Copy Python dependency files if they exist
 COPY pyproject.toml* uv.lock* requirements*.txt* ./
@@ -121,8 +115,8 @@ RUN --mount=type=cache,target=/root/.cache/uv,id=uv_cache \
     fi
 
 # Configure shell environment
-RUN echo 'export PATH="/root/.bun/install/global/node_modules/.bin:/workspace/node_modules/.bin:/workspace/.venv/bin:$PATH"' >> /etc/profile \
-    && echo 'export PATH="/root/.bun/install/global/node_modules/.bin:/workspace/node_modules/.bin:/workspace/.venv/bin:$PATH"' >> /root/.bashrc \
+RUN echo 'export PATH="/root/.local/bin:/workspace/.venv/bin:$PATH"' >> /etc/profile \
+    && echo 'export PATH="/root/.local/bin:/workspace/.venv/bin:$PATH"' >> /root/.bashrc \
     && echo 'alias python="/workspace/.venv/bin/python"' >> /root/.bashrc \
     && echo 'alias pip="/workspace/.venv/bin/pip"' >> /root/.bashrc
 
