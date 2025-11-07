@@ -10,6 +10,10 @@ services:
     volumes:
       # Mount the root folder that contains .git with 'consistent' permissions, which helps with file permissions issues.
       - .:/workspace:consistent
+      # Persist Claude Code credentials across container rebuilds
+      - ${HOME}/.claude-docker:/root/.claude:cached
+      # Persist GitHub CLI credentials across container rebuilds
+      - ${HOME}/.config-docker/gh:/root/.config/gh:cached
       # Windows home folder:
       # - C:\Users\seanm\:/c_users_sean
       # [Optional] For reusing Git SSH keys.
@@ -29,6 +33,8 @@ services:
       - net.ipv4.tcp_keepalive_probes=10
     environment:
       ENVIRONMENT: development
+      # GitHub CLI configuration (officially documented)
+      GH_CONFIG_DIR: /root/.config/gh
     env_file: .env
       # environment:
       #   - FLASK_CONFIG=development

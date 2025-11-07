@@ -36,10 +36,17 @@
                     "ms-azuretools.vscode-docker": "workspace"
                 },
                 "git.enableSmartCommit": true,
-                "git.autofetch": true
+                "git.autofetch": true,
+                // Auto-trust workspace in dev containers (eliminate trust prompts)
+                "security.workspace.trust.enabled": false
             }
         }
     },
-    // Run commands after the container is created.
-    // "postCreateCommand": "cd /workspaces/upload_to_aws/client && npm install && npm run build"
+    // Persistent volume mounts for authentication credentials
+    "mounts": [
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude-docker,target=/root/.claude,type=bind",
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.config-docker/gh,target=/root/.config/gh,type=bind"
+    ],
+    // Run commands after the container is created
+    "postCreateCommand": "bash .devcontainer/post-create-command.sh"
 }
