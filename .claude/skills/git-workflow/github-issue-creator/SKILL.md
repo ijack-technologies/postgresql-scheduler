@@ -203,7 +203,7 @@ For IJACK Technologies projects, **always add issues to Project #12** (IJACK Roa
 ```bash
 # Create issue and add to roadmap automatically
 ./scripts/create-github-issue.sh \
-    -r ijack-technologies/postgresql-scheduler \
+    -r ijack-technologies/rcom \
     -t "Implement cellular failover" \
     -l "enhancement,networking" \
     -p 12 \
@@ -288,7 +288,7 @@ From the duplicate alerts work, this would create:
 
 ```bash
 ./scripts/create-github-issue.sh \
-    -r ijack-technologies/postgresql-scheduler \
+    -r ijack-technologies/rcom \
     -t "Implement database-backed alert deduplication" \
     -l "enhancement,database,alerts" \
     -p 12 \
@@ -371,7 +371,7 @@ gh auth login --web
 gh repo view owner/repo
 
 # Check repository name format
-# Correct: ijack-technologies/postgresql-scheduler
+# Correct: ijack-technologies/rcom
 # Wrong: gateway-can-to-mqtt (missing owner)
 ```
 
