@@ -5,11 +5,18 @@
   ],
   "files.eol": "\n",
   "python.languageServer": "Default",
-  "python.testing.unittestEnabled": true,
+  // Python Interpreter Configuration
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  // Testing Configuration - Only ONE framework should be enabled
+  "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
+  "python.testing.cwd": "${workspaceFolder}",
   "python.testing.pytestArgs": [
-    "test"
+    "test",
+    "-v",
+    "--tb=short"
   ],
+  "python.testing.autoTestDiscoverOnSaveEnabled": true,
   "editor.defaultFormatter": "charliermarsh.ruff",
   "editor.formatOnSave": true,
   "editor.wordWrap": "on",
@@ -71,10 +78,7 @@
   "files.associations": {
     "*.html": "jinja-html"
   },
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}/project",
-    "/usr/local/lib/python3.8/site-packages"
-  ],
+  // python.analysis.extraPaths removed - using pyproject.toml [tool.pyright] instead
   "[sql]": {
     "editor.defaultFormatter": "adpyke.vscode-sql-formatter"
   }

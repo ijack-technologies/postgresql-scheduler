@@ -76,3 +76,4 @@ echo "  2. GitHub CLI: Run 'gh auth login --insecure-storage'"
 echo ""
 echo "Credentials will persist across container rebuilds!"
 echo ""
+
