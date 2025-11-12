@@ -2,8 +2,6 @@ ARG INSTALL_PYTHON_VERSION=${INSTALL_PYTHON_VERSION:-PYTHON_VERSION_NOT_SET}
 
 FROM python:${INSTALL_PYTHON_VERSION} AS builder
 
-ARG POETRY_VERSION=1.8.3
-
 # Use Docker BuildKit for better caching and faster builds
 ARG DOCKER_BUILDKIT=1
 ARG BUILDKIT_INLINE_CACHE=1
@@ -22,6 +20,10 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONFAULTHANDLER=1
 ENV PYTHONHASHSEED=random
 
+# UV configuration
+ENV UV_CACHE_DIR=/root/.cache/uv
+ENV UV_SYSTEM_PYTHON=1
+
 # Tell apt-get we're never going to be able to give manual feedback:
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -36,22 +38,25 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # The following only runs in the "builder" build stage of this multi-stage build.
+# Install UV (Python package manager)
 RUN \
     # Use a virtual environment for easy transfer of builder packages
     python -m venv /venv && \
-    /venv/bin/pip install --upgrade pip setuptools wheel poetry-plugin-export && \
-    /venv/bin/pip install "poetry==$POETRY_VERSION"
+    /venv/bin/pip install --upgrade pip setuptools wheel && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Poetry exports the requirements to stdout in a "requirements.txt" file format,
-# and pip installs them in the /venv virtual environment. We need to copy in both
-# pyproject.toml AND poetry.lock for this to work!
-COPY pyproject.toml poetry.lock ./
-# COPY pyproject.toml ./
-RUN /venv/bin/poetry config virtualenvs.create false && \
-    # Export the requirements to stdout, and install them in the virtual environment
-    /venv/bin/poetry export --no-interaction --no-ansi --without-hashes --format requirements.txt \
-    $(test "$ENVIRONMENT" != "production" && echo "--with dev") \
-    | /venv/bin/pip install -r /dev/stdin --no-cache-dir
+# Copy dependency files for UV
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies using UV
+RUN --mount=type=cache,target=/root/.cache/uv \
+    /root/.local/bin/uv venv /venv && \
+    . /venv/bin/activate && \
+    if [ "$ENVIRONMENT" != "production" ]; then \
+        /root/.local/bin/uv pip install -e .[dev]; \
+    else \
+        /root/.local/bin/uv pip install -e .; \
+    fi
 
 # Make sure our packages are in the PATH
 # ENV PATH="/project/node_modules/.bin:$PATH"

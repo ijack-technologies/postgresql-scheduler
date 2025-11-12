@@ -22,6 +22,7 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 from project import update_info_from_shadows
+from project.logger_config import logger
 from project.utils import Config, get_conn, run_query
 
 LOGFILE_NAME = "test_main_programs"
@@ -569,6 +570,60 @@ class TestAll(unittest.TestCase):
             delete_test_insert(gateway_id_lambda_access)
 
         self.assertTrue(bool_return)
+
+    def test_gateway_with_dict_timestamps(self):
+        """
+        Test gateway 00:60:E0:81:4C:67 (power unit 10014) that had dict timestamps
+        causing TypeError: '>' not supported between instances of 'dict' and 'int'
+
+        This test verifies that both seconds_since_last_any_msg() and
+        get_shadow_table_html() properly handle dict values in timestamp fields.
+
+        Related commits:
+        - 14b7e4e: Fix TypeError in seconds_since_last_any_msg function
+        - 12301e1: Fix additional TypeError in timestamp sorting
+        """
+        global c
+        c.TEST_FUNC = False
+
+        # Gateway info from error report
+        aws_thing = "00:60:E0:81:4C:67"
+        power_unit = 10014
+
+        # Get the AWS IoT client and fetch the actual shadow
+        client_iot = update_info_from_shadows.get_client_iot()
+        shadow = update_info_from_shadows.get_iot_device_shadow(
+            c, client_iot, aws_thing
+        )
+
+        # Verify we got a valid shadow
+        self.assertIsInstance(shadow, dict)
+        self.assertIn("state", shadow)
+
+        # Test seconds_since_last_any_msg - this was throwing TypeError at line 670
+        # The fix at lines 671-672 checks if time_received is numeric before comparing
+        seconds_since, msg, latest_metric = (
+            update_info_from_shadows.seconds_since_last_any_msg(c, shadow)
+        )
+
+        # Verify the function returned valid values
+        self.assertIsInstance(seconds_since, (int, float))
+        self.assertIsInstance(msg, str)
+        self.assertIsInstance(latest_metric, (str, type(None)))
+
+        # Test get_shadow_table_html - this was also throwing TypeError at line 507
+        # The fix at lines 505-510 filters out non-numeric timestamps before sorting
+        html = update_info_from_shadows.get_shadow_table_html(c, shadow)
+
+        # Verify HTML was generated
+        self.assertIsInstance(html, str)
+        self.assertIn("<table>", html)
+
+        # Log success for debugging
+        logger.info(
+            f"Successfully tested gateway {aws_thing} (power unit {power_unit})"
+        )
+        logger.info(f"Last message: {msg} ago, metric: {latest_metric}")
 
 
 if __name__ == "__main__":
