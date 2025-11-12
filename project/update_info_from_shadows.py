@@ -502,9 +502,17 @@ def get_shadow_table_html(c, shadow: dict) -> str:
         key: reported_meta.get(key, {}).get("timestamp", default_ts_if_not_found)
         for key in reported.keys()
     }
+    # Filter out non-numeric timestamp values to prevent TypeError during sorting
+    reported_timestamps_filtered = {
+        key: ts
+        for key, ts in reported_timestamps.items()
+        if isinstance(ts, (int, float))
+    }
     # Sort by timestamp value, descending
     reported_timestamps_sorted = dict(
-        sorted(reported_timestamps.items(), key=lambda item: item[1], reverse=True)
+        sorted(
+            reported_timestamps_filtered.items(), key=lambda item: item[1], reverse=True
+        )
     )
 
     html = """
