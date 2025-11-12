@@ -719,9 +719,9 @@ def update_parts_table(new_parts_df: pd.DataFrame, conn) -> None:
 
     logger.info("\n\nUpdating parts data in the AWS RDS database...")
     n_rows = len(new_parts_df)
-    assert n_rows > 100, (
-        f"Not enough rows in new spreadsheet. Only {n_rows}, so not deleting or updating anything!"
-    )
+    assert (
+        n_rows > 100
+    ), f"Not enough rows in new spreadsheet. Only {n_rows}, so not deleting or updating anything!"
 
     with conn.cursor() as cursor:
         counter = 0

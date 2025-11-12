@@ -61,12 +61,12 @@ def test_apn_in_metrics():
     }
 
     # Verify APN is in the mapping
-    assert "apn_reported" in metrics_to_update, (
-        "apn_reported not found in metrics_to_update"
-    )
-    assert metrics_to_update["apn_reported"] == "APN", (
-        "apn_reported should map to 'APN'"
-    )
+    assert (
+        "apn_reported" in metrics_to_update
+    ), "apn_reported not found in metrics_to_update"
+    assert (
+        metrics_to_update["apn_reported"] == "APN"
+    ), "apn_reported should map to 'APN'"
 
     # Simulate the processing
     values_dict = {}
@@ -77,9 +77,9 @@ def test_apn_in_metrics():
 
     # Verify APN was processed
     assert "apn_reported" in values_dict, "apn_reported not found in values_dict"
-    assert values_dict["apn_reported"] == "internet.provider.com", (
-        f"Expected 'internet.provider.com', got {values_dict['apn_reported']}"
-    )
+    assert (
+        values_dict["apn_reported"] == "internet.provider.com"
+    ), f"Expected 'internet.provider.com', got {values_dict['apn_reported']}"
 
     print("✅ APN field update test passed!")
     print(f"   - APN value from shadow: {reported.get('APN')}")

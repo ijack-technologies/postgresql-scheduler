@@ -667,6 +667,10 @@ def seconds_since_last_any_msg(c, shadow) -> Tuple[float, str, str]:
             continue
 
         time_received = meta_reported_sub_dict.get("timestamp", 0)
+        # Ensure time_received is a numeric type (int or float), not a dict or other type
+        if not isinstance(time_received, (int, float)):
+            continue
+
         if time_received > time_received_latest:
             time_received_latest = time_received
             key_latest = key
