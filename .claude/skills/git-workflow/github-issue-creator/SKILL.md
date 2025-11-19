@@ -99,11 +99,73 @@ This is a DRY, SOLID, KISS implementation that can be reused across:
 | `-b` | `--body` | Issue body (markdown) | Empty |
 | `-f` | `--body-file` | Read body from file | - |
 | `-l` | `--labels` | Comma-separated labels | None |
-| `-a` | `--assignee` | Username or @me | @me |
+| `-a` | `--assignee` | Username or @me | Current user (dynamic) |
 | `-p` | `--project` | Project board ID | None |
 | `-T` | `--template` | Template name | None |
 | `-i` | `--interactive` | Interactive mode | False |
 | `-h` | `--help` | Show help | - |
+
+## Dynamic Username Detection
+
+**CRITICAL:** NEVER hard-code GitHub usernames in examples or default values.
+
+```bash
+# Get current GitHub username dynamically
+GITHUB_USER=$(gh api user --jq '.login')
+
+# Use in issue creation
+gh issue create --title "Fix bug" --assignee "$GITHUB_USER" --body "..."
+
+# Or let the script handle it automatically (recommended)
+gh issue create --title "Fix bug" --assignee "@me" --body "..."
+```
+
+**Why this matters:**
+- Repository is used by multiple team members
+- Hard-coded usernames break when others use the scripts
+- `@me` or dynamic detection ensures it works for everyone
+
+## Query Available Labels
+
+**CRITICAL:** ALWAYS query available labels before creating issues to avoid "label not found" errors.
+
+```bash
+# Query available labels FIRST
+gh label list --json name,description,color
+
+# Example output:
+# [
+#   {"name":"bug","description":"Something isn't working","color":"d73a4a"},
+#   {"name":"enhancement","description":"New feature or request","color":"a2eeef"},
+#   {"name":"documentation","description":"Improvements or additions to documentation","color":"0075ca"},
+#   {"name":"question","description":"Further information is requested","color":"d876e3"}
+# ]
+
+# Extract just the label names for easy reference
+gh label list --json name --jq '.[].name'
+# Output: bug, enhancement, documentation, question, etc.
+
+# Now create issue with ONLY labels that exist
+gh issue create \
+    --title "Fix authentication timeout" \
+    --label "bug" \
+    --assignee "$GITHUB_USER" \
+    --body "..."
+```
+
+**Label Validation Workflow:**
+1. Query available labels: `gh label list --json name`
+2. Verify your desired labels exist in the output
+3. Only use labels that are available
+4. If needed label doesn't exist, either:
+   - Use an alternative existing label
+   - Create the new label first: `gh label create "new-label" --description "Description" --color "FF0000"`
+
+**Why this matters:**
+- Different repositories have different label sets
+- Avoids issue creation failures due to missing labels
+- Ensures consistent labeling practices across repositories
+- Prevents typos in label names
 
 ## Issue Templates
 
@@ -235,10 +297,13 @@ When triggered, Claude will:
 1. **Analyze context**: Determine if current work should be documented as issue
 2. **Extract information**: Pull relevant details from conversation
 3. **Choose repository**: Use current repo or ask which one
-4. **Format issue**: Create well-structured title and body
-5. **Apply labels**: Add appropriate labels based on issue type
-6. **Execute script**: Run create-github-issue.sh with correct parameters
-7. **Confirm creation**: Return issue URL and next steps
+4. **Query available labels**: Run `gh label list --json name` to see which labels exist
+5. **Determine GitHub username**: Run `gh api user --jq '.login'` to get current user
+6. **Format issue**: Create well-structured title and body
+7. **Apply labels**: Add appropriate labels ONLY from the available labels list
+8. **Execute script**: Run create-github-issue.sh with correct parameters
+9. **Add to project board**: Add to IJACK Roadmap (Project #12) if applicable
+10. **Confirm creation**: Return issue URL and next steps
 
 ## Best Practices
 
@@ -274,11 +339,24 @@ When triggered, Claude will:
 
 ### Labels
 
-Use consistent labels across repositories:
-- **Type**: `bug`, `enhancement`, `feature`, `idea`, `docs`
-- **Priority**: `urgent`, `high`, `medium`, `low`
+**IMPORTANT:** Always query available labels FIRST before using them:
+
+```bash
+# Query available labels in the repository
+gh label list --json name --jq '.[].name'
+```
+
+**Common label categories** (but verify they exist in your repo):
+- **Type**: `bug`, `enhancement`, `feature`, `idea`, `documentation`
+- **Priority**: `urgent`, `high`, `medium`, `low`, `critical`
 - **Component**: `database`, `networking`, `alerts`, `ui`
-- **Status**: `blocked`, `in-progress`, `needs-review`
+- **Status**: `blocked`, `in-progress`, `needs-review`, `help wanted`
+
+**Best practices:**
+- ONLY use labels that exist in the repository (query first!)
+- Use multiple labels to provide better context (e.g., `bug,database,urgent`)
+- Prefer standard GitHub labels when available (`bug`, `enhancement`, `documentation`)
+- If a needed label doesn't exist, create it first or use an alternative
 
 ## Examples from Real Usage
 

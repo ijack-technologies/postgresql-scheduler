@@ -208,9 +208,12 @@ Templates ensure consistent issue formatting and capture all necessary informati
 # ALWAYS add every issue to the IJACK Roadmap project board (Project #12)
 gh project item-add 12 --owner ijack-technologies --url <ISSUE_URL>
 
+# Get current GitHub username dynamically (NEVER hard-code usernames)
+GITHUB_USER=$(gh api user --jq '.login')
+
 # Standard workflow for ALL issues:
-# 1. Create issue with appropriate template
-gh issue create --title "Issue Title" --assignee "username" --body "..."
+# 1. Create issue with appropriate template, dynamically assigning to current user
+gh issue create --title "Issue Title" --assignee "$GITHUB_USER" --body "..."
 # 2. IMMEDIATELY add to IJACK Roadmap project (REQUIRED)
 gh project item-add 12 --owner ijack-technologies --url https://github.com/ijack-technologies/rcom/issues/XXX
 # 3. Move to appropriate status via project board UI
@@ -219,6 +222,37 @@ gh project item-add 12 --owner ijack-technologies --url https://github.com/ijack
 gh project item-add 12 --owner ijack-technologies --url https://github.com/ijack-technologies/rcom/issues/976
 gh project item-add 12 --owner ijack-technologies --url https://github.com/ijack-technologies/planning/issues/45
 ```
+
+**Dynamic Username Detection:**
+- ALWAYS determine the GitHub username dynamically using `gh api user --jq '.login'`
+- NEVER hard-code usernames (e.g., "mccarthysean", "smatthewenglish") in scripts or documentation
+- This ensures the workflow works for all team members who clone the repository
+
+**Query Available Labels Before Creating Issues:**
+- ALWAYS query available labels before creating issues to avoid errors
+- Use `gh label list --json name,description,color` to see available labels
+- Only use labels that exist in the repository
+- Common labels: `bug`, `enhancement`, `documentation`, `question`, `help wanted`
+
+```bash
+# Query available labels (do this BEFORE creating issues)
+gh label list --json name,description,color
+
+# Example output shows which labels you can use:
+# [
+#   {"name":"bug","description":"Something isn't working","color":"d73a4a"},
+#   {"name":"enhancement","description":"New feature or request","color":"a2eeef"},
+#   {"name":"documentation","description":"Improvements or additions to documentation","color":"0075ca"}
+# ]
+
+# Now create issue with ONLY labels that exist
+gh issue create --title "Fix bug" --assignee "$GITHUB_USER" --label "bug" --body "..."
+```
+
+**Why this matters:**
+- Avoids "label not found" errors when creating issues
+- Different repositories may have different label sets
+- Ensures consistent labeling across the team
 
 **Why this approach?**
 
