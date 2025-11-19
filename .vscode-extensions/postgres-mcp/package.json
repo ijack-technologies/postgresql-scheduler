@@ -1,0 +1,35 @@
+{
+  "name": "rcom-postgres-mcp",
+  "displayName": "RCOM PostgreSQL MCP",
+  "description": "Registers PostgreSQL MCP server for GitHub Copilot Chat",
+  "version": "0.0.1",
+  "publisher": "rcom",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "AI"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "rcom-postgres-mcp",
+        "label": "RCOM PostgreSQL Database (RDS & TimescaleDB)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.96.0",
+    "typescript": "^5.0.0"
+  }
+}
