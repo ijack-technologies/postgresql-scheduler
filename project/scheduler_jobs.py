@@ -41,7 +41,7 @@ def make_schedule(c: Config) -> None:
     logger.info("Making the cron-like schedule...")
 
     schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
-    schedule.every(10).minutes.do(update_info_from_shadows.main, c=c, commit=True)
+    schedule.every(15).minutes.do(update_info_from_shadows.main, c=c, commit=True)
 
     schedule.every().hour.at(":03").do(
         synch_aws_iot_shadow_with_aws_rds_postgres_config.main, c=c

@@ -1071,15 +1071,6 @@ def go_through_all_sheets(
                         logger.info(f"cost_cad: {cost_cad}")
                         logger.info(f"msrp_mult_usd: {msrp_mult_usd}")
                         continue
-                else:
-                    # Part exists but missing required data - log warning for visibility
-                    if part_num:
-                        logger.warning(
-                            f"SKIPPING part {part_num} (row {row_num}, worksheet {ws_name}): "
-                            f"cost_cad={'NULL' if cost_cad is None else cost_cad}, "
-                            f"msrp_mult_cad={'NULL' if msrp_mult_cad is None else msrp_mult_cad}"
-                        )
-                    continue
 
                     # Store the values from this row in a dictionary
                     try:
@@ -1157,8 +1148,17 @@ def go_through_all_sheets(
                         )
                         finished_goods_dict[db_table_name].append(d2)
 
-                # break once we've added the part from that row (i.e. stop processing this row and move on to next in the outer loop)
-                break
+                    # break once we've added the part from that row (i.e. stop processing this row and move on to next in the outer loop)
+                    break
+                else:
+                    # Part exists but missing required data - log warning for visibility
+                    if part_num:
+                        logger.warning(
+                            f"SKIPPING part {part_num} (row {row_num}, worksheet {ws_name}): "
+                            f"cost_cad={'NULL' if cost_cad is None else cost_cad}, "
+                            f"msrp_mult_cad={'NULL' if msrp_mult_cad is None else msrp_mult_cad}"
+                        )
+                    continue
 
         logger.info(f"\n\nFound {worksheet_parts_counter} parts in worksheet {ws_name}")
         logger.info(
