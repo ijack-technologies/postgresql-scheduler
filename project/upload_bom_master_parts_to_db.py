@@ -1065,11 +1065,11 @@ def go_through_all_sheets(
                         cost_cad = float(cost_cad)
                         msrp_mult_usd = float(msrp_mult_usd)
                     except Exception as err:
-                        logger.info(
-                            f"Error converting cost_cad or msrp_mult_usd to float: {err}"
+                        logger.warning(
+                            f"SKIPPING part {part_num} (row {row_num}, worksheet {ws_name}): "
+                            f"Error converting to float: {err} - "
+                            f"cost_cad='{cost_cad}', msrp_mult_usd='{msrp_mult_usd}'"
                         )
-                        logger.info(f"cost_cad: {cost_cad}")
-                        logger.info(f"msrp_mult_usd: {msrp_mult_usd}")
                         continue
 
                     # Store the values from this row in a dictionary
