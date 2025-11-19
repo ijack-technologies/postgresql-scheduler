@@ -1073,6 +1073,10 @@ def go_through_all_sheets(
                         continue
 
                     # Store the values from this row in a dictionary
+                    # Helper function to safely convert to float (use 0.0 for None values)
+                    def safe_float(value):
+                        return 0.0 if value is None or value == "" else float(value)
+
                     try:
                         d = {
                             "worksheet": ws_name,
@@ -1080,25 +1084,29 @@ def go_through_all_sheets(
                             "part_num": clean_part_number(part_num),
                             "description": description,
                             "msrp_mult_cad": float(msrp_mult_cad),
-                            "transfer_mult_cad_dealer": float(transfer_mult_cad_dealer),
+                            "transfer_mult_cad_dealer": safe_float(
+                                transfer_mult_cad_dealer
+                            ),
                             "msrp_mult_usd": float(msrp_mult_usd),
-                            "transfer_mult_inc_to_corp": float(
+                            "transfer_mult_inc_to_corp": safe_float(
                                 transfer_mult_inc_to_corp
                             ),
-                            "transfer_mult_usd_dealer": float(transfer_mult_usd_dealer),
+                            "transfer_mult_usd_dealer": safe_float(
+                                transfer_mult_usd_dealer
+                            ),
                             "warehouse_mult": float(warehouse_mult),
                             "cost_cad": float(cost_cad),
-                            "msrp_cad": float(msrp_cad),
-                            "dealer_cost_cad": float(dealer_cost_cad),
-                            "cost_usd": float(cost_usd),
-                            "msrp_usd": float(msrp_usd),
-                            "ijack_corp_cost": float(ijack_corp_cost),
-                            "dealer_cost_usd": float(dealer_cost_usd),
+                            "msrp_cad": safe_float(msrp_cad),
+                            "dealer_cost_cad": safe_float(dealer_cost_cad),
+                            "cost_usd": safe_float(cost_usd),
+                            "msrp_usd": safe_float(msrp_usd),
+                            "ijack_corp_cost": safe_float(ijack_corp_cost),
+                            "dealer_cost_usd": safe_float(dealer_cost_usd),
                             "is_usd": is_usd,
                             "cad_per_usd": cad_per_usd,
                             "is_soft_part": is_soft_part,
                             "weight": weight,
-                            "lead_time": float(lead_time),
+                            "lead_time": safe_float(lead_time),
                             "harmonization_code": harmonization_code,
                             "country_of_origin": country_of_origin,
                         }
