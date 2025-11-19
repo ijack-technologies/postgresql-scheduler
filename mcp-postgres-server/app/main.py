@@ -12,14 +12,25 @@ mcp = FastMCP("PostgreSQL Explorer")
 
 # Multi-database configuration
 DATABASES = {
+    # Production RDS (default - read-only MCP user, safe for production queries)
     "rds": {
         "host": os.getenv("DB_HOST", ""),
         "port": int(os.getenv("DB_PORT", "5432")),
         "user": os.getenv("DB_USER", "mcp_user"),
         "password": os.getenv("DB_PASSWORD", ""),
         "database": os.getenv("DB_NAME", "ijack"),
-        "ssl": os.getenv("DB_SSL", "disable"),
+        "ssl": os.getenv("DB_SSL", "require"),
     },
+    # Development RDS (optional - only if DB_HOST_DEV is configured)
+    "rds-dev": {
+        "host": os.getenv("DB_HOST_DEV", ""),
+        "port": int(os.getenv("DB_PORT", "5432")),  # Same credentials as production
+        "user": os.getenv("DB_USER", "mcp_user"),
+        "password": os.getenv("DB_PASSWORD", ""),
+        "database": os.getenv("DB_NAME", "ijack"),
+        "ssl": os.getenv("DB_SSL", "require"),
+    },
+    # TimescaleDB for time-series data
     "timescale": {
         "host": os.getenv("DB_HOST_TS", ""),
         "port": int(os.getenv("DB_PORT_TS", "5432")),
@@ -153,11 +164,16 @@ async def get_schema() -> str:
 @mcp.tool()
 async def query_data(sql: str, database: str = "rds") -> str:
     """
-    Execute SQL queries safely
+    Execute SQL queries safely (read-only access)
 
     Args:
         sql: SQL query to execute
-        database: Database to query ("rds" or "timescale", default: "rds")
+        database: Database to query (default: "rds")
+            - "rds": Production RDS database (default, read-only, safe)
+            - "rds-dev": Development RDS database (requires DB_HOST_DEV env var)
+            - "timescale": TimescaleDB for time-series data
+
+    Note: MCP user has read-only permissions, safe for production queries
     """
     print(f"\n[query_data] Database: {database}, SQL: {sql[:50]}...")
     try:
@@ -201,7 +217,10 @@ async def list_tables(database: str = "rds") -> str:
     List all tables in the database
 
     Args:
-        database: Database to query ("rds" or "timescale", default: "rds")
+        database: Database to query (default: "rds")
+            - "rds": Production RDS database (default, read-only, safe)
+            - "rds-dev": Development RDS database (requires DB_HOST_DEV env var)
+            - "timescale": TimescaleDB for time-series data
     """
     print(f"\n[list_tables] Database: {database}")
     try:
@@ -245,7 +264,10 @@ async def describe_table(
     Args:
         table_name: Name of the table
         schema: Schema name (default: "public")
-        database: Database to query ("rds" or "timescale", default: "rds")
+        database: Database to query (default: "rds")
+            - "rds": Production RDS database (default, read-only, safe)
+            - "rds-dev": Development RDS database (requires DB_HOST_DEV env var)
+            - "timescale": TimescaleDB for time-series data
     """
     print(f"\n[describe_table] Database: {database}, Table: {schema}.{table_name}")
     try:

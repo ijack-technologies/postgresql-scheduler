@@ -104,11 +104,13 @@ This repository includes a PostgreSQL MCP server for database inspection and que
 
 - `mcp__mcp-postgres__list_tables(database="rds")` - List all tables
 - `mcp__mcp-postgres__describe_table(table_name="users", database="rds")` - Get table schema
+mcp__mcp-postgres__describe_table(table_name="sales_forecast", database="rds-dev")
 - `mcp__mcp-postgres__query_data(sql="SELECT * FROM users LIMIT 5", database="rds")` - Execute queries
 
-**✅ Two Databases Available:**
+**✅ Three Databases Available:**
 
 - `database="rds"` (default) - Main app database with 300+ tables (users, work_orders, inventory)
+- `database="rds-dev"` - Development RDS database (requires DB_HOST_DEV env var)
 - `database="timescale"` - Time-series database with IoT sensor data (use LIMIT on queries!)
 
 **✅ Connection Details:**
@@ -121,18 +123,26 @@ This repository includes a PostgreSQL MCP server for database inspection and que
 **Usage Examples:**
 
 ```python
-# Query AWS RDS database (default)
+# Query Production RDS database (default - safe, read-only)
 mcp__mcp-postgres__query_data(sql="SELECT COUNT(*) FROM users WHERE is_active = true")
+
+# Query Development RDS database
+mcp__mcp-postgres__query_data(
+    sql="SELECT * FROM sales_forecast ORDER BY created_at DESC LIMIT 5",
+    database="rds-dev"
+)
 
 # Query TimescaleDB database (always use LIMIT!)
 mcp__mcp-postgres__query_data(sql="SELECT timestamp_utc, gateway, spm FROM time_series ORDER BY timestamp_utc DESC LIMIT 5", database="timescale")
 
 # List tables
-mcp__mcp-postgres__list_tables(database="rds")  # 300+ app tables
+mcp__mcp-postgres__list_tables(database="rds")  # Production: 300+ app tables
+mcp__mcp-postgres__list_tables(database="rds-dev")  # Development: same schema
 mcp__mcp-postgres__list_tables(database="timescale")  # Time-series data
 
 # Describe table structure
 mcp__mcp-postgres__describe_table(table_name="users", database="rds")
+mcp__mcp-postgres__describe_table(table_name="sales_forecast", database="rds-dev")
 mcp__mcp-postgres__describe_table(table_name="time_series", database="timescale")
 ```
 
