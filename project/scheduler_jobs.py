@@ -19,7 +19,6 @@ except ValueError:
     sys.path.insert(0, pythonpath)
 
 from project import (
-    alarm_log_delete_duplicates,
     alerts_bulk_processor,
     aws_rds_db_delete_old_data,
     synch_aws_iot_shadow_with_aws_rds_postgres_config,
@@ -47,9 +46,6 @@ def make_schedule(c: Config) -> None:
         synch_aws_iot_shadow_with_aws_rds_postgres_config.main, c=c
     )
 
-    schedule.every().day.at("01:01", pytz.timezone("America/Regina")).do(
-        alarm_log_delete_duplicates.main, c=c
-    )
     schedule.every().day.at("01:11", pytz.timezone("America/Regina")).do(
         time_series_aggregate_calcs.main, c=c
     )

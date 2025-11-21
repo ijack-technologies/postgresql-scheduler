@@ -16,7 +16,6 @@ except ValueError:
 
 
 from project import (
-    alarm_log_delete_duplicates,
     time_series_mv_refresh,
 )
 from project.utils import Config
@@ -62,30 +61,6 @@ class TestAll(unittest.TestCase):
         )
         with self.assertRaises(Exception):
             time_series_mv_refresh.main(c)
-
-        mock_check_if_c_in_args.assert_called_once()
-        mock_mail.assert_called_once()
-        mock_twil.assert_called_once()
-        # self.assertIn("Sean, check ", c.TEST_DICT["msg_sms"])
-        # self.assertIn("There has been an error!", c.TEST_DICT["msg_sms"])
-        # self.assertEqual(c.TEST_DICT["rc"], "")
-        # self.assertEqual(c.TEST_DICT["message"], "")
-
-    @patch("project.utils.send_twilio_sms")
-    @patch("project.utils.send_mailgun_email")
-    @patch("project.utils.check_if_c_in_args")
-    def test_raise_error_email_delete_duplicates(
-        self, mock_check_if_c_in_args, mock_mail, mock_twil
-    ):
-        """Should send me an email and SMS if there's an error in the program"""
-        global c
-        c.TEST_FUNC = True
-        # c.TEST_ERROR = True
-        mock_check_if_c_in_args.side_effect = Exception(
-            "server closed the connection unexpectedly"
-        )
-        with self.assertRaises(Exception):
-            alarm_log_delete_duplicates.main(c)
 
         mock_check_if_c_in_args.assert_called_once()
         mock_mail.assert_called_once()
