@@ -159,6 +159,63 @@ def get_conn(
         conn.close()
 
 
+def _execute_queries(
+    conn,
+    cursor_factory,
+    sql_commands_list: list,
+    copy_expert_kwargs: dict | None,
+    data: dict | tuple | None,
+    log_query: bool,
+    commit: bool,
+    raise_error: bool,
+    fetchall: bool,
+) -> Tuple[list, list]:
+    """Execute SQL queries on a connection (DRY helper function)
+
+    This function contains the core query execution logic that was previously
+    duplicated in run_query(). It's extracted to follow DRY principles.
+    """
+    columns, rows = [], []
+
+    with conn.cursor(cursor_factory=cursor_factory) as cursor:
+        for sql_command in sql_commands_list:
+            try:
+                if copy_expert_kwargs:
+                    # Insert data into the table using the COPY command
+                    if log_query:
+                        try:
+                            sql_string = copy_expert_kwargs.get(
+                                "sql", "No SQL found"
+                            ).as_string(cursor)
+                        except AttributeError:
+                            sql_string = copy_expert_kwargs.get("sql", "No SQL found")
+                        logger.info(
+                            f"Running PostgreSQL COPY EXPERT command with query: '{sql_string}'"
+                        )
+                    cursor.copy_expert(**copy_expert_kwargs)
+                elif sql_command:
+                    if log_query:
+                        logger.info(f"Running query now... SQL to run: {sql_command}")
+                    cursor.execute(sql_command, data)
+            except psycopg2.Error as err:
+                logger.info(f"ERROR executing SQL: '{sql_command}'\n\n Error: {err}")
+                if raise_error:
+                    raise
+                conn.rollback()
+            else:
+                if commit:
+                    conn.commit()
+                if fetchall:
+                    description = getattr(cursor, "description", None)
+                    if not description:
+                        logger.info("No data to fetch from cursor")
+                    else:
+                        columns = [str.lower(x[0]) for x in description]
+                        rows: list = cursor.fetchall()
+
+    return columns, rows
+
+
 def run_query(
     sql: str = None,
     db: str = "aws_rds",
@@ -173,8 +230,14 @@ def run_query(
     cursor_factory: int = None,
     isolation_level: int | None = None,
     sql_commands_list: list = None,
+    conn=None,  # Optional connection to reuse
 ) -> Tuple[list, list]:
-    """Run the SQL query and return the results as a tuple of columns and rows"""
+    """Run the SQL query and return the results as a tuple of columns and rows
+
+    Args:
+        conn: Optional database connection to reuse. If None, creates a new connection.
+              This allows connection reuse across multiple queries for better performance.
+    """
 
     # Initialize the variables
     columns, rows = [], []
@@ -185,54 +248,41 @@ def run_query(
         sql_commands_list = [sql]
 
     time_start = time.time()
-    with get_conn(db=db, cursor_factory=cursor_factory) as conn:
-        if isolation_level is not None and isinstance(isolation_level, int):
+
+    # Use provided connection or create a new one
+    if conn is not None:
+        # Reuse existing connection (no context manager)
+        if isolation_level is not None:
             conn.set_isolation_level(isolation_level)
-        with conn.cursor(cursor_factory=cursor_factory) as cursor:
-            for sql_command in sql_commands_list:
-                try:
-                    if copy_expert_kwargs:
-                        # Insert data into the table using the COPY command
-                        if log_query:
-                            try:
-                                sql_string = copy_expert_kwargs.get(
-                                    "sql", "No SQL found"
-                                ).as_string(cursor)
-                            except AttributeError:
-                                sql_string = copy_expert_kwargs.get(
-                                    "sql", "No SQL found"
-                                )
-                            logger.info(
-                                f"Running PostgreSQL COPY EXPERT command with query: '{sql_string}'"
-                            )
-                        cursor.copy_expert(**copy_expert_kwargs)
-                    elif sql_command:
-                        if log_query:
-                            logger.info(
-                                f"Running query now... SQL to run: {sql_command}"
-                            )
-                        cursor.execute(sql_command, data)
-                except psycopg2.Error as err:
-                    logger.info(
-                        f"ERROR executing SQL: '{sql_command}'\n\n Error: {err}"
-                    )
-                    if raise_error:
-                        raise
-                    conn.rollback()
-                else:
-                    if commit:
-                        # Is commit necessary with auto-commit? Doesn't seem to hurt, anyway...
-                        conn.commit()
-                    if fetchall:
-                        description = getattr(cursor, "description", None)
-                        if not description:
-                            logger.info("No data to fetch from cursor")
-                        else:
-                            columns = [str.lower(x[0]) for x in description]
-                            rows: list = cursor.fetchall()
-                            # return columns, rows
-                            # Make the DataFrame
-                            # df = pd.DataFrame(rows, columns=columns)
+
+        columns, rows = _execute_queries(
+            conn=conn,
+            cursor_factory=cursor_factory,
+            sql_commands_list=sql_commands_list,
+            copy_expert_kwargs=copy_expert_kwargs,
+            data=data,
+            log_query=log_query,
+            commit=commit,
+            raise_error=raise_error,
+            fetchall=fetchall,
+        )
+    else:
+        # Create new connection (original behavior for backward compatibility)
+        with get_conn(db=db, cursor_factory=cursor_factory) as conn:
+            if isolation_level is not None:
+                conn.set_isolation_level(isolation_level)
+
+            columns, rows = _execute_queries(
+                conn=conn,
+                cursor_factory=cursor_factory,
+                sql_commands_list=sql_commands_list,
+                copy_expert_kwargs=copy_expert_kwargs,
+                data=data,
+                log_query=log_query,
+                commit=commit,
+                raise_error=raise_error,
+                fetchall=fetchall,
+            )
 
     time_finish = time.time()
     execution_time = round(time_finish - time_start, 1)
@@ -389,7 +439,7 @@ def get_client_iot() -> boto3.client:
     return client_iot
 
 
-def get_iot_device_shadow(c, client_iot, aws_thing):
+def get_iot_device_shadow(client_iot, aws_thing):
     """This function gets the current thing state"""
 
     response_payload = {}
@@ -407,9 +457,7 @@ def get_iot_device_shadow(c, client_iot, aws_thing):
     return response_payload
 
 
-def subprocess_run(
-    c, command_list, method="run", shell=False, sleep=0, log_results=False
-):
+def subprocess_run(command_list, method="run", shell=False, sleep=0, log_results=False):
     """
     Run the subprocess.run() command and print the output to the log
     Return the return code (rc) and standard output (stdout)
@@ -458,9 +506,9 @@ def subprocess_run(
     return rc, stdout
 
 
-def find_pids(c: Config, search_string: str) -> List:
+def find_pids(search_string: str) -> List:
     """Find the PID of the running process based on the search string, and return a list of PIDs"""
-    rc, stdout = subprocess_run(c, ["/usr/bin/pgrep", "-f", search_string])
+    rc, stdout = subprocess_run(["/usr/bin/pgrep", "-f", search_string])
     list_of_pids = []
     if rc == 0:
         for line in stdout.splitlines():
@@ -472,7 +520,7 @@ def find_pids(c: Config, search_string: str) -> List:
 
 def exit_if_already_running(c: Config, filename: str) -> None:
     """If this program is already running, exit"""
-    list_of_pids = find_pids(c, filename)
+    list_of_pids = find_pids(filename)
     if len(list_of_pids) > 1:
         logger.warning(
             f"This scheduled process is already running with PID(s) of '{list_of_pids}'. Exiting now to avoid overloading the system."
@@ -658,7 +706,7 @@ def utc_timestamp_to_datetime_string(
     return utc_datetime_to_string(dt, to_pytz_timezone, format_string)
 
 
-def seconds_since_last_any_msg(c, shadow) -> Tuple[float, str, str]:
+def seconds_since_last_any_msg(shadow) -> Tuple[float, str, str]:
     """How many seconds has it been since we received ANY message from the gateway at AWS?"""
 
     time_received_latest = 0

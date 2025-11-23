@@ -41,7 +41,7 @@ from project.utils import (
 LOGFILE_NAME = "update_info_from_shadows"
 
 
-def convert_to_float(c, string):
+def convert_to_float(string):
     try:
         return float(string)
     except Exception:
@@ -49,7 +49,7 @@ def convert_to_float(c, string):
         return 0
 
 
-def sql_get_info(c, power_unit_id, power_unit_shadow_str, structure, aws_thing):
+def sql_get_info(power_unit_id, power_unit_shadow_str, structure, aws_thing):
     """Gather a bit more info for the email alert"""
 
     select_sql = f"""
@@ -84,7 +84,6 @@ aws_thing = {aws_thing}
 
 
 def get_sql_update(
-    c,
     gps_lat_new: float,
     gps_lat_old: float,
     gps_lon_new: float,
@@ -166,18 +165,20 @@ def update_structures_table_gps(
     aws_thing: str,
     execute: bool = True,
     commit: bool = False,
+    conn=None,
 ) -> None:
     """Actually update the public.structures table, and send an email alert about it"""
 
     # Gather a bit more info for the email alert
     sql_get_info_str = sql_get_info(
-        c, power_unit_id, power_unit_shadow_str, structure, aws_thing
+        power_unit_id, power_unit_shadow_str, structure, aws_thing
     )
-    _, rows = run_query(sql_get_info_str, db="ijack", fetchall=True, commit=False)
+    _, rows = run_query(
+        sql_get_info_str, db="ijack", fetchall=True, commit=False, conn=conn
+    )
     dict_ = rows[0]
 
     sql_update = get_sql_update(
-        c,
         gps_lat_new=gps_lat_new,
         gps_lat_old=gps_lat_old,
         gps_lon_new=gps_lon_new,
@@ -202,7 +203,7 @@ def update_structures_table_gps(
     # Don't run this automatically since it undoes my manual updates with the
     # test_update_gps_lat_lon_from_land_locations.py program which cost $0.10/per lookup
     if execute:
-        run_query(sql_update, db="ijack", fetchall=False, commit=commit)
+        run_query(sql_update, db="ijack", fetchall=False, commit=commit, conn=conn)
 
     return None
 
@@ -257,6 +258,7 @@ def compare_shadow_and_db_gps(
     structure: int,
     aws_thing: str,
     commit: bool = False,
+    conn=None,
 ) -> None:
     """
     Compare the shadow and database values,
@@ -288,12 +290,15 @@ def compare_shadow_and_db_gps(
                 structure=structure,
                 aws_thing=aws_thing,
                 commit=commit,
+                conn=conn,
             )
 
     return None
 
 
-def is_power_unit_already_in_use(power_unit_id: int | None) -> Tuple[bool, str]:
+def is_power_unit_already_in_use(
+    power_unit_id: int | None, conn=None
+) -> Tuple[bool, str]:
     """Check if the power unit is already assigned to another gateway"""
     if not isinstance(power_unit_id, int):
         error_msg = f"power_unit_id '{power_unit_id}' is not an integer so can't check if a gateway is already using it..."
@@ -305,7 +310,7 @@ def is_power_unit_already_in_use(power_unit_id: int | None) -> Tuple[bool, str]:
         from public.gw
         where power_unit_id = {power_unit_id}
     """
-    _, rows = run_query(SQL, db="ijack", fetchall=True)
+    _, rows = run_query(SQL, db="ijack", fetchall=True, conn=conn)
 
     if isinstance(rows, list) and len(rows) > 0:
         gateway = rows[0]["gateway"]
@@ -318,7 +323,7 @@ def is_power_unit_already_in_use(power_unit_id: int | None) -> Tuple[bool, str]:
 
 
 def already_emailed_recently(
-    c, alert_type: str, power_unit_str: str, aws_thing: str
+    alert_type: str, power_unit_str: str, aws_thing: str, conn=None
 ) -> bool:
     """Check if we've already sent an email about this power unit and gateway today"""
     SQL = f"""
@@ -329,7 +334,7 @@ def already_emailed_recently(
             and power_unit_str = '{power_unit_str}'
             and aws_thing = '{aws_thing}'
     """
-    _, rows = run_query(SQL, db="ijack", fetchall=True)
+    _, rows = run_query(SQL, db="ijack", fetchall=True, conn=conn)
 
     if isinstance(rows, list) and len(rows) > 0:  # type: ignore
         count = rows[0]["count"]
@@ -342,18 +347,22 @@ def already_emailed_recently(
     return False
 
 
-def record_email_sent(c, alert_type: str, power_unit_str: str, aws_thing: str) -> None:
+def record_email_sent(
+    alert_type: str, power_unit_str: str, aws_thing: str, conn=None
+) -> None:
     """Record that we've sent an email about this power unit and gateway today"""
     SQL = f"""
         insert into public.alerts_sent_other
         (alert_type, power_unit_str, aws_thing)
         values ('{alert_type}', '{power_unit_str}', '{aws_thing}')
     """
-    run_query(SQL, db="ijack", fetchall=False, commit=True)
+    run_query(SQL, db="ijack", fetchall=False, commit=True, conn=conn)
     return None
 
 
-def set_power_unit_to_gateway(c, power_unit_id_shadow: int, aws_thing: str) -> bool:
+def set_power_unit_to_gateway(
+    power_unit_id_shadow: int, aws_thing: str, conn=None
+) -> bool:
     """
     Update the public.gw record for 'aws_thing' to use the 'power_unit_id_shadow' from now on
     """
@@ -373,7 +382,7 @@ def set_power_unit_to_gateway(c, power_unit_id_shadow: int, aws_thing: str) -> b
         set power_unit_id = {power_unit_id_shadow}
         where aws_thing = '{aws_thing}'
     """
-    run_query(SQL, db="ijack", fetchall=False, commit=True)
+    run_query(SQL, db="ijack", fetchall=False, commit=True, conn=conn)
 
     return True
 
@@ -499,7 +508,7 @@ def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
     return shadows
 
 
-def get_shadow_table_html(c, shadow: dict) -> str:
+def get_shadow_table_html(shadow: dict) -> str:
     """Get an HTML table with all the info in the AWS IoT device shadow, for the email"""
 
     if not isinstance(shadow, dict) or not shadow:
@@ -574,13 +583,14 @@ def upsert_gw_info(
     gateway_id: int,
     aws_thing: str,
     shadow: dict,
+    conn=None,
 ) -> bool:
     """Update (or insert) the gateway-reported info from the shadow into the RDS database"""
 
     if not gateway_id or not aws_thing:
         return False
 
-    seconds_since, msg, latest_metric = seconds_since_last_any_msg(c, shadow)
+    seconds_since, msg, latest_metric = seconds_since_last_any_msg(shadow)
     logger.info(
         f"Gateway '{aws_thing}' last reported {msg} ago with metric {latest_metric}"
     )
@@ -626,11 +636,7 @@ def upsert_gw_info(
     if isinstance(warn2, int):
         values_dict["warn2"] = warn2
 
-    warn2 = reported.get("WARN2_EGAS", None)
-    if warn2 is None:
-        warn2 = reported.get("WARN2", None)
-    if isinstance(warn2, int):
-        values_dict["warn2"] = warn2
+    # Remove duplicate warn2 assignment (DRY fix)
 
     spm = reported.get("SPM_EGAS", None)
     if spm is None:
@@ -712,16 +718,15 @@ def upsert_gw_info(
         fetchall=False,
         commit=True,
         data=values_dict,
-        # Need a new connection each time, in case the transaction fails?
-        # Or just raise_error=True?
         raise_error=True,
+        conn=conn,
     )
 
     return True
 
 
 def record_can_bus_cellular_test(
-    gateway_id: int, cellular_good: bool, can_bus_good: bool
+    gateway_id: int, cellular_good: bool, can_bus_good: bool, conn=None
 ) -> bool:
     """Record that the CAN bus and cellular have been tested and are working, or not!"""
 
@@ -733,7 +738,7 @@ def record_can_bus_cellular_test(
         where id = {gateway_id}
     """
     # """).format(cell_good=Literal(cellular_good), can_good=Literal(can_bus_good), gateway_id=Literal(gateway_id))
-    run_query(sql_gw, db="ijack", fetchall=False, commit=True)
+    run_query(sql_gw, db="ijack", fetchall=False, commit=True, conn=conn)
 
     if cellular_good:
         user_id_shop_auto = 788  # SHOP automated user
@@ -750,7 +755,7 @@ def record_can_bus_cellular_test(
         #     gateway_id=Literal(gateway_id),
         #     network_id=Literal(network_id_sasktel)
         # )
-        run_query(sql_gw_tested, db="ijack", fetchall=False, commit=True)
+        run_query(sql_gw_tested, db="ijack", fetchall=False, commit=True, conn=conn)
 
     return True
 
@@ -767,17 +772,42 @@ def main(c: Config, commit: bool = False) -> None:
 
     exit_if_already_running(c, Path(__file__).name)
 
-    # Get DB connection since we're running several queries (might as well have just one connection)
-    with get_conn(db="aws_rds"):
+    # Get DB connection and REUSE it for all queries (major performance improvement)
+    with get_conn(db="aws_rds") as conn:
         time_start = time.time()
+        logger.info("Starting update_info_from_shadows process...")
+
+        # Fetch gateway records
+        time_gw_start = time.time()
         gw_rows: list = get_gateway_records()
-        # pu_rows: list = get_power_unit_records(c, conn)
+        logger.info(
+            f"Fetched {len(gw_rows)} gateway records in {time.time() - time_gw_start:.2f}s"
+        )
+
+        # Pre-compute power unit lookup dictionary
         pu_dict = {row["power_unit_str"]: row["power_unit_id"] for row in gw_rows}
-        # structure_rows: list = get_structure_records(c, conn)
+
+        # Pre-compute structures by power_unit_id (O(n) instead of O(n²) in main loop)
+        structures_by_power_unit = {}
+        for row in gw_rows:
+            power_unit_id = row.get("power_unit_id")
+            if power_unit_id is not None:
+                if power_unit_id not in structures_by_power_unit:
+                    structures_by_power_unit[power_unit_id] = []
+                structures_by_power_unit[power_unit_id].append(row)
+        logger.info(
+            f"Pre-computed structure lookups for {len(structures_by_power_unit)} power units"
+        )
 
         # Get the Boto3 AWS IoT client for updating the "thing shadow"
         client_iot = get_client_iot()
+
+        # Fetch AWS IoT shadows in parallel (ThreadPoolExecutor)
+        time_shadows_start = time.time()
         shadows: list = get_device_shadows_in_threadpool(c, gw_rows, client_iot)
+        logger.info(
+            f"Fetched {len(shadows)} shadows in {time.time() - time_shadows_start:.2f}s"
+        )
 
         # # Do you want to save the fixtures for testing?
         # fixtures_to_save = {
@@ -825,7 +855,7 @@ def main(c: Config, commit: bool = False) -> None:
                 continue
 
             # Update the public.gw_info table using info reported in the shadow
-            upsert_gw_info(c, gateway_id, aws_thing, shadow)
+            upsert_gw_info(c, gateway_id, aws_thing, shadow, conn=conn)
 
             reported = shadow.get("state", {}).get("reported", {})
             latitude_shadow = reported.get("LATITUDE", None)
@@ -847,10 +877,8 @@ def main(c: Config, commit: bool = False) -> None:
                 )
                 continue
 
-            # Compare the GPS first
-            structure_rows_relevant = [
-                row for row in gw_rows if row["power_unit_id"] == power_unit_id_gw
-            ]
+            # Compare the GPS first - O(1) dict lookup instead of O(n) list comprehension
+            structure_rows_relevant = structures_by_power_unit.get(power_unit_id_gw, [])
             for row in structure_rows_relevant:
                 if latitude_shadow and longitude_shadow:
                     # There are new GPS coordinates in the shadow, even if the database is empty
@@ -865,6 +893,7 @@ def main(c: Config, commit: bool = False) -> None:
                         structure=row["structure_str"],
                         aws_thing=aws_thing,
                         commit=commit,
+                        conn=conn,
                     )
 
             if power_unit_id_shadow == power_unit_id_gw:
@@ -886,23 +915,23 @@ def main(c: Config, commit: bool = False) -> None:
             gateway_already_has_power_unit = bool(power_unit_id_gw)
 
             is_power_unit_in_use, gateway_already_linked = is_power_unit_already_in_use(
-                power_unit_id_shadow
+                power_unit_id_shadow, conn=conn
             )
             if is_power_unit_in_use:
                 if already_emailed_recently(
-                    c,
                     alert_type="gw_pu_already_matched",
                     power_unit_str=power_unit_shadow_str,
                     aws_thing=aws_thing,
+                    conn=conn,
                 ):
                     # Don't send the same email too often
                     continue
                 else:
                     record_email_sent(
-                        c,
                         alert_type="gw_pu_already_matched",
                         power_unit_str=power_unit_shadow_str,
                         aws_thing=aws_thing,
+                        conn=conn,
                     )
 
                 # There's a problem since another gateway is already using that power unit
@@ -927,19 +956,19 @@ def main(c: Config, commit: bool = False) -> None:
 
             elif gateway_already_has_power_unit:
                 if already_emailed_recently(
-                    c,
                     alert_type="gw_pu_already_matched",
                     power_unit_str=power_unit_shadow_str,
                     aws_thing=aws_thing,
+                    conn=conn,
                 ):
                     # Don't send the same email too often
                     continue
                 else:
                     record_email_sent(
-                        c,
                         alert_type="gw_pu_already_matched",
                         power_unit_str=power_unit_shadow_str,
                         aws_thing=aws_thing,
+                        conn=conn,
                     )
 
                 # There's a problem since the gateway already has a power unit assigned to it
@@ -956,7 +985,7 @@ def main(c: Config, commit: bool = False) -> None:
 
             else:
                 # No gateway is using that power unit, so link the two in the public.gw table
-                set_power_unit_to_gateway(c, power_unit_id_shadow, aws_thing)
+                set_power_unit_to_gateway(power_unit_id_shadow, aws_thing, conn=conn)
                 emailees_list = c.EMAIL_LIST_SERVICE_PRODUCTION_IT
                 subject = f"Power unit {power_unit_shadow_str} now linked to gateway {aws_thing}"
                 html = f"<p>Power unit {power_unit_shadow_str} is now linked to gateway {aws_thing}."
@@ -965,7 +994,7 @@ def main(c: Config, commit: bool = False) -> None:
                 html += "\n<p>This gateway is also not already linked to an existing power unit.</p>"
 
                 record_can_bus_cellular_test(
-                    gateway_id, cellular_good=True, can_bus_good=True
+                    gateway_id, cellular_good=True, can_bus_good=True, conn=conn
                 )
 
             # Add HTML link to clear the power unit info from the gateway's shadow
@@ -996,7 +1025,7 @@ def main(c: Config, commit: bool = False) -> None:
             html += f'\n<li>Gateways table for <b><em>old</em></b> gateway "{gateway_already_linked}" at <a href="https://myijack.com/admin/gateways/?search={gateway_already_linked}">https://myijack.com/admin/gateways/?search={gateway_already_linked}</a></li>'
             html += "\n</ul>"
 
-            shadow_html = get_shadow_table_html(c, shadow)
+            shadow_html = get_shadow_table_html(shadow)
             if shadow_html:
                 html += f"\n<p><b>AWS IoT device shadow data for new gateway '{aws_thing}':</b></p>"
                 html += f"\n<p>{shadow_html}</p>"
@@ -1004,7 +1033,7 @@ def main(c: Config, commit: bool = False) -> None:
                 html += f"\n<p>No AWS IoT device shadow information for new gateway '{aws_thing}'.</p>"
 
             shadow_already_linked = shadows.get(gateway_already_linked, {})
-            shadow_already_linked_html = get_shadow_table_html(c, shadow_already_linked)
+            shadow_already_linked_html = get_shadow_table_html(shadow_already_linked)
             if shadow_already_linked_html:
                 html += f"\n<p><b>AWS IoT device shadow data for previously-linked gateway '{gateway_already_linked}':</b></p>"
                 html += f"\n<p>{shadow_already_linked_html}</p>"
@@ -1017,12 +1046,18 @@ def main(c: Config, commit: bool = False) -> None:
                 c, text="", html=html, emailees_list=emailees_list, subject=subject
             )
 
-            time_finish = time.time()
-            logger.info(
-                f"Time to update all gateways to their reported power units: {round(time_finish - time_start)} seconds"
-            )
+        # Performance timing at end of processing
+        time_finish = time.time()
+        total_time = round(time_finish - time_start, 2)
+        logger.info("=" * 80)
+        logger.info(
+            f"✓ update_info_from_shadows completed successfully in {total_time}s"
+        )
+        logger.info(f"✓ Processed {len(gw_rows)} gateways")
+        logger.info(f"✓ Fetched {len(shadows)} AWS IoT shadows")
+        logger.info("=" * 80)
 
-            del client_iot
+        del client_iot
 
     return None
 

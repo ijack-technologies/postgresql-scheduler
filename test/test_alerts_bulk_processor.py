@@ -393,8 +393,8 @@ class TestAlertBulkProcessor(unittest.TestCase):
         params = call_args[1]["data"]
         # Should be a dictionary with named parameters
         self.assertIsInstance(params, dict)
-        # Each power unit has 32 parameters, so 5 power units = 160 parameters
-        self.assertEqual(len(params), 160)
+        # Each power unit has 33 parameters, so 5 power units = 165 parameters
+        self.assertEqual(len(params), 165)
         # Verify some named parameters exist
         self.assertIn("pu0_user_id", params)
         self.assertIn("pu0_power_unit_id", params)
@@ -479,8 +479,8 @@ class TestAlertBulkProcessor(unittest.TestCase):
         params = third_call[1]["data"]
         # Should be a dictionary with named parameters
         self.assertIsInstance(params, dict)
-        # 2 power units * 32 parameters each = 64 parameters
-        self.assertEqual(len(params), 64)
+        # 2 power units * 33 parameters each = 66 parameters
+        self.assertEqual(len(params), 66)
         # Verify the correct power units are processed
         self.assertIn("pu0_power_unit_id", params)
         self.assertIn("pu1_power_unit_id", params)

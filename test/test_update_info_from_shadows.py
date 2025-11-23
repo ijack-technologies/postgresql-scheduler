@@ -69,7 +69,7 @@ class TestAll(unittest.TestCase):
         aws_thing = "1000051"
 
         sql_get_info_str = update_info_from_shadows.sql_get_info(
-            c, power_unit_id, power_unit_shadow, structure, aws_thing
+            power_unit_id, power_unit_shadow, structure, aws_thing
         )
 
         _, rows = run_query(sql_get_info_str, db="ijack", fetchall=True, commit=False)
@@ -93,7 +93,6 @@ class TestAll(unittest.TestCase):
 
         dict_ = rows[0]
         sql_update = update_info_from_shadows.get_sql_update(
-            c,
             gps_lat_new=gps_lat_new,
             gps_lat_old=gps_lat_old,
             gps_lon_new=gps_lon_new,
@@ -592,9 +591,7 @@ class TestAll(unittest.TestCase):
 
         # Get the AWS IoT client and fetch the actual shadow
         client_iot = update_info_from_shadows.get_client_iot()
-        shadow = update_info_from_shadows.get_iot_device_shadow(
-            c, client_iot, aws_thing
-        )
+        shadow = update_info_from_shadows.get_iot_device_shadow(client_iot, aws_thing)
 
         # Verify we got a valid shadow
         self.assertIsInstance(shadow, dict)
@@ -603,7 +600,7 @@ class TestAll(unittest.TestCase):
         # Test seconds_since_last_any_msg - this was throwing TypeError at line 670
         # The fix at lines 671-672 checks if time_received is numeric before comparing
         seconds_since, msg, latest_metric = (
-            update_info_from_shadows.seconds_since_last_any_msg(c, shadow)
+            update_info_from_shadows.seconds_since_last_any_msg(shadow)
         )
 
         # Verify the function returned valid values
@@ -613,7 +610,7 @@ class TestAll(unittest.TestCase):
 
         # Test get_shadow_table_html - this was also throwing TypeError at line 507
         # The fix at lines 505-510 filters out non-numeric timestamps before sorting
-        html = update_info_from_shadows.get_shadow_table_html(c, shadow)
+        html = update_info_from_shadows.get_shadow_table_html(shadow)
 
         # Verify HTML was generated
         self.assertIsInstance(html, str)
