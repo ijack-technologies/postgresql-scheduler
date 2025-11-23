@@ -1,3 +1,21 @@
+"""
+Utility functions and configuration for the PostgreSQL Scheduler application.
+
+This module provides core infrastructure used across all scheduled jobs:
+- Config class with database connections, email/SMS lists, and environment settings
+- Database connection management with context managers (PostgreSQL, TimescaleDB)
+- AWS IoT client for device shadow operations
+- Email alerting via Mailgun (send_mailgun_email)
+- SMS alerting via Twilio (send_twilio_sms)
+- Error handling with email/SMS notifications (error_wrapper decorator)
+- Process management (exit_if_already_running to prevent duplicate job execution)
+- Datetime utilities for UTC and timezone conversions
+- Query execution helpers with transaction support
+
+All scheduled jobs import from this module to maintain DRY principles and consistent
+error handling across the application.
+"""
+
 import functools
 import json
 import logging

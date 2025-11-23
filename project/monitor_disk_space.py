@@ -1,3 +1,11 @@
+"""
+Monitor disk space on EC2 instances and send email alerts when usage exceeds threshold.
+
+This module checks disk usage on all mounted filesystems and sends email notifications
+when any partition exceeds the configured threshold (default 90%). Runs periodically
+via the scheduler monitor to prevent disk full errors that could crash the application.
+"""
+
 import subprocess
 import sys
 from pathlib import Path

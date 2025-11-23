@@ -1,3 +1,11 @@
+"""
+Delete old error log records from the RDS PostgreSQL database.
+
+This module removes error_logs entries older than 1 month to prevent the table
+from growing indefinitely. Runs daily via the scheduler to maintain database size
+and performance.
+"""
+
 from pathlib import Path
 
 from project.utils import (

@@ -1,3 +1,18 @@
+"""
+Update gateway information from AWS IoT device shadows to RDS PostgreSQL database.
+
+This module synchronizes gateway data between AWS IoT device shadows and the RDS database:
+- Fetches device shadows for all gateways using ThreadPoolExecutor for efficiency
+- Updates the gw_info table with metrics reported by gateways (OS info, modem details, software versions, etc.)
+- Compares GPS coordinates from shadows vs database and updates if significantly different (>10 meters)
+- Manages power unit to gateway linkages by comparing reported serial numbers with database records
+- Sends email alerts when configuration conflicts are detected (e.g., duplicate power unit assignments)
+- Records CAN bus and cellular connectivity test results
+
+The main function runs every 15 minutes via the scheduler to keep the database synchronized
+with the current state of all deployed gateways.
+"""
+
 import pprint
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed

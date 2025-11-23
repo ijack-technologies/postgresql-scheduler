@@ -1,3 +1,16 @@
+"""
+Synchronize configuration data from RDS PostgreSQL to AWS IoT device shadows.
+
+This module pushes configuration updates from the RDS database to AWS IoT device shadows
+so that remote gateways can retrieve their configuration without directly connecting to
+the database (which would cause connection pool exhaustion). Uses ThreadPoolExecutor for
+efficient parallel shadow updates. Runs hourly via the scheduler.
+
+This is the opposite direction of update_info_from_shadows.py:
+- This module: RDS database → AWS IoT shadows (configuration push)
+- update_info_from_shadows.py: AWS IoT shadows → RDS database (telemetry pull)
+"""
+
 import json
 import sys
 import time

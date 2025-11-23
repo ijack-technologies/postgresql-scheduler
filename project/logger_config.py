@@ -1,3 +1,11 @@
+"""
+Logger configuration module for the PostgreSQL Scheduler application.
+
+Provides centralized logging configuration with console output for Docker compatibility.
+Creates a standardized formatter with timestamp, module, line number, level, function name,
+and message. All logs are sent to stdout for proper Docker log collection.
+"""
+
 import logging
 import sys
 

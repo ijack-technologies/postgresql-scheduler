@@ -1,3 +1,11 @@
+"""
+Delete old real-time time series data from TimescaleDB.
+
+This module removes time_series_rt entries older than 1 year to manage storage
+and maintain query performance. Runs daily via the scheduler. The real-time table
+stores high-frequency sensor data that is eventually aggregated into summary tables.
+"""
+
 from pathlib import Path
 
 from project.utils import (
