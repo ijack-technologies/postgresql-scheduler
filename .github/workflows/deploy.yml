@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Deploy to EC2 via SSH
       uses: appleboy/ssh-action@v1.0.3
@@ -17,10 +17,78 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_PRIVATE_KEY }}
         port: 22
+        command_timeout: 30m
         script: |
           # Navigate to project directory
           cd /home/ubuntu/git/postgresql-scheduler
-          
+
           # Make deploy.sh executable and run it
           chmod +x deploy.sh
           ./deploy.sh
+
+    - name: Wait for services to be healthy
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_PRIVATE_KEY }}
+        port: 22
+        command_timeout: 10m
+        script: |
+          echo "Waiting for postgresql_scheduler_jobs service to be healthy..."
+
+          # Wait up to 5 minutes for service to stabilize
+          for i in {1..30}; do
+            # Get service status
+            REPLICAS=$(docker service ls --filter name=postgresql_scheduler_jobs --format "{{.Replicas}}")
+            echo "Attempt $i/30: Service replicas status: $REPLICAS"
+
+            # Check if service is running (format: "1/1" means 1 running out of 1 desired)
+            if [[ "$REPLICAS" == "1/1" ]]; then
+              echo "✓ Service is running"
+
+              # Verify no recent task failures
+              FAILED_TASKS=$(docker service ps postgresql_scheduler_jobs --filter "desired-state=shutdown" --format "{{.CurrentState}}" | grep -c "Failed" || true)
+
+              if [[ "$FAILED_TASKS" -gt "5" ]]; then
+                echo "✗ Service has $FAILED_TASKS failed tasks - deployment may be unhealthy"
+                echo "Recent task states:"
+                docker service ps postgresql_scheduler_jobs --no-trunc | head -10
+                exit 1
+              fi
+
+              # Check container logs for import errors
+              echo "Checking logs for errors..."
+              CONTAINER_ID=$(docker ps --filter name=postgresql_scheduler_jobs --format "{{.ID}}" --latest)
+              if [[ -n "$CONTAINER_ID" ]]; then
+                # Check for pytz or other import errors in last 50 lines
+                if docker logs "$CONTAINER_ID" 2>&1 | tail -50 | grep -qi "ModuleNotFoundError\|ImportError"; then
+                  echo "✗ Import errors detected in container logs:"
+                  docker logs "$CONTAINER_ID" 2>&1 | tail -50
+                  exit 1
+                fi
+                echo "✓ No import errors detected"
+              fi
+
+              echo "✓ Deployment successful - service is healthy"
+              exit 0
+            fi
+
+            # Check if service is stuck at 0/1 (failing to start)
+            if [[ "$REPLICAS" == "0/1" ]] && [[ "$i" -gt "10" ]]; then
+              echo "✗ Service stuck at 0/1 after $i attempts"
+              echo "Checking recent failures:"
+              docker service ps postgresql_scheduler_jobs --no-trunc | head -10
+              docker service logs postgresql_scheduler_jobs --tail 50
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "✗ Service did not become healthy after 5 minutes"
+          echo "Current service status:"
+          docker service ps postgresql_scheduler_jobs --no-trunc
+          echo "Recent logs:"
+          docker service logs postgresql_scheduler_jobs --tail 100
+          exit 1

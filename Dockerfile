@@ -23,6 +23,8 @@ ENV PYTHONHASHSEED=random
 # UV configuration
 ENV UV_CACHE_DIR=/root/.cache/uv
 ENV UV_SYSTEM_PYTHON=1
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
 # Tell apt-get we're never going to be able to give manual feedback:
 ENV DEBIAN_FRONTEND=noninteractive
@@ -37,34 +39,38 @@ RUN apt-get update && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
 
-# The following only runs in the "builder" build stage of this multi-stage build.
-# Install UV (Python package manager)
-RUN \
-    # Use a virtual environment for easy transfer of builder packages
-    python -m venv /venv && \
-    /venv/bin/pip install --upgrade pip setuptools wheel && \
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+# Install UV (Python package manager) - latest version
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Copy dependency files for UV
+# IMPORTANT: Copy dependency files FIRST for better layer caching
+# UV will only reinstall if these files change
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies using UV
+# Install dependencies using UV with cache mount
+# This layer is cached unless pyproject.toml or uv.lock changes
 RUN --mount=type=cache,target=/root/.cache/uv \
     /root/.local/bin/uv venv /venv && \
-    . /venv/bin/activate && \
-    if [ "$ENVIRONMENT" != "production" ]; then \
-        /root/.local/bin/uv pip install -e .[dev]; \
-    else \
-        /root/.local/bin/uv pip install -e .; \
-    fi
+    # Install dependencies ONLY (not the project itself)
+    # This separates frequently-changing project code from static dependencies
+    /root/.local/bin/uv sync --frozen --no-install-project --no-dev && \
+    # Verify critical dependencies are installed (smoke test)
+    /venv/bin/python -c "import pytz; print(f'✓ pytz {pytz.__version__} installed')" && \
+    /venv/bin/python -c "import pandas; print(f'✓ pandas {pandas.__version__} installed')" && \
+    /venv/bin/python -c "import psycopg2; print(f'✓ psycopg2 installed')"
 
 # Make sure our packages are in the PATH
-# ENV PATH="/project/node_modules/.bin:$PATH"
 ENV PATH="/venv/bin:$PATH"
 
+# Copy project files (these change frequently, so do this AFTER dependencies)
 COPY .env ./
-# Copy the project files into the container, in the /project workdir
 COPY project ./
+
+# Install the project itself (fast since dependencies already installed)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    /root/.local/bin/uv pip install --no-deps -e .
+
+# Verify the project can import (final smoke test)
+RUN /venv/bin/python -c "from project.logger_config import logger; print('✓ Project imports working')"
 
 
 
@@ -125,5 +131,9 @@ RUN echo PATH = $PATH
 
 # Copy my preferred .bashrc to /root/ so that it's automatically "sourced" when the container starts
 COPY .bashrc /$USERNAME
+
+# Add health check to ensure Python can import critical modules
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /venv/bin/python -c "import pytz, pandas, psycopg2; import project.logger_config" || exit 1
 
 # CMD ["/venv/bin/python3", "/project/main_scheduler.py"]

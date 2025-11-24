@@ -21,17 +21,45 @@ services:
       # For stateless applications using "replicated" mode,
       # the total number of replicas to create
       replicas: 1
-      # Don't use a restart policy. Let Docker Swarm handle it.
+      # Update configuration with automatic rollback on failure
+      update_config:
+        # Update one container at a time
+        parallelism: 1
+        # Wait 30s between updates
+        delay: 30s
+        # Rollback if update fails
+        failure_action: rollback
+        # Monitor for 2 minutes before considering update successful
+        monitor: 2m
+        # If more than 50% of tasks fail, trigger rollback
+        max_failure_ratio: 0.5
+        # Order: stop old task before starting new one (safer for stateful apps)
+        order: stop-first
+      # Rollback configuration
+      rollback_config:
+        # Rollback one container at a time
+        parallelism: 1
+        # Wait 10s between rollback steps
+        delay: 10s
+        # Pause rollback on failure (manual intervention needed)
+        failure_action: pause
+        # Monitor for 1 minute during rollback
+        monitor: 1m
+        # Order: stop new (failed) task before starting old one
+        order: stop-first
+      # Restart policy: restart on failure, with exponential backoff
       restart_policy:
-        # condition: on-failure
-        condition: any
-      placement: 
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
         constraints:
           - node.platform.os == linux
           # We need this to monitor the main AWS EC2 instance's disk space
           - node.role == manager
           # "Backup server" (which is a manager as well)
-          # - node.id == n6ft9t731ty64r28muac1540j          
+          # - node.id == n6ft9t731ty64r28muac1540j
       resources:
         limits:
           # The container can use up to X% of a single CPU
@@ -42,10 +70,14 @@ services:
       #   # Enable logging to Grafana Loki with Promtail
       #   logging: promtail
       #   logging_jobname: postgresql_scheduler
+    # Enhanced health check that verifies Python can import modules
     healthcheck:
-      test: [ "CMD", "ping", "-c", "1", "google.com" ]
-      interval: 1m
-      timeout: 5m
+      test: [
+        "CMD-SHELL",
+        "/venv/bin/python -c 'import pytz, pandas, psycopg2; import project.logger_config' || exit 1"
+      ]
+      interval: 30s
+      timeout: 10s
       retries: 3
       start_period: 30s
     # volumes:
