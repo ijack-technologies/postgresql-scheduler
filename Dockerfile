@@ -68,7 +68,7 @@ COPY project ./
 
 # Install the project itself (fast since dependencies already installed)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_PROJECT_ENVIRONMENT=/venv /root/.local/bin/uv pip install --no-deps -e .
+    /venv/bin/pip install --no-deps -e .
 
 # Verify the project can import (final smoke test)
 RUN /venv/bin/python -c "from project.logger_config import logger; print('✓ Project imports working')"
