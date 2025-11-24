@@ -84,8 +84,9 @@ RUN mkdir -p /etc/apt/keyrings \
     # Create docker CLI plugins directory
     && mkdir -p /root/.docker/cli-plugins
 
-# Install UV (Python package manager) - copy from official image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install UV (Python package manager) - use install script
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
 
 # Bun removed - using only the official Claude Code bash installation
 

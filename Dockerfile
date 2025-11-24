@@ -5,8 +5,9 @@ ARG INSTALL_PYTHON_VERSION=${INSTALL_PYTHON_VERSION:-PYTHON_VERSION_NOT_SET}
 # ============================================================================
 FROM python:${INSTALL_PYTHON_VERSION} AS builder
 
-# Copy UV binary from official image (best practice)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install UV via install script (production server can't access ghcr.io)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
 
 # UV optimization environment variables
 ENV UV_COMPILE_BYTECODE=1 \
