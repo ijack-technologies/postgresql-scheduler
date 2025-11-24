@@ -87,7 +87,7 @@ services:
     #     read_only: false
     #     volume:
     #       nocopy: true
-    command: ["/app/.venv/bin/python", "/app/scheduler_jobs.py"]
+    command: ["/app/.venv/bin/python", "/app/project/scheduler_jobs.py"]
 
   # Second service for globally monitoring the EC2 instances' disk space
   monitor:
@@ -141,7 +141,7 @@ services:
     #     read_only: false
     #     volume:
     #       nocopy: true
-    command: ["/app/.venv/bin/python", "/app/scheduler_monitor.py"]
+    command: ["/app/.venv/bin/python", "/app/project/scheduler_monitor.py"]
 
 networks:
   # Use the previously created public network "traefik-public", shared with other services
