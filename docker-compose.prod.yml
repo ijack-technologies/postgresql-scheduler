@@ -74,7 +74,7 @@ services:
     healthcheck:
       test: [
         "CMD-SHELL",
-        "/venv/bin/python -c 'import pytz, pandas, psycopg2; import project.logger_config' || exit 1"
+        "/app/.venv/bin/python -c 'import pytz, pandas, psycopg2; import project.logger_config' || exit 1"
       ]
       interval: 30s
       timeout: 10s
@@ -83,11 +83,11 @@ services:
     # volumes:
     #   - type: volume
     #     source: postgresql_scheduler_logs_prod
-    #     target: /project/logs
+    #     target: /app/logs
     #     read_only: false
     #     volume:
     #       nocopy: true
-    command: ["/venv/bin/python3", "/project/scheduler_jobs.py"]
+    command: ["/app/.venv/bin/python", "/app/scheduler_jobs.py"]
 
   # Second service for globally monitoring the EC2 instances' disk space
   monitor:
@@ -137,11 +137,11 @@ services:
     # volumes:
     #   - type: volume
     #     source: postgresql_scheduler_monitor_logs_prod
-    #     target: /project/logs
+    #     target: /app/logs
     #     read_only: false
     #     volume:
     #       nocopy: true
-    command: ["/venv/bin/python3", "/project/scheduler_monitor.py"]
+    command: ["/app/.venv/bin/python", "/app/scheduler_monitor.py"]
 
 networks:
   # Use the previously created public network "traefik-public", shared with other services
