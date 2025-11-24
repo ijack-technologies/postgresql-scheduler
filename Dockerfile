@@ -42,6 +42,9 @@ RUN .venv/bin/python -c "import pytz; print(f'✓ pytz {pytz.__version__} instal
     .venv/bin/python -c "import pandas; print(f'✓ pandas {pandas.__version__} installed')" && \
     .venv/bin/python -c "import psycopg2; print(f'✓ psycopg2 installed')"
 
+# Copy dependency files (needed for project installation)
+COPY pyproject.toml uv.lock ./
+
 # Copy project files (changes frequently, so separate layer)
 COPY .env ./
 COPY project ./project
