@@ -49,10 +49,11 @@ COPY pyproject.toml uv.lock ./
 # Install dependencies using UV with cache mount
 # This layer is cached unless pyproject.toml or uv.lock changes
 RUN --mount=type=cache,target=/root/.cache/uv \
+    # Create virtual environment at /venv
     /root/.local/bin/uv venv /venv && \
-    # Install dependencies ONLY (not the project itself)
-    # This separates frequently-changing project code from static dependencies
-    /root/.local/bin/uv sync --frozen --no-install-project --no-dev && \
+    # Activate the venv and install dependencies into it
+    # UV_PROJECT_ENVIRONMENT tells uv sync to use /venv instead of creating .venv
+    UV_PROJECT_ENVIRONMENT=/venv /root/.local/bin/uv sync --frozen --no-install-project --no-dev && \
     # Verify critical dependencies are installed (smoke test)
     /venv/bin/python -c "import pytz; print(f'✓ pytz {pytz.__version__} installed')" && \
     /venv/bin/python -c "import pandas; print(f'✓ pandas {pandas.__version__} installed')" && \
@@ -67,7 +68,7 @@ COPY project ./
 
 # Install the project itself (fast since dependencies already installed)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    /root/.local/bin/uv pip install --no-deps -e .
+    UV_PROJECT_ENVIRONMENT=/venv /root/.local/bin/uv pip install --no-deps -e .
 
 # Verify the project can import (final smoke test)
 RUN /venv/bin/python -c "from project.logger_config import logger; print('✓ Project imports working')"
