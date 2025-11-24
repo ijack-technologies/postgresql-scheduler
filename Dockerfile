@@ -7,7 +7,6 @@ FROM python:${INSTALL_PYTHON_VERSION} AS builder
 
 # Install UV via install script (production server can't access ghcr.io)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
 
 # UV optimization environment variables
 ENV UV_COMPILE_BYTECODE=1 \
@@ -34,7 +33,7 @@ WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+    /root/.local/bin/uv sync --frozen --no-install-project --no-dev
 
 # Smoke test: Verify critical dependencies installed
 RUN .venv/bin/python -c "import pytz; print(f'✓ pytz {pytz.__version__} installed')" && \
@@ -47,7 +46,7 @@ COPY project ./project
 
 # Install the project itself into .venv
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    /root/.local/bin/uv sync --frozen --no-dev
 
 # Final smoke test: Verify project imports work
 RUN .venv/bin/python -c "from project.logger_config import logger; print('✓ Project imports working')"
