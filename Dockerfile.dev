@@ -85,7 +85,9 @@ RUN mkdir -p /etc/apt/keyrings \
     && mkdir -p /root/.docker/cli-plugins
 
 # Install UV (Python package manager) - use install script
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ADD https://astral.sh/uv/install.sh /install.sh
+RUN sh /install.sh && rm /install.sh
+ENV PATH="/root/.cargo/bin:$PATH"
 
 # Bun removed - using only the official Claude Code bash installation
 
@@ -106,9 +108,9 @@ COPY pyproject.toml* uv.lock* requirements*.txt* ./
 # Install Python dependencies using UV sync (proper best practice)
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv_cache \
     if [ -f pyproject.toml ] && [ -f uv.lock ]; then \
-        /root/.local/bin/uv sync --frozen || echo "UV sync skipped (lock file missing or invalid)"; \
+        uv sync --frozen || echo "UV sync skipped (lock file missing or invalid)"; \
     elif [ -f pyproject.toml ]; then \
-        /root/.local/bin/uv sync || echo "UV sync skipped"; \
+        uv sync || echo "UV sync skipped"; \
     fi
 
 # Configure shell environment to use .venv
