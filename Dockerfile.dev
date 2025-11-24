@@ -87,7 +87,7 @@ RUN mkdir -p /etc/apt/keyrings \
 # Install UV (Python package manager) - use install script
 ADD https://astral.sh/uv/install.sh /install.sh
 RUN sh /install.sh && rm /install.sh
-ENV PATH="/root/.cargo/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 
 # Bun removed - using only the official Claude Code bash installation
 

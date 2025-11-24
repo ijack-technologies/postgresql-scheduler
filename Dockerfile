@@ -22,7 +22,7 @@ RUN apt-get update && \
 # Install UV using install script (now curl is available)
 ADD https://astral.sh/uv/install.sh /install.sh
 RUN sh /install.sh && rm /install.sh
-ENV PATH="/root/.cargo/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 
 # UV optimization environment variables
 ENV UV_COMPILE_BYTECODE=1 \
