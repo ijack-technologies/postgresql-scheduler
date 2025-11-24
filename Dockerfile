@@ -5,7 +5,21 @@ ARG INSTALL_PYTHON_VERSION=${INSTALL_PYTHON_VERSION:-PYTHON_VERSION_NOT_SET}
 # ============================================================================
 FROM python:${INSTALL_PYTHON_VERSION} AS builder
 
-# Install UV standalone binary (simplest approach for Docker)
+# Python environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONFAULTHANDLER=1 \
+    PYTHONHASHSEED=random \
+    DEBIAN_FRONTEND=noninteractive
+
+# Install system packages FIRST (UV install script needs curl)
+RUN apt-get update && \
+    apt-get -y --no-install-recommends install curl git && \
+    apt-get autoremove -y && \
+    apt-get clean -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install UV using install script (now curl is available)
 ADD https://astral.sh/uv/install.sh /install.sh
 RUN sh /install.sh && rm /install.sh
 ENV PATH="/root/.cargo/bin:$PATH"
@@ -13,20 +27,6 @@ ENV PATH="/root/.cargo/bin:$PATH"
 # UV optimization environment variables
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
-
-# Python environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONFAULTHANDLER=1 \
-    PYTHONHASHSEED=random
-
-# System packages
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
-    apt-get -y --no-install-recommends install curl git && \
-    apt-get autoremove -y && \
-    apt-get clean -y && \
-    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
