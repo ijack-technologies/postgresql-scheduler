@@ -23,8 +23,8 @@ from O365 import Account
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils.cell import column_index_from_string, get_column_letter
 from openpyxl.worksheet.table import Table
-from psycopg2.sql import SQL, Literal
 from psycopg2.extras import execute_values
+from psycopg2.sql import SQL, Literal
 from pyxlsb import open_workbook as open_xlsb
 
 # Insert pythonpath into the front of the PATH environment variable, before importing anything from project/
@@ -216,30 +216,30 @@ sheets_w_part_nums = {
     # Pump Top is different since it has "soft part" rows (e.g. Fluidseal, Garlock, Hallite, Trelleborg)
     "Pump Top": {
         "db_table_name": "bom_pump_top",
-        "part_num_col": "DB",
-        "description_col": "DC",
-        "msrp_mult_cad_col": "DK",
-        "transfer_mult_cad_dealer_col": "DL",
-        "msrp_mult_usd_col": "DM",
-        "transfer_mult_inc_to_corp_col": "DN",
-        "transfer_mult_usd_dealer_col": "DO",
-        "cost_cad_col": "DP",
-        "msrp_cad_col": "DQ",
-        "dealer_cost_cad_col": "DR",
-        "cost_usd_col": "DS",
-        "msrp_usd_col": "DT",
-        "ijack_corp_cost_col": "DU",
-        "dealer_cost_usd_col": "DV",
-        "is_soft_part": "DW",
-        "warehouse_mult": "DX",
-        "harmonization_code_col": "DY",
-        "country_of_origin_col": "DZ",
-        "weight_col": "EB",
-        "lead_time_col": "EC",
-        "is_usd_col": "EJ",
+        "part_num_col": "FB",
+        "description_col": "FC",
+        "msrp_mult_cad_col": "FK",
+        "transfer_mult_cad_dealer_col": "FL",
+        "msrp_mult_usd_col": "FM",
+        "transfer_mult_inc_to_corp_col": "FN",
+        "transfer_mult_usd_dealer_col": "FO",
+        "cost_cad_col": "FP",
+        "msrp_cad_col": "FQ",
+        "dealer_cost_cad_col": "FR",
+        "cost_usd_col": "FS",
+        "msrp_usd_col": "FT",
+        "ijack_corp_cost_col": "FU",
+        "dealer_cost_usd_col": "FV",
+        "is_soft_part": "FW",
+        "warehouse_mult": "FX",
+        "harmonization_code_col": "FY",
+        "country_of_origin_col": "FZ",
+        "weight_col": "GB",
+        "lead_time_col": "GC",
+        "is_usd_col": "GJ",
         # NOTE: the below cols need to be updated EVERY time this is run, since the cols change!!!
         "n_parts_cols": list(
-            range(column_index_from_string("C") - 1, column_index_from_string("CZ"))
+            range(column_index_from_string("C") - 1, column_index_from_string("EZ"))
         ),
     },
     # DGAS is different
