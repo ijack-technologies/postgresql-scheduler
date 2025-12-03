@@ -468,7 +468,7 @@ def get_gateway_records() -> list:
 #     return structure_rows
 
 
-def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
+def get_device_shadows_in_threadpool(gw_rows: list, client_iot) -> dict:
     """Use concurrent.futures.ThreadPoolExecutor to efficiently gather all AWS IoT device shadows"""
 
     max_workers = 20
@@ -479,23 +479,23 @@ def get_device_shadows_in_threadpool(c, gw_rows: list, client_iot) -> list:
             f"Gathering {n_gateways} gateways' AWS IoT device shadows in thread pool..."
         )
 
-        futures = []
+        futures = {}
         for dict_ in gw_rows:
             aws_thing = dict_.get("aws_thing", None)
-            future = executor.submit(get_iot_device_shadow, c, client_iot, aws_thing)
-            futures.append(future)
+            if aws_thing:  # Skip None aws_things
+                future = executor.submit(get_iot_device_shadow, client_iot, aws_thing)
+                futures[future] = aws_thing
 
         time1 = time.time()
         shadows = {}
         for future in as_completed(futures):
+            aws_thing = futures[future]  # Get the aws_thing for THIS future
             try:
                 data = future.result()
-                aws_thing = data["aws_thing"]
             except Exception as exc:
-                data = str(type(exc))
-            finally:
-                shadows[aws_thing] = data
-                # print(str(len(shadows)), end="\r")
+                logger.warning(f"Failed to get shadow for {aws_thing}: {exc}")
+                data = None
+            shadows[aws_thing] = data
 
         time2 = time.time()
 
@@ -804,7 +804,7 @@ def main(c: Config, commit: bool = False) -> None:
 
         # Fetch AWS IoT shadows in parallel (ThreadPoolExecutor)
         time_shadows_start = time.time()
-        shadows: list = get_device_shadows_in_threadpool(c, gw_rows, client_iot)
+        shadows: dict = get_device_shadows_in_threadpool(gw_rows, client_iot)
         logger.info(
             f"Fetched {len(shadows)} shadows in {time.time() - time_shadows_start:.2f}s"
         )
