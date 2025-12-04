@@ -39,7 +39,7 @@ from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
-    get_conn,
+    get_resilient_conn,
 )
 
 # Load the .env file
@@ -715,7 +715,13 @@ def delete_and_mark_unused_parts(new_parts_df: pd.DataFrame, conn) -> None:
 
 
 def update_parts_table(new_parts_df: pd.DataFrame, conn) -> None:
-    """Update parts from the BOM Master spreadsheet"""
+    """Update parts from the BOM Master spreadsheet.
+
+    Commits in batches of 100 rows for resilience against connection drops.
+    Uses ON CONFLICT for idempotent upserts, so partial commits are safe.
+    """
+    # Batch size for periodic commits (improves resilience to connection drops)
+    BATCH_SIZE = 100
 
     logger.info("\n\nUpdating parts data in the AWS RDS database...")
     n_rows = len(new_parts_df)
@@ -727,7 +733,9 @@ def update_parts_table(new_parts_df: pd.DataFrame, conn) -> None:
         counter = 0
         for row in new_parts_df.itertuples():
             counter += 1
-            logger.info(f"Row {counter} of {n_rows}")
+            # Log progress every 100 rows instead of every row (reduces noise)
+            if counter % BATCH_SIZE == 0 or counter == n_rows:
+                logger.info(f"Processing row {counter} of {n_rows}")
 
             worksheet = str(row.worksheet).replace("'", '"').replace("%", r"%%")
             ws_row = float(row.ws_row)
@@ -818,7 +826,15 @@ def update_parts_table(new_parts_df: pd.DataFrame, conn) -> None:
                         timestamp_utc_updated = now()
             """
             cursor.execute(sql_update_existing_parts, values)
+
+            # Commit in batches for resilience (idempotent upserts are safe to re-run)
+            if counter % BATCH_SIZE == 0:
+                conn.commit()
+                logger.info(f"Committed batch at row {counter}")
+
+        # Final commit for any remaining rows
         conn.commit()
+        logger.info(f"Final commit complete. Processed {counter} rows total.")
 
     return None
 
@@ -2014,7 +2030,7 @@ def entrypoint(
     # c = c or Config()
 
     start_time = datetime.now()
-    with get_conn(db="aws_rds") as conn:
+    with get_resilient_conn(db="aws_rds") as conn:
         # Just print how many parts are in the database before we start
         # We'll re-create this dictionary after new parts have been upserted
         part_id_dict: dict = get_distinct_parts_and_ids(conn=conn)

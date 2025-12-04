@@ -20,6 +20,7 @@ import functools
 import json
 import logging
 import os
+import random
 import signal
 import subprocess
 import sys
@@ -125,19 +126,22 @@ def get_conn(
         raise ValueError("db must be one of 'ijack', 'aws_rds', or 'timescale'")
 
     options_dict = options_dict or {
-        "connect_timeout": 5,
+        "connect_timeout": 10,
         # whether client-side TCP keepalives are used
         "keepalives": 1,
         # seconds of inactivity after which TCP should send a keepalive message to the server
-        "keepalives_idle": 20,
+        "keepalives_idle": 60,
         # seconds after which a TCP keepalive message that is not acknowledged by the server should be retransmitted
-        "keepalives_interval": 10,
+        "keepalives_interval": 15,
         # TCP keepalives that can be lost before the client's connection to the server is considered dead
         "keepalives_count": 5,
         # milliseconds that transmitted data may remain unacknowledged before a connection is forcibly closed
-        "tcp_user_timeout": 0,
+        "tcp_user_timeout": 60000,
     }
     options_dict["cursor_factory"] = cursor_factory or DictCursor
+
+    # AWS RDS requires SSL; TimescaleDB on EC2 does not
+    sslmode = "require" if db in ("ijack", "aws_rds") else "prefer"
 
     conn = psycopg2.connect(
         host=host,
@@ -145,6 +149,7 @@ def get_conn(
         dbname=dbname,
         user=user,
         password=password,
+        sslmode=sslmode,
         **options_dict,
     )
 
@@ -152,11 +157,111 @@ def get_conn(
         yield conn
     except Exception:
         logger.exception("ERROR with database connection!")
-        conn.rollback()
+        # Only rollback if connection is still open (handles SSL closure gracefully)
+        if not conn.closed:
+            try:
+                conn.rollback()
+            except Exception as rollback_err:
+                logger.warning(
+                    f"Could not rollback (connection may be closed): {rollback_err}"
+                )
         raise
     finally:
-        # Ensure that the connection is closed after usage
-        conn.close()
+        # Only close if connection is still open
+        if not conn.closed:
+            conn.close()
+
+
+def is_connection_alive(conn: psycopg2.extensions.connection) -> bool:
+    """Check if a database connection is still alive and usable.
+
+    Args:
+        conn: A psycopg2 database connection
+
+    Returns:
+        True if connection is open and responsive, False otherwise
+    """
+    if conn.closed:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+
+@contextmanager
+def get_resilient_conn(
+    db: str = "aws_rds",
+    options_dict: dict | None = None,
+    cursor_factory=None,
+    max_retries: int = 3,
+    retry_delay_base: float = 1.0,
+) -> Generator[psycopg2.extensions.connection, None, None]:
+    """Get a resilient database connection with automatic retry on connection failures.
+
+    Use this for long-running jobs that may experience transient connection issues.
+    Falls back to get_conn() for the actual connection creation.
+
+    Args:
+        db: Database identifier ('aws_rds', 'ijack', 'timescale')
+        options_dict: Connection options (uses sensible defaults if None)
+        cursor_factory: Cursor factory to use
+        max_retries: Maximum number of connection retry attempts
+        retry_delay_base: Base delay for exponential backoff (seconds)
+
+    Yields:
+        psycopg2.extensions.connection: Active database connection
+    """
+    last_exception: Exception | None = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            with get_conn(
+                db=db, options_dict=options_dict, cursor_factory=cursor_factory
+            ) as conn:
+                # Verify connection is actually usable
+                if not is_connection_alive(conn):
+                    raise psycopg2.OperationalError("Connection health check failed")
+                yield conn
+                return  # Success, exit the retry loop
+
+        except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+            last_exception = e
+            error_msg = str(e).lower()
+
+            # Check if this is a recoverable connection error
+            is_connection_error = any(
+                phrase in error_msg
+                for phrase in [
+                    "ssl connection has been closed",
+                    "connection already closed",
+                    "server closed the connection",
+                    "connection refused",
+                    "could not connect",
+                    "connection timed out",
+                    "connection health check failed",
+                ]
+            )
+
+            if is_connection_error and attempt < max_retries:
+                # Exponential backoff with jitter
+                delay = retry_delay_base * (2**attempt) + random.uniform(
+                    0, retry_delay_base
+                )
+                logger.warning(
+                    f"Connection error (attempt {attempt + 1}/{max_retries + 1}): {e}. "
+                    f"Retrying in {delay:.1f}s..."
+                )
+                time.sleep(delay)
+            else:
+                # Not recoverable or max retries exceeded
+                raise
+
+    # Should not reach here, but just in case
+    if last_exception:
+        raise last_exception
 
 
 def _execute_queries(
