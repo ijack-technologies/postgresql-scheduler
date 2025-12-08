@@ -98,12 +98,22 @@ def utcfromtimestamp_naive(timestamp: float) -> datetime:
     return utcfromtimestamp_aware(timestamp).replace(tzinfo=None)
 
 
-@contextmanager
-def get_conn(
+def _create_connection(
     db: str = "aws_rds", options_dict: dict | None = None, cursor_factory=None
-) -> Generator[psycopg2.extensions.connection, None, None]:
-    """Get connection to IJACK database"""
+) -> psycopg2.extensions.connection:
+    """Create a database connection without context management.
 
+    This is a helper function that creates a raw connection. Callers are
+    responsible for closing the connection.
+
+    Args:
+        db: Database identifier ('aws_rds', 'ijack', 'timescale', 'timescale_old')
+        options_dict: Connection options (uses sensible defaults if None)
+        cursor_factory: Cursor factory to use
+
+    Returns:
+        psycopg2.extensions.connection: A new database connection
+    """
     if db in ("ijack", "aws_rds"):
         host = os.getenv("HOST_IJ")
         port = int(os.getenv("PORT_IJ"))
@@ -143,7 +153,7 @@ def get_conn(
     # AWS RDS requires SSL; TimescaleDB on EC2 does not
     sslmode = "require" if db in ("ijack", "aws_rds") else "prefer"
 
-    conn = psycopg2.connect(
+    return psycopg2.connect(
         host=host,
         port=port,
         dbname=dbname,
@@ -151,6 +161,16 @@ def get_conn(
         password=password,
         sslmode=sslmode,
         **options_dict,
+    )
+
+
+@contextmanager
+def get_conn(
+    db: str = "aws_rds", options_dict: dict | None = None, cursor_factory=None
+) -> Generator[psycopg2.extensions.connection, None, None]:
+    """Get connection to IJACK database"""
+    conn = _create_connection(
+        db=db, options_dict=options_dict, cursor_factory=cursor_factory
     )
 
     try:
@@ -191,6 +211,50 @@ def is_connection_alive(conn: psycopg2.extensions.connection) -> bool:
         return False
 
 
+def _is_recoverable_connection_error(error: Exception) -> bool:
+    """Check if an exception is a recoverable connection error.
+
+    Args:
+        error: The exception to check
+
+    Returns:
+        True if this is a recoverable connection error that should be retried
+    """
+    error_msg = str(error).lower()
+    return any(
+        phrase in error_msg
+        for phrase in [
+            "ssl connection has been closed",
+            "connection already closed",
+            "server closed the connection",
+            "connection refused",
+            "could not connect",
+            "connection timed out",
+            "connection health check failed",
+        ]
+    )
+
+
+def _safe_close_connection(conn: psycopg2.extensions.connection | None) -> None:
+    """Safely close a database connection, handling any errors.
+
+    Args:
+        conn: Connection to close (can be None)
+    """
+    if conn is None:
+        return
+    if conn.closed:
+        return
+    try:
+        conn.rollback()
+    except Exception:
+        pass
+    try:
+        conn.close()
+    except Exception:
+        pass
+
+
 @contextmanager
 def get_resilient_conn(
     db: str = "aws_rds",
@@ -202,7 +266,7 @@ def get_resilient_conn(
     """Get a resilient database connection with automatic retry on connection failures.
 
     Use this for long-running jobs that may experience transient connection issues.
-    Falls back to get_conn() for the actual connection creation.
+    Uses _create_connection() directly for connection creation.
 
     Args:
         db: Database identifier ('aws_rds', 'ijack', 'timescale')
@@ -214,38 +278,28 @@ def get_resilient_conn(
     Yields:
         psycopg2.extensions.connection: Active database connection
     """
+    conn: psycopg2.extensions.connection | None = None
     last_exception: Exception | None = None
 
+    # Phase 1: Establish connection with retry logic
     for attempt in range(max_retries + 1):
         try:
-            with get_conn(
+            conn = _create_connection(
                 db=db, options_dict=options_dict, cursor_factory=cursor_factory
-            ) as conn:
-                # Verify connection is actually usable
-                if not is_connection_alive(conn):
-                    raise psycopg2.OperationalError("Connection health check failed")
-                yield conn
-                return  # Success, exit the retry loop
+            )
+            # Verify connection is actually usable
+            if not is_connection_alive(conn):
+                raise psycopg2.OperationalError("Connection health check failed")
+            # Success - exit retry loop
+            break
 
         except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
             last_exception = e
-            error_msg = str(e).lower()
+            # Close failed connection before retry
+            _safe_close_connection(conn)
+            conn = None
 
-            # Check if this is a recoverable connection error
-            is_connection_error = any(
-                phrase in error_msg
-                for phrase in [
-                    "ssl connection has been closed",
-                    "connection already closed",
-                    "server closed the connection",
-                    "connection refused",
-                    "could not connect",
-                    "connection timed out",
-                    "connection health check failed",
-                ]
-            )
-
-            if is_connection_error and attempt < max_retries:
+            if _is_recoverable_connection_error(e) and attempt < max_retries:
                 # Exponential backoff with jitter
                 delay = retry_delay_base * (2**attempt) + random.uniform(
                     0, retry_delay_base
@@ -259,9 +313,21 @@ def get_resilient_conn(
                 # Not recoverable or max retries exceeded
                 raise
 
-    # Should not reach here, but just in case
-    if last_exception:
-        raise last_exception
+    # Safety check - should have a connection or have raised
+    if conn is None:
+        if last_exception:
+            raise last_exception
+        raise RuntimeError("Failed to establish connection")
+
+    # Phase 2: Yield connection OUTSIDE nested context (fixes generator protocol issue)
+    try:
+        yield conn
+    except Exception:
+        logger.exception("Error during database operation")
+        raise
+    finally:
+        # Explicit cleanup after yield completes or exception occurs
+        _safe_close_connection(conn)
 
 
 def _execute_queries(

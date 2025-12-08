@@ -200,8 +200,8 @@ class TestGetResilientConn(unittest.TestCase):
     """Tests for the get_resilient_conn() context manager."""
 
     @patch("project.utils.time.sleep")
-    @patch("project.utils.get_conn")
-    def test_retries_on_ssl_connection_error(self, mock_get_conn, mock_sleep):
+    @patch("project.utils._create_connection")
+    def test_retries_on_ssl_connection_error(self, mock_create_conn, mock_sleep):
         """Test that resilient connection retries on SSL errors."""
         # First call fails with SSL error, second succeeds
         mock_conn = MagicMock()
@@ -219,16 +219,10 @@ class TestGetResilientConn(unittest.TestCase):
                 raise psycopg2.OperationalError(
                     "SSL connection has been closed unexpectedly"
                 )
-            # Return a context manager that yields mock_conn
-            from contextlib import contextmanager
+            # Return the mock connection
+            return mock_conn
 
-            @contextmanager
-            def mock_cm():
-                yield mock_conn
-
-            return mock_cm()
-
-        mock_get_conn.side_effect = side_effect
+        mock_create_conn.side_effect = side_effect
 
         with get_resilient_conn(
             db="aws_rds", max_retries=2, retry_delay_base=0.01
@@ -240,10 +234,10 @@ class TestGetResilientConn(unittest.TestCase):
         # Should have slept once (after first failure)
         mock_sleep.assert_called_once()
 
-    @patch("project.utils.get_conn")
-    def test_raises_after_max_retries_exceeded(self, mock_get_conn):
+    @patch("project.utils._create_connection")
+    def test_raises_after_max_retries_exceeded(self, mock_create_conn):
         """Test that exception is raised after max retries exceeded."""
-        mock_get_conn.side_effect = psycopg2.OperationalError("connection refused")
+        mock_create_conn.side_effect = psycopg2.OperationalError("connection refused")
 
         with self.assertRaises(psycopg2.OperationalError):
             with get_resilient_conn(
@@ -252,12 +246,12 @@ class TestGetResilientConn(unittest.TestCase):
                 pass
 
         # Should have tried max_retries + 1 times (0, 1, 2 = 3 attempts)
-        self.assertEqual(mock_get_conn.call_count, 3)
+        self.assertEqual(mock_create_conn.call_count, 3)
 
-    @patch("project.utils.get_conn")
-    def test_does_not_retry_on_non_connection_error(self, mock_get_conn):
+    @patch("project.utils._create_connection")
+    def test_does_not_retry_on_non_connection_error(self, mock_create_conn):
         """Test that non-connection errors are not retried."""
-        mock_get_conn.side_effect = psycopg2.OperationalError("syntax error")
+        mock_create_conn.side_effect = psycopg2.OperationalError("syntax error")
 
         with self.assertRaises(psycopg2.OperationalError):
             with get_resilient_conn(
@@ -266,7 +260,7 @@ class TestGetResilientConn(unittest.TestCase):
                 pass
 
         # Should have only tried once (no retry for syntax errors)
-        self.assertEqual(mock_get_conn.call_count, 1)
+        self.assertEqual(mock_create_conn.call_count, 1)
 
 
 if __name__ == "__main__":
