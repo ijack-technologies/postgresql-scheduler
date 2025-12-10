@@ -55,7 +55,7 @@ def make_schedule(c: Config) -> None:
     schedule.every().day.at("01:26", pytz.timezone("America/Regina")).do(
         aws_rds_db_delete_old_data.main, c=c
     )
-    schedule.every().day.at("01:31", pytz.timezone("America/Regina")).do(
+    schedule.every().day.at("23:45", pytz.timezone("America/Regina")).do(
         upload_bom_master_parts_to_db.main, c=c
     )
     schedule.every().day.at("01:41", pytz.timezone("America/Regina")).do(
