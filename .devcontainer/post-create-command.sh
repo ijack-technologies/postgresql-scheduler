@@ -1,6 +1,31 @@
 #!/bin/bash
 
 echo "=========================================="
+echo "Updating Claude Code to latest version..."
+echo "=========================================="
+
+# Update Claude Code (fast method - uses claude update instead of reinstalling)
+echo "📦 Checking for Claude Code updates..."
+if command -v claude &> /dev/null; then
+    if claude update --yes 2>/dev/null; then
+        CLAUDE_VERSION=$(claude --version 2>/dev/null | head -n1)
+        echo "✅ Claude Code updated to ${CLAUDE_VERSION}"
+    else
+        echo "   Update command failed, reinstalling..."
+        curl -fsSL https://claude.ai/install.sh | bash
+        CLAUDE_VERSION=$(claude --version 2>/dev/null | head -n1)
+        echo "✅ Claude Code reinstalled: ${CLAUDE_VERSION}"
+    fi
+else
+    echo "   Claude Code not found, installing..."
+    curl -fsSL https://claude.ai/install.sh | bash
+    CLAUDE_VERSION=$(claude --version 2>/dev/null | head -n1)
+    echo "✅ Claude Code installed: ${CLAUDE_VERSION}"
+fi
+export PATH="/root/.local/bin:$PATH"
+
+echo ""
+echo "=========================================="
 echo "Initializing authentication persistence..."
 echo "=========================================="
 
