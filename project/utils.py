@@ -140,13 +140,17 @@ def _create_connection(
         # whether client-side TCP keepalives are used
         "keepalives": 1,
         # seconds of inactivity after which TCP should send a keepalive message to the server
-        "keepalives_idle": 60,
-        # seconds after which a TCP keepalive message that is not acknowledged by the server should be retransmitted
-        "keepalives_interval": 15,
-        # TCP keepalives that can be lost before the client's connection to the server is considered dead
-        "keepalives_count": 5,
-        # milliseconds that transmitted data may remain unacknowledged before a connection is forcibly closed
-        "tcp_user_timeout": 60000,
+        # More aggressive to detect dead connections faster (was 60)
+        "keepalives_idle": 30,
+        # seconds after which a TCP keepalive message that is not acknowledged by the server
+        # should be retransmitted (was 15)
+        "keepalives_interval": 10,
+        # TCP keepalives that can be lost before the client's connection to the server is
+        # considered dead (was 5, now 10 for ~100s total detection time)
+        "keepalives_count": 10,
+        # milliseconds that transmitted data may remain unacknowledged before a connection
+        # is forcibly closed (was 60000, now 30000 for faster failure detection)
+        "tcp_user_timeout": 30000,
     }
     options_dict["cursor_factory"] = cursor_factory or DictCursor
 

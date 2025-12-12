@@ -13,7 +13,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -37,9 +37,13 @@ except ValueError:
 from project.logger_config import logger
 from project.utils import (
     Config,
+    _create_connection,
+    _is_recoverable_connection_error,
+    _safe_close_connection,
     error_wrapper,
     exit_if_already_running,
     get_resilient_conn,
+    is_connection_alive,
 )
 
 # Load the .env file
@@ -714,11 +718,23 @@ def delete_and_mark_unused_parts(new_parts_df: pd.DataFrame, conn) -> None:
     return None
 
 
-def update_parts_table(new_parts_df: pd.DataFrame, conn) -> None:
+def update_parts_table(
+    new_parts_df: pd.DataFrame,
+    conn: psycopg2.extensions.connection,
+    get_new_conn: Callable[[], psycopg2.extensions.connection] | None = None,
+) -> psycopg2.extensions.connection:
     """Update parts from the BOM Master spreadsheet.
 
     Commits in batches of 100 rows for resilience against connection drops.
     Uses ON CONFLICT for idempotent upserts, so partial commits are safe.
+
+    Args:
+        new_parts_df: DataFrame containing parts to upload
+        conn: Active database connection
+        get_new_conn: Optional factory function to create new connections on failure
+
+    Returns:
+        The (possibly new) database connection for continued use
     """
     # Batch size for periodic commits (improves resilience to connection drops)
     BATCH_SIZE = 100
@@ -729,114 +745,169 @@ def update_parts_table(new_parts_df: pd.DataFrame, conn) -> None:
         f"Not enough rows in new spreadsheet. Only {n_rows}, so not deleting or updating anything!"
     )
 
-    with conn.cursor() as cursor:
-        counter = 0
-        for row in new_parts_df.itertuples():
-            counter += 1
-            # Log progress every 100 rows instead of every row (reduces noise)
-            if counter % BATCH_SIZE == 0 or counter == n_rows:
-                logger.info(f"Processing row {counter} of {n_rows}")
+    cursor = conn.cursor()
+    counter = 0
+    last_values: dict | None = None  # Track last values for retry
 
-            worksheet = str(row.worksheet).replace("'", '"').replace("%", r"%%")
-            ws_row = float(row.ws_row)
-            part_num = str(row.part_num).replace("'", '"').replace("%", r"%%")
-            description = str(row.description).replace("'", '"').replace("%", r"%%")
-            msrp_mult_cad = float(row.msrp_mult_cad)
-            transfer_mult_cad_dealer = float(row.transfer_mult_cad_dealer)
-            msrp_mult_usd = float(row.msrp_mult_usd)
-            transfer_mult_inc_to_corp = float(row.transfer_mult_inc_to_corp)
-            transfer_mult_usd_dealer = float(row.transfer_mult_usd_dealer)
-            warehouse_mult = float(row.warehouse_mult)
-            cost_cad = float(row.cost_cad)
-            msrp_cad = float(row.msrp_cad)
-            dealer_cost_cad = float(row.dealer_cost_cad)
-            cost_usd = float(row.cost_usd)
-            msrp_usd = float(row.msrp_usd)
-            ijack_corp_cost = float(row.ijack_corp_cost)
-            dealer_cost_usd = float(row.dealer_cost_usd)
-            is_usd = bool(row.is_usd)
-            cad_per_usd = float(row.cad_per_usd)
-            is_soft_part = bool(row.is_soft_part)
-            weight = row.weight  # some weights are string comments like "per foot"
-            lead_time = float(row.lead_time)
-            harmonization_code = (
-                str(row.harmonization_code).replace("'", '"').replace("%", r"%%")
-            )
-            country_of_origin = (
-                str(row.country_of_origin).replace("'", '"').replace("%", r"%%")
-            )
+    sql_update_existing_parts = """
+        INSERT INTO public.parts
+            (worksheet, ws_row, part_num, description, msrp_mult_cad, transfer_mult_cad_dealer, msrp_mult_usd, transfer_mult_inc_to_corp, transfer_mult_usd_dealer, warehouse_mult, cost_cad, msrp_cad, dealer_cost_cad, cost_usd, msrp_usd, ijack_corp_cost, dealer_cost_usd, is_usd, cad_per_usd, is_soft_part, weight, harmonization_code, country_of_origin, lead_time, timestamp_utc_inserted, timestamp_utc_updated)
+        VALUES
+            (%(worksheet)s, %(ws_row)s, %(part_num)s, %(description)s, %(msrp_mult_cad)s, %(transfer_mult_cad_dealer)s, %(msrp_mult_usd)s, %(transfer_mult_inc_to_corp)s, %(transfer_mult_usd_dealer)s, %(warehouse_mult)s, %(cost_cad)s, %(msrp_cad)s, %(dealer_cost_cad)s, %(cost_usd)s, %(msrp_usd)s, %(ijack_corp_cost)s, %(dealer_cost_usd)s, %(is_usd)s, %(cad_per_usd)s, %(is_soft_part)s, %(weight)s, %(harmonization_code)s, %(country_of_origin)s, %(lead_time)s, now(), now())
+        ON CONFLICT (part_num) DO UPDATE
+            SET
+                worksheet = %(worksheet)s,
+                ws_row = %(ws_row)s,
+                description = %(description)s,
+                msrp_mult_cad = %(msrp_mult_cad)s,
+                transfer_mult_cad_dealer = %(transfer_mult_cad_dealer)s,
+                msrp_mult_usd = %(msrp_mult_usd)s,
+                transfer_mult_inc_to_corp = %(transfer_mult_inc_to_corp)s,
+                transfer_mult_usd_dealer = %(transfer_mult_usd_dealer)s,
+                warehouse_mult = %(warehouse_mult)s,
+                cost_cad = %(cost_cad)s,
+                msrp_cad = %(msrp_cad)s,
+                dealer_cost_cad = %(dealer_cost_cad)s,
+                cost_usd = %(cost_usd)s,
+                msrp_usd = %(msrp_usd)s,
+                ijack_corp_cost = %(ijack_corp_cost)s,
+                dealer_cost_usd = %(dealer_cost_usd)s,
+                is_usd = %(is_usd)s,
+                cad_per_usd = %(cad_per_usd)s,
+                is_soft_part = %(is_soft_part)s,
+                weight = %(weight)s,
+                lead_time = %(lead_time)s,
+                harmonization_code = %(harmonization_code)s,
+                country_of_origin = %(country_of_origin)s,
+                timestamp_utc_updated = now()
+    """
 
-            values = {
-                "worksheet": worksheet,
-                "ws_row": ws_row,
-                "part_num": part_num,
-                "description": description,
-                "msrp_mult_cad": msrp_mult_cad,
-                "transfer_mult_cad_dealer": transfer_mult_cad_dealer,
-                "msrp_mult_usd": msrp_mult_usd,
-                "transfer_mult_inc_to_corp": transfer_mult_inc_to_corp,
-                "transfer_mult_usd_dealer": transfer_mult_usd_dealer,
-                "warehouse_mult": warehouse_mult,
-                "cost_cad": cost_cad,
-                "msrp_cad": msrp_cad,
-                "dealer_cost_cad": dealer_cost_cad,
-                "cost_usd": cost_usd,
-                "msrp_usd": msrp_usd,
-                "ijack_corp_cost": ijack_corp_cost,
-                "dealer_cost_usd": dealer_cost_usd,
-                "is_usd": is_usd,
-                "cad_per_usd": cad_per_usd,
-                "is_soft_part": is_soft_part,
-                "harmonization_code": harmonization_code,
-                "country_of_origin": country_of_origin,
-                "weight": weight,
-                "lead_time": lead_time,
-            }
+    for row in new_parts_df.itertuples():
+        counter += 1
+        # Log progress every 100 rows instead of every row (reduces noise)
+        if counter % BATCH_SIZE == 0 or counter == n_rows:
+            logger.info(f"Processing row {counter} of {n_rows}")
 
-            sql_update_existing_parts = """
-                INSERT INTO public.parts
-                    (worksheet, ws_row, part_num, description, msrp_mult_cad, transfer_mult_cad_dealer, msrp_mult_usd, transfer_mult_inc_to_corp, transfer_mult_usd_dealer, warehouse_mult, cost_cad, msrp_cad, dealer_cost_cad, cost_usd, msrp_usd, ijack_corp_cost, dealer_cost_usd, is_usd, cad_per_usd, is_soft_part, weight, harmonization_code, country_of_origin, lead_time, timestamp_utc_inserted, timestamp_utc_updated)
-                VALUES
-                    (%(worksheet)s, %(ws_row)s, %(part_num)s, %(description)s, %(msrp_mult_cad)s, %(transfer_mult_cad_dealer)s, %(msrp_mult_usd)s, %(transfer_mult_inc_to_corp)s, %(transfer_mult_usd_dealer)s, %(warehouse_mult)s, %(cost_cad)s, %(msrp_cad)s, %(dealer_cost_cad)s, %(cost_usd)s, %(msrp_usd)s, %(ijack_corp_cost)s, %(dealer_cost_usd)s, %(is_usd)s, %(cad_per_usd)s, %(is_soft_part)s, %(weight)s, %(harmonization_code)s, %(country_of_origin)s, %(lead_time)s, now(), now())
-                ON CONFLICT (part_num) DO UPDATE
-                    SET
-                        worksheet = %(worksheet)s,
-                        ws_row = %(ws_row)s,
-                        description = %(description)s,
-                        msrp_mult_cad = %(msrp_mult_cad)s,
-                        transfer_mult_cad_dealer = %(transfer_mult_cad_dealer)s,
-                        msrp_mult_usd = %(msrp_mult_usd)s,
-                        transfer_mult_inc_to_corp = %(transfer_mult_inc_to_corp)s,
-                        transfer_mult_usd_dealer = %(transfer_mult_usd_dealer)s,
-                        warehouse_mult = %(warehouse_mult)s,
-                        cost_cad = %(cost_cad)s,
-                        msrp_cad = %(msrp_cad)s,
-                        dealer_cost_cad = %(dealer_cost_cad)s,
-                        cost_usd = %(cost_usd)s,
-                        msrp_usd = %(msrp_usd)s,
-                        ijack_corp_cost = %(ijack_corp_cost)s,
-                        dealer_cost_usd = %(dealer_cost_usd)s,
-                        is_usd = %(is_usd)s,
-                        cad_per_usd = %(cad_per_usd)s,
-                        is_soft_part = %(is_soft_part)s,
-                        weight = %(weight)s,
-                        lead_time = %(lead_time)s,
-                        harmonization_code = %(harmonization_code)s,
-                        country_of_origin = %(country_of_origin)s,
-                        timestamp_utc_updated = now()
-            """
+        worksheet = str(row.worksheet).replace("'", '"').replace("%", r"%%")
+        ws_row = float(row.ws_row)
+        part_num = str(row.part_num).replace("'", '"').replace("%", r"%%")
+        description = str(row.description).replace("'", '"').replace("%", r"%%")
+        msrp_mult_cad = float(row.msrp_mult_cad)
+        transfer_mult_cad_dealer = float(row.transfer_mult_cad_dealer)
+        msrp_mult_usd = float(row.msrp_mult_usd)
+        transfer_mult_inc_to_corp = float(row.transfer_mult_inc_to_corp)
+        transfer_mult_usd_dealer = float(row.transfer_mult_usd_dealer)
+        warehouse_mult = float(row.warehouse_mult)
+        cost_cad = float(row.cost_cad)
+        msrp_cad = float(row.msrp_cad)
+        dealer_cost_cad = float(row.dealer_cost_cad)
+        cost_usd = float(row.cost_usd)
+        msrp_usd = float(row.msrp_usd)
+        ijack_corp_cost = float(row.ijack_corp_cost)
+        dealer_cost_usd = float(row.dealer_cost_usd)
+        is_usd = bool(row.is_usd)
+        cad_per_usd = float(row.cad_per_usd)
+        is_soft_part = bool(row.is_soft_part)
+        weight = row.weight  # some weights are string comments like "per foot"
+        lead_time = float(row.lead_time)
+        harmonization_code = (
+            str(row.harmonization_code).replace("'", '"').replace("%", r"%%")
+        )
+        country_of_origin = (
+            str(row.country_of_origin).replace("'", '"').replace("%", r"%%")
+        )
+
+        values = {
+            "worksheet": worksheet,
+            "ws_row": ws_row,
+            "part_num": part_num,
+            "description": description,
+            "msrp_mult_cad": msrp_mult_cad,
+            "transfer_mult_cad_dealer": transfer_mult_cad_dealer,
+            "msrp_mult_usd": msrp_mult_usd,
+            "transfer_mult_inc_to_corp": transfer_mult_inc_to_corp,
+            "transfer_mult_usd_dealer": transfer_mult_usd_dealer,
+            "warehouse_mult": warehouse_mult,
+            "cost_cad": cost_cad,
+            "msrp_cad": msrp_cad,
+            "dealer_cost_cad": dealer_cost_cad,
+            "cost_usd": cost_usd,
+            "msrp_usd": msrp_usd,
+            "ijack_corp_cost": ijack_corp_cost,
+            "dealer_cost_usd": dealer_cost_usd,
+            "is_usd": is_usd,
+            "cad_per_usd": cad_per_usd,
+            "is_soft_part": is_soft_part,
+            "harmonization_code": harmonization_code,
+            "country_of_origin": country_of_origin,
+            "weight": weight,
+            "lead_time": lead_time,
+        }
+        last_values = values
+
+        try:
             cursor.execute(sql_update_existing_parts, values)
+        except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+            if _is_recoverable_connection_error(e) and get_new_conn:
+                logger.warning(f"Execute failed at row {counter}, reconnecting: {e}")
+                _safe_close_connection(conn)
+                conn = get_new_conn()
+                cursor = conn.cursor()
+                cursor.execute(sql_update_existing_parts, values)
+                logger.info(f"Retry successful at row {counter}")
+            else:
+                raise
 
-            # Commit in batches for resilience (idempotent upserts are safe to re-run)
-            if counter % BATCH_SIZE == 0:
+        # Commit in batches for resilience (idempotent upserts are safe to re-run)
+        if counter % BATCH_SIZE == 0:
+            # Check connection health before commit
+            if not is_connection_alive(conn) and get_new_conn:
+                logger.warning(
+                    f"Connection lost before batch commit at row {counter}, reconnecting..."
+                )
+                _safe_close_connection(conn)
+                conn = get_new_conn()
+                cursor = conn.cursor()
+                # Re-execute last row since connection was lost
+                if last_values:
+                    cursor.execute(sql_update_existing_parts, last_values)
+
+            try:
                 conn.commit()
                 logger.info(f"Committed batch at row {counter}")
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+                if _is_recoverable_connection_error(e) and get_new_conn:
+                    logger.warning(f"Commit failed at row {counter}, reconnecting: {e}")
+                    _safe_close_connection(conn)
+                    conn = get_new_conn()
+                    cursor = conn.cursor()
+                    # Re-execute last row and commit
+                    if last_values:
+                        cursor.execute(sql_update_existing_parts, last_values)
+                    conn.commit()
+                    logger.info(f"Retry commit successful at row {counter}")
+                else:
+                    raise
 
-        # Final commit for any remaining rows
+    # Final commit for any remaining rows
+    try:
         conn.commit()
         logger.info(f"Final commit complete. Processed {counter} rows total.")
+    except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+        if _is_recoverable_connection_error(e) and get_new_conn:
+            logger.warning(f"Final commit failed, reconnecting: {e}")
+            _safe_close_connection(conn)
+            conn = get_new_conn()
+            cursor = conn.cursor()
+            if last_values:
+                cursor.execute(sql_update_existing_parts, last_values)
+            conn.commit()
+            logger.info("Final commit retry successful")
+        else:
+            raise
 
-    return None
+    cursor.close()
+    return conn
 
 
 def get_all_tables_from_dict(tables_dict: dict) -> pd.DataFrame:
@@ -2029,6 +2100,11 @@ def entrypoint(
     # Assign the Config object to the global variable
     # c = c or Config()
 
+    # Connection factory for reconnection during long-running operations
+    def get_new_conn() -> psycopg2.extensions.connection:
+        """Create a new database connection for retry logic."""
+        return _create_connection(db="aws_rds")
+
     start_time = datetime.now()
     with get_resilient_conn(db="aws_rds") as conn:
         # Just print how many parts are in the database before we start
@@ -2098,7 +2174,10 @@ def entrypoint(
         #     parts_df_no_newline: pd.DataFrame = check_for_newline_chars(parts_table_df)
 
         # Upload all parts to database 'parts' table.
-        update_parts_table(new_parts_df=parts_df_no_newline, conn=conn)
+        # Pass connection factory for automatic reconnection on SSL drops
+        conn = update_parts_table(
+            new_parts_df=parts_df_no_newline, conn=conn, get_new_conn=get_new_conn
+        )
 
         # Re-create the part_id_dict after NEW parts have been upserted
         part_id_dict: dict = get_distinct_parts_and_ids(conn=conn)
