@@ -192,6 +192,8 @@ def get_all_power_units_config_metrics() -> list:
             pu.identify_bandwidth_hogs_enabled,
             -- systemd service management (gateway-can-to-mqtt systemd migration)
             pu.systemd_services_enabled,
+            -- Cloud Alert Processing (gateway-can-to-mqtt Issue #60)
+            pu.cloud_alerts_enabled,
             pu.cellular_data_limit_mb,
             modbus.modbus_networks,
             modbus.modbus_never_default,
