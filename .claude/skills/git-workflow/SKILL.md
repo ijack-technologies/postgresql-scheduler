@@ -205,6 +205,33 @@ gh pr view --web
 
 ## Issue Management
 
+### Unified Issue Management Script (Recommended)
+
+Use the unified `github-issue.sh` script for all issue operations:
+
+```bash
+# Create issue (auto-adds to IJACK Roadmap Project #12)
+./scripts/github-issue.sh create -t "Fix bug" -l "bug" -p 3 -P high
+
+# Smart issue detection (from branch name or search)
+./scripts/github-issue.sh comment -b "Working on this"           # Auto-detect
+./scripts/github-issue.sh edit -S "auth bug" -t "Updated title"  # Search
+./scripts/github-issue.sh view 123                                # By number
+
+# List, close, reopen
+./scripts/github-issue.sh list -l "bug"
+./scripts/github-issue.sh close -b "Fixed in this commit"
+./scripts/github-issue.sh reopen 123 -b "Regression found"
+```
+
+**Key Features:**
+- Auto-adds to IJACK Roadmap (Project #12) with Started date, Story Points, Priority, Status, Sprint
+- Smart issue detection from branch name (e.g., `feature/123-fix-bug`)
+- Search by keyword with `-S "search term"`
+- Claude Code attribution footer on all comments
+
+See `/issue` command for full documentation.
+
 ### Get Current User and Available Labels
 
 **ALWAYS get the current authenticated user dynamically** instead of hardcoding usernames:
