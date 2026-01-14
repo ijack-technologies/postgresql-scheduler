@@ -195,6 +195,13 @@ def get_all_power_units_config_metrics() -> list:
             -- Cloud Alert Processing (gateway-can-to-mqtt Issue #60)
             pu.cloud_alerts_enabled,
             pu.cellular_data_limit_mb,
+            -- Modbus RS-485 Serial Configuration (gateway-can-to-mqtt Issue #63)
+            pu.modbus_serial_enabled,
+            pu.modbus_serial_port,
+            pu.modbus_serial_baudrate,
+            pu.modbus_serial_parity,
+            pu.modbus_serial_bytesize,
+            pu.modbus_serial_stopbits,
             modbus.modbus_networks,
             modbus.modbus_never_default,
             modbus.modbus_vpn_subnets,
