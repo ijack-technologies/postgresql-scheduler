@@ -782,7 +782,7 @@ def send_error_messages(
         )
 
     logger.error(f"ERROR running program! Closing now... \nError msg: {err}")
-    alertees_email = ["smccarthy@myijack.com"]
+    alertees_email = ["smccarthy@myijack.com", "rcom@myijack.com"]
     alertees_sms = ["+14036897250"]
     subject = f"{filename} ERROR!"
     msg_sms = f"Sean, check 'postgresql_scheduler' module '{filename}' now! There has been an error at {check_dt_sk_time} SK time!"

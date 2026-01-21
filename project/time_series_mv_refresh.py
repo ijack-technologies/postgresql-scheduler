@@ -461,6 +461,13 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
 
     exit_if_already_running(c, Path(__file__).name)
 
+    # Check if LOCF table is already stale at startup (indicates previous run may have failed).
+    # Alert early so we know about failures from previous runs (OOM, crash, etc.).
+    # Using 1 hour threshold since job runs every 30 minutes.
+    check_table_timestamps(
+        c, tables=["time_series_locf"], time_delta=timedelta(hours=1)
+    )
+
     with get_conn(db="timescale") as conn_ts:
         # Get the gateway: power unit mapping dictionary, which has all gateway: power unit pairs,
         # even if the power unit is no longer in service with a structure ID.
