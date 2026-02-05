@@ -274,32 +274,25 @@ def get_and_insert_latest_values(
     # )
 
     # If values are missing, it's because they were the same as the previous values so they weren't sent
-    logger.info("Sorting and filling in missing values...")
-    n_power_units = len(df["power_unit"].unique())
-    power_unit_counter = 0
+    # OPTIMIZED: Replaced O(n²) loop with vectorized groupby ffill/bfill
+    # See test/test_time_series_mv_refresh_optimization.py for validation tests
+    logger.info("Sorting and filling in missing values (vectorized)...")
     time_start = time.time()
-    # Pandas 3.0 future defaults: copy_on_write = True and no_silent_downcasting = True
-    pd.options.mode.copy_on_write = True
-    pd.set_option("future.no_silent_downcasting", True)
-    for power_unit, group in df.groupby("power_unit"):
-        power_unit_counter += 1
-        logger.info(
-            "Sorting and filling %s of %s... Group size for power_unit %s: %s",
-            power_unit_counter,
-            n_power_units,
-            power_unit,
-            len(group),
-        )
-        # Sort by timestamp_utc, then fill in missing values
-        sorted_group = (
-            group.sort_values("timestamp_utc", ascending=True)
-            .infer_objects()
-            .ffill()
-            .bfill()
-        )
-        # Replace the original group with the sorted and filled group
-        df.loc[df["power_unit"] == power_unit, :] = sorted_group
-        time.sleep(0.1)
+
+    # Step 1: Sort by power_unit and timestamp (enables proper ffill/bfill within groups)
+    df = df.sort_values(["power_unit", "timestamp_utc"])
+
+    # Step 2: Identify columns to fill (all except identifiers and timestamps)
+    exclude_cols = ["timestamp_utc", "timestamp_utc_inserted", "power_unit", "gateway"]
+    fill_columns = [col for col in df.columns if col not in exclude_cols]
+
+    # Step 3: Vectorized ffill/bfill - single pass through data (NOT O(n²))
+    n_power_units = df["power_unit"].nunique()
+    logger.info(
+        f"Forward/backward filling {len(fill_columns)} columns across {n_power_units} power units..."
+    )
+    df[fill_columns] = df.groupby("power_unit", sort=False)[fill_columns].ffill()
+    df[fill_columns] = df.groupby("power_unit", sort=False)[fill_columns].bfill()
 
     mins_taken = round((time.time() - time_start) / 60, 1)
     logger.info(
