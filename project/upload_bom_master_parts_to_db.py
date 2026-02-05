@@ -6,6 +6,7 @@ and upload them to the database.
 @author: Sean McCarthy
 """
 
+import gc
 import os
 import pickle
 import platform
@@ -2214,6 +2215,11 @@ def entrypoint(
         # Initialize all active parts in all active warehouses
         logger.info("\n\nInitializing parts in all active warehouses...")
         initialize_parts_in_warehouses(conn=conn)
+
+        # Cleanup large objects to free memory
+        del part_list_of_dicts, parts_df, parts_df_no_newline, finished_goods_df
+        del finished_goods_dict, part_id_dict
+        gc.collect()
 
     if file_out_path_dups_removed.is_file():
         logger.info(

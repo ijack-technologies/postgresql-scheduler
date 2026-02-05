@@ -614,6 +614,24 @@ def get_client_iot() -> boto3.client:
     return client_iot
 
 
+@contextmanager
+def get_client_iot_context() -> Generator[boto3.client, None, None]:
+    """Context manager for AWS IoT boto3 client that properly closes the client.
+
+    This ensures the underlying HTTP connection pool is closed, preventing memory leaks
+    when the client is used repeatedly (e.g., every 15 minutes in scheduled jobs).
+
+    Usage:
+        with get_client_iot_context() as client_iot:
+            shadow = get_iot_device_shadow(client_iot, aws_thing)
+    """
+    client = get_client_iot()
+    try:
+        yield client
+    finally:
+        client.close()
+
+
 def get_iot_device_shadow(client_iot, aws_thing):
     """This function gets the current thing state"""
 

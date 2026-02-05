@@ -64,8 +64,11 @@ services:
         limits:
           # The container can use up to X% of a single CPU
           cpus: '0.25'
-          # # The container can use up to X amount of memory (might need lots when reading from the database)
-          # memory: 2048M
+          # Memory limit to prevent OOM killer from taking down the entire server
+          # If this limit is hit, the container restarts instead of crashing everything
+          memory: 512M
+        reservations:
+          memory: 256M
       # labels:
       #   # Enable logging to Grafana Loki with Promtail
       #   logging: promtail
@@ -115,15 +118,17 @@ services:
       restart_policy:
         # condition: on-failure
         condition: any
-      placement: 
+      placement:
         constraints:
           - node.platform.os == linux
       resources:
         limits:
           # The container can use up to X% of a single CPU
           cpus: '0.25'
-          # # The container can use up to X amount of memory (might need lots when reading from the database)
-          # memory: 2048M
+          # Memory limit for monitor service (simpler than jobs, needs less memory)
+          memory: 256M
+        reservations:
+          memory: 128M
       # labels:
       #   # Enable logging to Grafana Loki with Promtail
       #   logging: promtail

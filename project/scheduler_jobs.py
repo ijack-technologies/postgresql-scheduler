@@ -4,10 +4,12 @@ This is the main scheduler for the project, and runs on the main AWS EC2 instanc
 that runs the main program.
 """
 
+import os
 import sys
 import time
 from pathlib import Path
 
+import psutil
 import pytz
 import schedule
 
@@ -34,10 +36,26 @@ from project.logger_config import logger
 from project.utils import Config
 
 
+def log_memory_usage() -> None:
+    """Log current memory usage for monitoring and leak detection.
+
+    This runs every minute to track memory trends over time.
+    If memory grows continuously, it indicates a leak.
+    """
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    mem_mb = mem_info.rss / 1024 / 1024
+    mem_percent = process.memory_percent()
+    logger.info(f"Memory usage: {mem_mb:.1f} MB ({mem_percent:.1f}% of system)")
+
+
 def make_schedule(c: Config) -> None:
     """Make a cron-like schedule for running tasks"""
 
     logger.info("Making the cron-like schedule...")
+
+    # Log memory usage every minute to track for leaks
+    schedule.every(1).minutes.do(log_memory_usage)
 
     schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
     schedule.every(15).minutes.do(update_info_from_shadows.main, c=c, commit=True)

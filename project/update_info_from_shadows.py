@@ -13,6 +13,7 @@ The main function runs every 15 minutes via the scheduler to keep the database s
 with the current state of all deployed gateways.
 """
 
+import gc
 import pprint
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -28,7 +29,7 @@ from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
-    get_client_iot,
+    get_client_iot_context,
     get_conn,
     get_iot_device_shadow,
     run_query,
@@ -800,11 +801,12 @@ def main(c: Config, commit: bool = False) -> None:
         )
 
         # Get the Boto3 AWS IoT client for updating the "thing shadow"
-        client_iot = get_client_iot()
-
-        # Fetch AWS IoT shadows in parallel (ThreadPoolExecutor)
+        # Use context manager to ensure proper cleanup of HTTP connection pool
         time_shadows_start = time.time()
-        shadows: dict = get_device_shadows_in_threadpool(gw_rows, client_iot)
+        with get_client_iot_context() as client_iot:
+            shadows: dict = get_device_shadows_in_threadpool(gw_rows, client_iot)
+        # Force garbage collection after ThreadPoolExecutor and boto3 client cleanup
+        gc.collect()
         logger.info(
             f"Fetched {len(shadows)} shadows in {time.time() - time_shadows_start:.2f}s"
         )
@@ -1056,8 +1058,6 @@ def main(c: Config, commit: bool = False) -> None:
         logger.info(f"✓ Processed {len(gw_rows)} gateways")
         logger.info(f"✓ Fetched {len(shadows)} AWS IoT shadows")
         logger.info("=" * 80)
-
-        del client_iot
 
     return None
 
