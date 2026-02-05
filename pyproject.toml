@@ -20,6 +20,7 @@ dependencies = [
     "o365>=2.0.38",
     "openpyxl>=3.1.5",
     "sqlalchemy>=2.0.41",
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]
