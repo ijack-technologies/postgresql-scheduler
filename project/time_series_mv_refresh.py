@@ -28,6 +28,59 @@ from project.utils import (
 
 LOGFILE_NAME = "time_series_mv_refresh"
 
+# Number of power units to process per batch when by_power_unit=True.
+# 50 units keeps DataFrame memory under ~40 MB while reducing DB round-trips
+# compared to single-unit processing (287 queries -> ~6 queries).
+BATCH_SIZE = 50
+
+
+def _build_power_unit_filter(power_units: list[str] | None) -> str:
+    """Build a SQL WHERE clause fragment for filtering by power unit(s).
+
+    Returns an empty string if power_units is None (no filter).
+    """
+    if not power_units:
+        return ""
+    placeholders = ", ".join(f"'{pu}'" for pu in power_units)
+    return f" and power_unit IN ({placeholders})"
+
+
+def get_min_latest_timestamp_for_batch(power_units: list[str]) -> datetime:
+    """Get the oldest 'latest timestamp' across a batch of power units.
+
+    Returns the minimum of the per-unit max timestamps, ensuring we fetch
+    enough data to bring ALL units in the batch up to date.
+    """
+    pu_filter = _build_power_unit_filter(power_units)
+    for interval in [
+        "2 hours",
+        "12 hours",
+        "2 days",
+        "7 days",
+        "14 days",
+        "90 days",
+        "180 days",
+        "365 days",
+    ]:
+        sql = f"""
+            SELECT MIN(latest_ts) as timestamp_utc FROM (
+                SELECT power_unit, MAX(timestamp_utc) as latest_ts
+                FROM public.time_series_locf
+                WHERE timestamp_utc >= (now() - interval '{interval}')
+                {pu_filter}
+                GROUP BY power_unit
+            ) sub
+        """
+        _, rows = run_query(sql, db="timescale", fetchall=True, raise_error=True)
+        timestamp = rows[0]["timestamp_utc"]
+        if timestamp:
+            return timestamp
+
+    raise ValueError(
+        f"Couldn't find timestamps for any of {len(power_units)} power units "
+        f"(first 5: {power_units[:5]})"
+    )
+
 
 # def refresh_locf_materialized_view(c):
 #     """
@@ -172,13 +225,18 @@ def get_power_units_in_service() -> list:
 
 def get_and_insert_latest_values(
     after_this_date: datetime,
-    power_unit_str: str | None,
+    power_units: list[str] | None,
     gateway_power_unit_dict: dict,
 ) -> bool:
     """
     Get the latest values from the "last one carried forward" materialized view,
     which are not already in the regular "copied" table, and insert them.
     This should allow us to run continuous aggregates on the "regular copied table".
+
+    Args:
+        after_this_date: Only fetch data after this timestamp.
+        power_units: List of power unit strings to process, or None for all units.
+        gateway_power_unit_dict: Mapping of gateway to power unit.
     """
     dt_x_days_back_to_fill_forward: datetime = after_this_date - timedelta(days=1)
     dt_x_days_back_str: str = dt_x_days_back_to_fill_forward.strftime(
@@ -188,6 +246,7 @@ def get_and_insert_latest_values(
     max_date: datetime = after_this_date + timedelta(days=90)
     max_date_str: str = max_date.strftime("%Y-%m-%d %H:%M:%S")
     after_this_date_str: str = after_this_date.strftime("%Y-%m-%d %H:%M:%S")
+    pu_filter = _build_power_unit_filter(power_units)
 
     logger.info(
         "Getting data from LOCF table so we almost certainly have something to fill forward..."
@@ -197,15 +256,13 @@ def get_and_insert_latest_values(
     from public.time_series_locf
     where timestamp_utc > '{dt_x_days_back_str}'
         and timestamp_utc <= '{after_this_date_str}'
+        {pu_filter}
     """
-    if power_unit_str:
-        sql_old_data += f" and power_unit = '{power_unit_str}'"
 
     columns_old, rows_old = run_query(
         sql_old_data, db="timescale", fetchall=True, raise_error=True
     )
-    logger.info("Sleeping for 1 second to allow the server to catch up...")
-    time.sleep(1)
+    time.sleep(0.25)
     df_old = pd.DataFrame(rows_old, columns=columns_old)
     del rows_old
 
@@ -217,23 +274,23 @@ def get_and_insert_latest_values(
     from public.time_series
     where timestamp_utc > '{after_this_date_str}'
         and timestamp_utc <= '{max_date_str}'
+        {pu_filter}
     """
-    if power_unit_str:
-        sql_latest_data += f" and power_unit = '{power_unit_str}'"
 
     columns_new, rows_new = run_query(
         sql_latest_data, db="timescale", fetchall=True, raise_error=True
     )
-    logger.info("Sleeping for 1 second to allow the server to catch up...")
-    time.sleep(1)
+    time.sleep(0.25)
     df_new = pd.DataFrame(rows_new, columns=columns_new)
-    time.sleep(0.5)
+    time.sleep(0.1)
     del rows_new
 
     if len(df_new) == 0:
-        # raise ValueError(
         logger.warning(
-            f"ERROR: No new data was found in the 'time_series' table for power unit '{power_unit_str}' after the timestamp '{after_this_date_str}' and before the timestamp '{max_date_str}'"
+            "No new data found in 'time_series' for %s power unit(s) after '%s' and before '%s'",
+            len(power_units) if power_units else "all",
+            after_this_date_str,
+            max_date_str,
         )
         return False
 
@@ -244,8 +301,6 @@ def get_and_insert_latest_values(
 
     # Filter out test data since it sometimes violates database unique constraint
     df = df[~((df["power_unit"] == "111111") | (df["gateway"] == "lambda_access"))]
-    if power_unit_str == "200480":
-        print(f"We found power unit {power_unit_str}!")
 
     # If there's a gateway and no power unit, fill in the power unit
     # Show the records that are missing a power unit
@@ -419,7 +474,7 @@ def force_refresh_continuous_aggregates(
                 # Set AUTOCOMMIT so no transaction block is started
                 isolation_level=ISOLATION_LEVEL_AUTOCOMMIT,
             )
-            time.sleep(0.5)
+            time.sleep(0.1)
         except Exception:
             logger.exception(
                 "ERROR force-refreshing continuously-aggregating materialized view '%s'",
@@ -460,6 +515,8 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
 
     exit_if_already_running(c, Path(__file__).name)
 
+    time_start_main = time.time()
+
     # Check if LOCF table is already stale at startup (indicates previous run may have failed).
     # Alert early so we know about failures from previous runs (OOM, crash, etc.).
     # Using 1 hour threshold since job runs every 30 minutes.
@@ -473,41 +530,45 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
         gateway_power_unit_dict: dict = get_gateway_power_unit_dict()
 
         if by_power_unit:
-            # Do it one power unit as a time, instead of all at once in a big DataFrame
-            # if datetime.today() < datetime(2024, 9, 11):
-            #     power_units_in_service = {"": "200480"}
-            # else:
-            power_units_in_service: list = get_power_units_in_service()
-            n_power_units = str(len(power_units_in_service))
+            # Process in batches of BATCH_SIZE to balance memory usage vs DB round-trips
+            all_power_units: list = get_power_units_in_service()
+            batches = [
+                all_power_units[i : i + BATCH_SIZE]
+                for i in range(0, len(all_power_units), BATCH_SIZE)
+            ]
+            logger.info(
+                "Processing %s power units in %s batches of up to %s",
+                len(all_power_units),
+                len(batches),
+                BATCH_SIZE,
+            )
         else:
-            power_units_in_service = [None]
-            n_power_units = "All power units at the same time"
+            # None means process all power units in a single query (no filter)
+            batches = [None]
 
         timestamp = None
-        for index, power_unit_str in enumerate(power_units_in_service):
-            logger.info(
-                "Power unit %s of %s: %s",
-                index + 1,
-                n_power_units,
-                power_unit_str,
-            )
-
-            # Get the lastest values from the LOCF MV and insert
-            # into the regular table, to trigger the continuous aggregates to refresh
-            try:
-                # Do this first so we get an error email if the latest timestamp is too old,
-                # Even if the process below corrects the situation. This ensures
-                # we know about the error even if the process below FAILS!
-                timestamp = get_latest_timestamp_in_table(
-                    table="time_series_locf",
-                    raise_error=True,
-                    power_unit_str=power_unit_str,
+        for batch_idx, batch in enumerate(batches):
+            if batch is not None:
+                logger.info(
+                    "Batch %s of %s (%s units): %s...%s",
+                    batch_idx + 1,
+                    len(batches),
+                    len(batch),
+                    batch[0],
+                    batch[-1],
                 )
+
+            try:
+                if batch is not None:
+                    timestamp = get_min_latest_timestamp_for_batch(batch)
+                else:
+                    timestamp = get_latest_timestamp_in_table(
+                        table="time_series_locf", raise_error=True
+                    )
             except Exception as err:
                 if by_power_unit:
                     logger.exception(
-                        "Error getting the latest timestamp in the table for power unit '%s'",
-                        power_unit_str,
+                        "Error getting timestamps for batch %s", batch_idx + 1
                     )
                     continue
                 filename = Path(__file__).name
@@ -519,7 +580,7 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
             try:
                 get_and_insert_latest_values(
                     after_this_date=timestamp,
-                    power_unit_str=power_unit_str,
+                    power_units=batch,
                     gateway_power_unit_dict=gateway_power_unit_dict,
                 )
             except psycopg2.errors.UniqueViolation as err:
@@ -532,6 +593,9 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
         # Check the table timestamps to see if they're recent.
         # Do this last so the processes above at least get a chance to correct the situation first.
         check_table_timestamps(c, conn=conn_ts)
+
+    elapsed_min = (time.time() - time_start_main) / 60
+    logger.info("Total LOCF refresh completed in %.1f minutes", elapsed_min)
 
     return True
 

@@ -196,10 +196,9 @@ class TestAll(unittest.TestCase):
         try:
             gateway_power_unit_dict: dict = get_gateway_power_unit_dict()
             power_units_in_service: list = get_power_units_in_service()
-            power_unit_str: str = power_units_in_service[0]
             boolean = get_and_insert_latest_values(
                 after_this_date=utcnow_naive(),
-                power_unit_str=power_unit_str,
+                power_units=[power_units_in_service[0]],
                 gateway_power_unit_dict=gateway_power_unit_dict,
             )
         except Exception as err:
