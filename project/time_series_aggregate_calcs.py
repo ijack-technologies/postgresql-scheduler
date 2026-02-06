@@ -44,7 +44,11 @@ def get_time_series_data(
         avg(agf_dis_temp_max) as agf_dis_temp_max_avg,
         avg(agf_dis_temp) as agf_dis_temp_avg,
         avg(dtp) as dtp_avg,
-        avg(dtp_max) as dtp_max_avg
+        avg(dtp_max) as dtp_max_avg,
+        avg(spm) as spm_avg,
+        avg(hp_raising_avg) as hp_raising_avg,
+        avg(hp_lowering_avg) as hp_lowering_avg,
+        avg(fl_tmp) as fl_tmp_avg
     from public.time_series_locf
     where timestamp_utc >= '{start_date_str}'
         and timestamp_utc < '{end_date_str}'
@@ -91,7 +95,8 @@ def upsert_time_series_agg(
         power_unit, month_date, timestamp_utc_modified, sample_size,
         stroke_speed_avg, hp_limit, hp_avg, mgp_avg, cgp_avg, dgp_avg,
         agf_dis_temp_max_avg, agf_dis_temp_avg,
-        dtp_avg, dtp_max_avg
+        dtp_avg, dtp_max_avg,
+        spm_avg, hp_raising_avg, hp_lowering_avg, fl_tmp_avg
     )
     VALUES (
         '{power_unit_str}',
@@ -107,7 +112,11 @@ def upsert_time_series_agg(
         {df_month_date["agf_dis_temp_max_avg"].iloc[0]},
         {df_month_date["agf_dis_temp_avg"].iloc[0]},
         {df_month_date["dtp_avg"].iloc[0]},
-        {df_month_date["dtp_max_avg"].iloc[0]}
+        {df_month_date["dtp_max_avg"].iloc[0]},
+        {df_month_date["spm_avg"].iloc[0]},
+        {df_month_date["hp_raising_avg"].iloc[0]},
+        {df_month_date["hp_lowering_avg"].iloc[0]},
+        {df_month_date["fl_tmp_avg"].iloc[0]}
     )
     ON CONFLICT (power_unit, month_date) DO UPDATE
     SET
@@ -122,7 +131,11 @@ def upsert_time_series_agg(
         agf_dis_temp_max_avg = {df_month_date["agf_dis_temp_max_avg"].iloc[0]},
         agf_dis_temp_avg = {df_month_date["agf_dis_temp_avg"].iloc[0]},
         dtp_avg = {df_month_date["dtp_avg"].iloc[0]},
-        dtp_max_avg = {df_month_date["dtp_max_avg"].iloc[0]}
+        dtp_max_avg = {df_month_date["dtp_max_avg"].iloc[0]},
+        spm_avg = {df_month_date["spm_avg"].iloc[0]},
+        hp_raising_avg = {df_month_date["hp_raising_avg"].iloc[0]},
+        hp_lowering_avg = {df_month_date["hp_lowering_avg"].iloc[0]},
+        fl_tmp_avg = {df_month_date["fl_tmp_avg"].iloc[0]}
     """.replace("\n", " ")
         .replace("nan", "null")
         .replace("None", "null")
