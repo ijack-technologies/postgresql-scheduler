@@ -169,6 +169,7 @@ class TestAll(unittest.TestCase):
         self.assertEqual(mock_run_query.call_count, 2)
         self.assertEqual(mock_send_error_messages.call_count, 2)
 
+    @patch("project.time_series_mv_refresh.get_conn")
     @patch("time.sleep")
     @patch(
         "project.time_series_mv_refresh.run_query",
@@ -189,6 +190,7 @@ class TestAll(unittest.TestCase):
         self,
         mock_run_query,
         mock_sleep,
+        mock_get_conn,
     ):
         """Test the get_and_insert_latest_values() function"""
         global c
@@ -206,7 +208,10 @@ class TestAll(unittest.TestCase):
             raise
 
         assert boolean is True
-        self.assertTrue(mock_run_query.call_count, 4)
+        assert (
+            mock_run_query.call_count == 4
+        )  # gateway dict + power units + old data + new data
+        assert mock_get_conn.called  # staging COPY + INSERT
 
     @patch("project.time_series_mv_refresh.run_query")
     def test_force_refresh_continuous_aggregates(

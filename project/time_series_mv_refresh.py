@@ -11,7 +11,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.sql import SQL, Identifier
 
@@ -20,6 +19,7 @@ from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
+    get_conn,
     run_query,
     send_error_messages,
     utcnow_naive,
@@ -377,38 +377,57 @@ def get_and_insert_latest_values(
     minutes_taken = round((time.time() - time_start) / 60, 1)
     logger.info(f"{minutes_taken} minutes to create the string buffer of the CSV data.")
 
-    # Copy the string buffer to the AWS PostgreSQL table
-    query = SQL(
+    # Insert via temp table + ON CONFLICT DO NOTHING to handle duplicate rows.
+    # COPY is atomic — a single duplicate aborts the entire batch. Using a staging
+    # table lets COPY succeed, then INSERT skips only the duplicate rows.
+    col_ids = SQL(", ").join([Identifier(c) for c in df.columns])
+
+    copy_query = SQL(
         """
         COPY {table} ({columns})
         FROM STDIN
         WITH (FORMAT 'csv', HEADER false, DELIMITER ',', NULL '', ENCODING 'UTF-8')
     """
     ).format(
-        table=Identifier("public", "time_series_locf"),
-        columns=SQL(", ").join([Identifier(c) for c in df.columns]),
+        table=Identifier("_locf_staging"),
+        columns=col_ids,
+    )
+
+    insert_query = SQL(
+        """
+        INSERT INTO {target} ({columns})
+        SELECT {columns} FROM {staging}
+        ON CONFLICT DO NOTHING
+    """
+    ).format(
+        target=Identifier("public", "time_series_locf"),
+        columns=col_ids,
+        staging=Identifier("_locf_staging"),
     )
 
     time_start = time.time()
     try:
-        run_query(
-            sql=None,
-            db="timescale",
-            fetchall=False,
-            commit=True,
-            raise_error=True,
-            copy_expert_kwargs={"sql": query, "file": sio, "size": 8192},
-        )
-    except psycopg2.errors.UniqueViolation as err:
-        logger.error("UniqueViolation during COPY (duplicate rows skipped): %s", err)
+        with get_conn(db="timescale") as conn:
+            with conn.cursor() as cur:
+                # 1. Create temp table with same structure (no constraints)
+                cur.execute(
+                    "CREATE TEMP TABLE _locf_staging"
+                    " (LIKE public.time_series_locf INCLUDING DEFAULTS)"
+                    " ON COMMIT DROP"
+                )
+                # 2. COPY into staging table (no PK, so no UniqueViolation)
+                cur.copy_expert(sql=copy_query, file=sio, size=8192)
+                # 3. INSERT into real table, skipping duplicates
+                cur.execute(insert_query)
+                rows_inserted = cur.rowcount
+                conn.commit()  # commits INSERT and drops temp table
+            logger.info("Inserted %s new rows into time_series_locf", rows_inserted)
     except Exception:
-        logger.exception("ERROR running cursor.copy_from(sio...)!")
+        logger.exception("ERROR during staging COPY + INSERT into time_series_locf!")
         raise
 
     minutes_taken = round((time.time() - time_start) / 60, 1)
-    logger.info(
-        f"{minutes_taken} minutes to run efficient copy_from(file=sio) operation!"
-    )
+    logger.info(f"{minutes_taken} minutes to run staging COPY + INSERT operation!")
 
     return True
 
