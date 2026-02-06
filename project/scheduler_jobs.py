@@ -57,7 +57,7 @@ def make_schedule(c: Config) -> None:
     # Log memory usage every minute to track for leaks
     schedule.every(1).minutes.do(log_memory_usage)
 
-    schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c)
+    schedule.every(30).minutes.do(time_series_mv_refresh.main, c=c, by_power_unit=True)
     schedule.every(15).minutes.do(update_info_from_shadows.main, c=c, commit=True)
 
     schedule.every().hour.at(":03").do(
