@@ -1,7 +1,7 @@
 """
 Test-driven development for the time_series_mv_refresh.py ffill/bfill optimization.
 
-This test file compares the OLD loop-based method vs the NEW vectorized method
+This test file compares the OLD loop-based method vs the NEW column-by-column method
 to ensure they produce identical results before deploying to production.
 
 The OLD method (O(n²)):
@@ -9,10 +9,15 @@ The OLD method (O(n²)):
         sorted_group = group.sort_values(...).ffill().bfill()
         df.loc[df["power_unit"] == power_unit, :] = sorted_group
 
-The NEW method (O(n)):
+The NEW method (O(n), memory-safe):
     df = df.sort_values(['power_unit', 'timestamp_utc'])
-    df[fill_columns] = df.groupby('power_unit', sort=False)[fill_columns].ffill()
-    df[fill_columns] = df.groupby('power_unit', sort=False)[fill_columns].bfill()
+    grouped = df.groupby('power_unit', sort=False)
+    for col in fill_columns:
+        df[col] = grouped[col].ffill()
+        df[col] = grouped[col].bfill()
+
+Column-by-column processing keeps peak memory low (~1.9 MB intermediate per column
+instead of ~238 MB for all columns at once) while maintaining O(n) time complexity.
 """
 
 import time
@@ -128,9 +133,11 @@ def old_method_loop_based(df: pd.DataFrame) -> pd.DataFrame:
 
 def new_method_vectorized(df: pd.DataFrame) -> pd.DataFrame:
     """
-    The NEW O(n) vectorized implementation.
+    The NEW O(n) column-by-column implementation.
 
-    This is the optimized replacement that uses pandas built-in groupby ffill/bfill.
+    Processes one column at a time to keep memory usage low while
+    maintaining O(n) time complexity. This matches production code in
+    time_series_mv_refresh.py.
     """
     df = df.copy()
 
@@ -141,9 +148,11 @@ def new_method_vectorized(df: pd.DataFrame) -> pd.DataFrame:
     exclude_cols = ["timestamp_utc", "timestamp_utc_inserted", "power_unit", "gateway"]
     fill_columns = [col for col in df.columns if col not in exclude_cols]
 
-    # Step 3: Vectorized ffill/bfill - single pass through data
-    df[fill_columns] = df.groupby("power_unit", sort=False)[fill_columns].ffill()
-    df[fill_columns] = df.groupby("power_unit", sort=False)[fill_columns].bfill()
+    # Step 3: Column-by-column ffill/bfill to control memory usage
+    grouped = df.groupby("power_unit", sort=False)
+    for col in fill_columns:
+        df[col] = grouped[col].ffill()
+        df[col] = grouped[col].bfill()
 
     # Reset index to match old method
     df = df.reset_index(drop=True)
@@ -351,6 +360,34 @@ class TestPerformance:
             assert old_time / new_time > 1.5, (
                 f"Expected at least 1.5x speedup, got {old_time / new_time:.1f}x"
             )
+
+
+class TestWideDataFrame:
+    """Tests with many columns to simulate production's ~127 fill columns."""
+
+    def test_many_columns_identical_results(self):
+        """Test with a wide DataFrame (many columns) to simulate production data."""
+        np.random.seed(42)
+
+        base_df = create_test_dataframe(n_power_units=5, n_timestamps_per_unit=100)
+
+        # Add 120 extra float columns with NaN gaps (simulating production's ~127 fill columns)
+        for i in range(120):
+            col_data = np.random.uniform(0, 100, size=len(base_df))
+            mask = np.random.random(len(base_df)) < 0.3
+            col_data[mask] = np.nan
+            base_df[f"extra_col_{i}"] = col_data
+
+        result_old = old_method_loop_based(base_df)
+        result_new = new_method_vectorized(base_df)
+
+        pd.testing.assert_frame_equal(
+            result_old,
+            result_new,
+            check_dtype=False,
+            check_exact=False,
+            rtol=1e-5,
+        )
 
 
 if __name__ == "__main__":

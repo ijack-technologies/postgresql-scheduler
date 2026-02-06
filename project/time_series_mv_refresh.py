@@ -274,9 +274,11 @@ def get_and_insert_latest_values(
     # )
 
     # If values are missing, it's because they were the same as the previous values so they weren't sent
-    # OPTIMIZED: Replaced O(n²) loop with vectorized groupby ffill/bfill
+    # OPTIMIZED: Column-by-column groupby ffill/bfill — O(n) time, low memory
+    # Processes one column at a time to avoid creating a full-width intermediate DataFrame
+    # that would exceed the 512 MB container memory limit with production data volumes.
     # See test/test_time_series_mv_refresh_optimization.py for validation tests
-    logger.info("Sorting and filling in missing values (vectorized)...")
+    logger.info("Sorting and filling in missing values (column-by-column)...")
     time_start = time.time()
 
     # Step 1: Sort by power_unit and timestamp (enables proper ffill/bfill within groups)
@@ -286,13 +288,17 @@ def get_and_insert_latest_values(
     exclude_cols = ["timestamp_utc", "timestamp_utc_inserted", "power_unit", "gateway"]
     fill_columns = [col for col in df.columns if col not in exclude_cols]
 
-    # Step 3: Vectorized ffill/bfill - single pass through data (NOT O(n²))
+    # Step 3: Column-by-column ffill/bfill to control memory usage
+    # Each iteration creates a single-column intermediate (~1.9 MB) instead of
+    # all ~127 columns at once (~238 MB), keeping peak memory under the container limit.
     n_power_units = df["power_unit"].nunique()
     logger.info(
         f"Forward/backward filling {len(fill_columns)} columns across {n_power_units} power units..."
     )
-    df[fill_columns] = df.groupby("power_unit", sort=False)[fill_columns].ffill()
-    df[fill_columns] = df.groupby("power_unit", sort=False)[fill_columns].bfill()
+    grouped = df.groupby("power_unit", sort=False)
+    for col in fill_columns:
+        df[col] = grouped[col].ffill()
+        df[col] = grouped[col].bfill()
 
     mins_taken = round((time.time() - time_start) / 60, 1)
     logger.info(
