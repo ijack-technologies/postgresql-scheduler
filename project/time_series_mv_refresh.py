@@ -20,7 +20,6 @@ from project.utils import (
     Config,
     error_wrapper,
     exit_if_already_running,
-    get_conn,
     run_query,
     send_error_messages,
     utcnow_naive,
@@ -160,7 +159,6 @@ def check_table_timestamps(
     c,
     tables: list = ["time_series", "time_series_locf"],
     time_delta: timedelta = timedelta(hours=1),
-    conn=None,
 ) -> bool:
     """Check the tables to see if their timestamps are recent"""
 
@@ -401,12 +399,11 @@ def get_and_insert_latest_values(
             raise_error=True,
             copy_expert_kwargs={"sql": query, "file": sio, "size": 8192},
         )
-    except Exception as err:
-        if "UniqueViolation" in str(err):
-            logger.error(err)
-        else:
-            logger.exception("ERROR running cursor.copy_from(sio...)!")
-            raise
+    except psycopg2.errors.UniqueViolation as err:
+        logger.error("UniqueViolation during COPY (duplicate rows skipped): %s", err)
+    except Exception:
+        logger.exception("ERROR running cursor.copy_from(sio...)!")
+        raise
 
     minutes_taken = round((time.time() - time_start) / 60, 1)
     logger.info(
@@ -524,75 +521,76 @@ def main(c: Config, by_power_unit: bool = False) -> bool:
         c, tables=["time_series_locf"], time_delta=timedelta(hours=1)
     )
 
-    with get_conn(db="timescale") as conn_ts:
-        # Get the gateway: power unit mapping dictionary, which has all gateway: power unit pairs,
-        # even if the power unit is no longer in service with a structure ID.
-        gateway_power_unit_dict: dict = get_gateway_power_unit_dict()
+    # Get the gateway: power unit mapping dictionary, which has all gateway: power unit pairs,
+    # even if the power unit is no longer in service with a structure ID.
+    gateway_power_unit_dict: dict = get_gateway_power_unit_dict()
 
-        if by_power_unit:
-            # Process in batches of BATCH_SIZE to balance memory usage vs DB round-trips
-            all_power_units: list = get_power_units_in_service()
-            batches = [
-                all_power_units[i : i + BATCH_SIZE]
-                for i in range(0, len(all_power_units), BATCH_SIZE)
-            ]
+    if by_power_unit:
+        # Process in batches of BATCH_SIZE to balance memory usage vs DB round-trips
+        all_power_units: list = get_power_units_in_service()
+        batches = [
+            all_power_units[i : i + BATCH_SIZE]
+            for i in range(0, len(all_power_units), BATCH_SIZE)
+        ]
+        logger.info(
+            "Processing %s power units in %s batches of up to %s",
+            len(all_power_units),
+            len(batches),
+            BATCH_SIZE,
+        )
+    else:
+        # None means process all power units in a single query (no filter)
+        batches = [None]
+
+    timestamp = None
+    min_timestamp = None  # Track earliest timestamp for continuous aggregate refresh
+    for batch_idx, batch in enumerate(batches):
+        if batch is not None:
             logger.info(
-                "Processing %s power units in %s batches of up to %s",
-                len(all_power_units),
+                "Batch %s of %s (%s units): %s...%s",
+                batch_idx + 1,
                 len(batches),
-                BATCH_SIZE,
+                len(batch),
+                batch[0],
+                batch[-1],
             )
-        else:
-            # None means process all power units in a single query (no filter)
-            batches = [None]
 
-        timestamp = None
-        for batch_idx, batch in enumerate(batches):
+        try:
             if batch is not None:
-                logger.info(
-                    "Batch %s of %s (%s units): %s...%s",
-                    batch_idx + 1,
-                    len(batches),
-                    len(batch),
-                    batch[0],
-                    batch[-1],
+                timestamp = get_min_latest_timestamp_for_batch(batch)
+            else:
+                timestamp = get_latest_timestamp_in_table(
+                    table="time_series_locf", raise_error=True
                 )
+            if min_timestamp is None or timestamp < min_timestamp:
+                min_timestamp = timestamp
+        except Exception as err:
+            if by_power_unit:
+                logger.exception("Error getting timestamps for batch %s", batch_idx + 1)
+                continue
+            filename = Path(__file__).name
+            send_error_messages(
+                c=c, err=err, filename=filename, want_email=True, want_sms=True
+            )
+            raise
 
-            try:
-                if batch is not None:
-                    timestamp = get_min_latest_timestamp_for_batch(batch)
-                else:
-                    timestamp = get_latest_timestamp_in_table(
-                        table="time_series_locf", raise_error=True
-                    )
-            except Exception as err:
-                if by_power_unit:
-                    logger.exception(
-                        "Error getting timestamps for batch %s", batch_idx + 1
-                    )
-                    continue
-                filename = Path(__file__).name
-                send_error_messages(
-                    c=c, err=err, filename=filename, want_email=True, want_sms=True
-                )
-                raise
+        get_and_insert_latest_values(
+            after_this_date=timestamp,
+            power_units=batch,
+            gateway_power_unit_dict=gateway_power_unit_dict,
+        )
 
-            try:
-                get_and_insert_latest_values(
-                    after_this_date=timestamp,
-                    power_units=batch,
-                    gateway_power_unit_dict=gateway_power_unit_dict,
-                )
-            except psycopg2.errors.UniqueViolation as err:
-                logger.error(err)
-                conn_ts.rollback()
+    # Force the continuous aggregates to refresh, including the latest data
+    if min_timestamp is not None:
+        force_refresh_continuous_aggregates(after_this_date=min_timestamp)
+    else:
+        logger.error(
+            "Skipping continuous aggregate refresh: no batches produced a valid timestamp"
+        )
 
-        # Force the continuous aggregates to refresh, including the latest data
-        force_refresh_continuous_aggregates(after_this_date=timestamp)
-
-        # Check the table timestamps to see if they're recent.
-        # Do this last so the processes above at least get a chance to correct the situation first.
-        check_table_timestamps(c, conn=conn_ts)
+    # Check the table timestamps to see if they're recent.
+    # Do this last so the processes above at least get a chance to correct the situation first.
+    check_table_timestamps(c)
 
     elapsed_min = (time.time() - time_start_main) / 60
     logger.info("Total LOCF refresh completed in %.1f minutes", elapsed_min)
