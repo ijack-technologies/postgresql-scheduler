@@ -226,7 +226,7 @@ class TestAll(unittest.TestCase):
     @patch("project.update_info_from_shadows.send_mailgun_email")
     @patch("project.update_info_from_shadows.upsert_gw_info")
     @patch("project.update_info_from_shadows.run_query")
-    @patch("project.update_info_from_shadows.get_client_iot")
+    @patch("project.update_info_from_shadows.get_client_iot_context")
     @patch("project.update_info_from_shadows.get_device_shadows_in_threadpool")
     # @patch("project.update_info_from_shadows.get_structure_records")
     # @patch("project.update_info_from_shadows.get_power_unit_records")
@@ -241,7 +241,7 @@ class TestAll(unittest.TestCase):
         # mock_get_power_unit_records,
         # mock_get_structure_records,
         mock_get_device_shadows_in_threadpool,
-        mock_get_client_iot,
+        mock_get_client_iot_context,
         mock_run_query,
         mock_upsert_gw_info,
         mock_send_mailgun_email,
@@ -331,7 +331,7 @@ class TestAll(unittest.TestCase):
         # mock_get_power_unit_records.assert_called_once()
         # mock_get_structure_records.assert_called_once()
         mock_get_device_shadows_in_threadpool.assert_called_once()
-        mock_get_client_iot.assert_called_once()
+        mock_get_client_iot_context.assert_called_once()
         # These get called if something else is updated
         mock_already_emailed_recently.assert_not_called()
         mock_record_email_sent.assert_not_called()
@@ -590,8 +590,12 @@ class TestAll(unittest.TestCase):
         power_unit = 10014
 
         # Get the AWS IoT client and fetch the actual shadow
-        client_iot = update_info_from_shadows.get_client_iot()
-        shadow = update_info_from_shadows.get_iot_device_shadow(client_iot, aws_thing)
+        from project.utils import get_client_iot_context
+
+        with get_client_iot_context() as client_iot:
+            shadow = update_info_from_shadows.get_iot_device_shadow(
+                client_iot, aws_thing
+            )
 
         # Verify we got a valid shadow
         self.assertIsInstance(shadow, dict)
