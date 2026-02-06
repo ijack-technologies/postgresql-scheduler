@@ -66,9 +66,10 @@ services:
           cpus: '0.25'
           # Memory limit to prevent OOM killer from taking down the entire server
           # If this limit is hit, the container restarts instead of crashing everything
-          memory: 512M
+          # 1024M needed for LOCF refresh: ~200K rows DataFrame (~257 MB) + baseline (~200 MB)
+          memory: 1024M
         reservations:
-          memory: 256M
+          memory: 512M
       # labels:
       #   # Enable logging to Grafana Loki with Promtail
       #   logging: promtail
