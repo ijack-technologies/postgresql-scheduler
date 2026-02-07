@@ -1163,7 +1163,10 @@ def go_through_all_sheets(
                     # Store the values from this row in a dictionary
                     # Helper function to safely convert to float (use 0.0 for None values)
                     def safe_float(value):
-                        return 0.0 if value is None or value == "" else float(value)
+                        if value is None:
+                            return 0.0
+                        stripped = str(value).strip()
+                        return 0.0 if stripped == "" else float(stripped)
 
                     try:
                         d = {
