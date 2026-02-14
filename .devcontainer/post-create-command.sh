@@ -7,7 +7,7 @@ echo "=========================================="
 # Update Claude Code (fast method - uses claude update instead of reinstalling)
 echo "📦 Checking for Claude Code updates..."
 if command -v claude &> /dev/null; then
-    if claude update --yes 2>/dev/null; then
+    if claude update 2>/dev/null; then
         CLAUDE_VERSION=$(claude --version 2>/dev/null | head -n1)
         echo "✅ Claude Code updated to ${CLAUDE_VERSION}"
     else
