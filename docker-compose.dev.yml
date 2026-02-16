@@ -46,6 +46,8 @@ services:
       # - 0.0.0.0:85:85
       # # npm start
       # - 0.0.0.0:3001:3000
+    ports:
+      - "2633:2633"  # claude-relay for phone-based Claude Code approval
       # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
     # work_mem='64MB'
