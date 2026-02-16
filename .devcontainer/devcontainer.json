@@ -42,6 +42,8 @@
             }
         }
     },
+    // claude-relay PWA for phone-based Claude Code approval (port 2633)
+    "forwardPorts": [2633],
     // Persistent volume mounts for authentication credentials
     "mounts": [
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude-docker,target=/root/.claude,type=bind",
