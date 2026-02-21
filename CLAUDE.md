@@ -277,15 +277,12 @@ gh issue create --title "Fix bug" --assignee "$GITHUB_USER" --label "bug" --body
 
 ## Tool Usage — Native Tools First
 
-Always prefer Claude Code's **native tools** over Bash equivalents. Native tools require no shell permission prompts and are always available:
+Prefer native Claude Code tools over Bash — they need no permission prompts:
+- **Read files**: `Read` tool, not `cat`/`head`/`tail`
+- **Write files**: `Write` tool, not heredocs or `echo >`
+- **Edit files**: `Edit` tool, not `sed`/`awk`
+- **Find files**: `Glob` tool, not `find`/`ls`
+- **Search content**: `Grep` tool, not `grep`/`rg`
+- **JSON data**: `Read` + `Edit` tools, not `jq`
 
-| Task | Use This (no permission needed) | Not This |
-|------|---------------------------------|----------|
-| Read a file | `Read` tool | `cat`, `head`, `tail` |
-| Write or create a file | `Write` tool | `cat > file << 'EOF'`, `echo >` |
-| Edit a file | `Edit` tool | `sed`, `awk` |
-| Find files by pattern | `Glob` tool | `find`, `ls` |
-| Search file contents | `Grep` tool | `grep`, `rg` |
-| Read/edit JSON | `Read` + `Edit` tools | `jq` |
-
-Reserve `Bash` for commands that truly need the shell: `git`, `uv`, `bun`, `curl`, `docker`, `nc`, etc.
+Reserve `Bash` for commands that genuinely need the shell: `git`, `uv`, `bun`, `curl`, `docker`, `nc`, etc.
