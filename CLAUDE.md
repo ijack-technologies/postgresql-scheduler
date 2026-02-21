@@ -273,3 +273,19 @@ gh issue create --title "Fix bug" --assignee "$GITHUB_USER" --label "bug" --body
 - Always use IDE diagnostics to validate code after implementation
 - Use Context7 for all package documentation lookups
 - Add all issues to the ijack-technologies project board for tracking
+
+
+## Tool Usage — Native Tools First
+
+Always prefer Claude Code's **native tools** over Bash equivalents. Native tools require no shell permission prompts and are always available:
+
+| Task | Use This (no permission needed) | Not This |
+|------|---------------------------------|----------|
+| Read a file | `Read` tool | `cat`, `head`, `tail` |
+| Write or create a file | `Write` tool | `cat > file << 'EOF'`, `echo >` |
+| Edit a file | `Edit` tool | `sed`, `awk` |
+| Find files by pattern | `Glob` tool | `find`, `ls` |
+| Search file contents | `Grep` tool | `grep`, `rg` |
+| Read/edit JSON | `Read` + `Edit` tools | `jq` |
+
+Reserve `Bash` for commands that truly need the shell: `git`, `uv`, `bun`, `curl`, `docker`, `nc`, etc.
