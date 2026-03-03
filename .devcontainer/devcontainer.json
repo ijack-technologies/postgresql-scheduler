@@ -45,6 +45,9 @@
     // Persistent volume mounts for authentication credentials
     "mounts": [
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude-docker,target=/root/.claude,type=bind",
+        // Overlay Claude Code settings and guard scripts from host (DRY hooks)
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude/settings.json,target=/root/.claude/settings.json,type=bind,readonly",
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude/scripts,target=/root/.claude/scripts,type=bind,readonly",
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.config-docker/gh,target=/root/.config/gh,type=bind"
     ],
     // Run commands after the container is created

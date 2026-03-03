@@ -12,6 +12,9 @@ services:
       - .:/workspace:consistent
       # Persist Claude Code credentials across container rebuilds
       - ${HOME}/.claude-docker:/root/.claude:cached
+      # Overlay Claude Code settings and guard scripts from host (DRY hooks)
+      - ${HOME}/.claude/settings.json:/root/.claude/settings.json:ro
+      - ${HOME}/.claude/scripts:/root/.claude/scripts:ro
       # Persist GitHub CLI credentials across container rebuilds
       - ${HOME}/.config-docker/gh:/root/.config/gh:cached
       # Windows home folder:
