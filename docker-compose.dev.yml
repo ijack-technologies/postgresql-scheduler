@@ -60,14 +60,6 @@ services:
     networks:
       - dev-services
 
-  mcp-postgres:
-    build:
-      context: ./mcp-postgres-server
-      dockerfile: Dockerfile
-    networks:
-      - dev-services
-    env_file:
-      - mcp-postgres-server/.env
 
 networks:
   dev-services:

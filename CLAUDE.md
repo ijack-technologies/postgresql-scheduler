@@ -96,6 +96,13 @@ docker-compose -f docker-compose.dev.yml build
 - Database operations follow transaction patterns with proper rollback handling
 - TimescaleDB specific operations for time series data
 
+### Database Access Rules
+
+- **NEVER use `psql` directly** for database queries or investigation. Always use the PostgreSQL MCP tool (`mcp__mcp-postgres__query_data`, `mcp__mcp-postgres__list_tables`, `mcp__mcp-postgres__describe_table`)
+- **Database migrations**: Place raw SQL migration files in `db/migrations/` and alert the user — migrations are run manually via PGAdmin
+- **Always use LIMIT** on TimescaleDB queries (`database="timescale"`) — the database is enormous and indexed by `timestamp_utc`
+- **Always filter by `timestamp_utc`** when querying time-series data for recent records — even for `MAX(timestamp_utc)` queries, use `WHERE timestamp_utc >= NOW() - INTERVAL '2 hours'` (or appropriate window) to avoid full table scans across all TimescaleDB chunks
+
 ### PostgreSQL MCP Server Usage
 
 This repository includes a PostgreSQL MCP server for database inspection and queries.
@@ -115,10 +122,10 @@ mcp__mcp-postgres__describe_table(table_name="sales_forecast", database="rds-dev
 
 **✅ Connection Details:**
 
-- Uses `mcp_user` account with read access to both databases
+- Uses `mcp_user` account with read access to all databases
 - RDS: AWS hosted, SSL required
 - TimescaleDB: EC2 hosted on port 7815, no SSL
-- Container: `mcp-postgres` running on port 5005
+- Shared MCP server: hosted by pgadmin repo at `http://localhost:5015/mcp` (DRY — shared across all repos)
 
 **Usage Examples:**
 
