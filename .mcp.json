@@ -2,7 +2,7 @@
   "mcpServers": {
     "mcp-postgres": {
       "type": "http",
-      "url": "http://localhost:5015/mcp"
+      "url": "http://mcp-postgres:5015/mcp"
     },
     "context7": {
       "type": "http",
