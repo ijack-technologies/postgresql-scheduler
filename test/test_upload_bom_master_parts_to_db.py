@@ -17,6 +17,7 @@ from project.upload_bom_master_parts_to_db import (
     clean_part_number,
     initialize_parts_in_warehouses,
     consolidate_inventory_to_latest_revisions,
+    consolidate_bom_refs_to_latest_revisions,
     update_parts_table,
 )
 
@@ -942,6 +943,198 @@ class TestUpdatePartsTableRetryLogic(unittest.TestCase):
             update_parts_table(df, self.mock_conn, get_new_conn=None)
 
         self.assertIn("Not enough rows", str(context.exception))
+
+
+class TestConsolidateBomRefsToLatestRevisions(unittest.TestCase):
+    """Test cases for consolidate_bom_refs_to_latest_revisions function"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.mock_conn = Mock()
+        self.mock_cursor = Mock()
+        self.mock_conn.cursor.return_value.__enter__ = Mock(
+            return_value=self.mock_cursor
+        )
+        self.mock_conn.cursor.return_value.__exit__ = Mock(return_value=False)
+
+    @patch("project.upload_bom_master_parts_to_db.logger")
+    def test_no_multi_revision_parts(self, mock_logger):
+        """Test when no parts have multiple revisions"""
+        self.mock_cursor.fetchall.return_value = []
+
+        consolidate_bom_refs_to_latest_revisions(self.mock_conn)
+
+        mock_logger.info.assert_any_call(
+            "Found 0 part families with multiple revisions"
+        )
+        mock_logger.info.assert_any_call(
+            "No parts need BOM reference consolidation"
+        )
+        self.mock_conn.commit.assert_not_called()
+
+    @patch("project.upload_bom_master_parts_to_db.logger")
+    def test_no_stale_refs(self, mock_logger):
+        """Test when multi-revision parts exist but no stale BOM refs"""
+        self.mock_cursor.fetchall.side_effect = [
+            # Part families with multiple revisions
+            [("450-0564", 3.0, 118482, "450-0564r3")],
+            # Older parts for 450-0564
+            [(602, "450-0564r1"), (62585, "450-0564r2")],
+            # model_types_parts_rel: no old-revision rows
+            [],
+            # bom_powerunit_part_rel: no old-revision rows
+            [],
+        ]
+
+        consolidate_bom_refs_to_latest_revisions(self.mock_conn)
+
+        mock_logger.info.assert_any_call("Total references fixed: 0")
+        self.mock_conn.commit.assert_called_once()
+
+    @patch("project.upload_bom_master_parts_to_db.logger")
+    def test_simple_update_no_conflict(self, mock_logger):
+        """Test updating a stale ref when latest revision has no row for same parent"""
+        self.mock_cursor.fetchall.side_effect = [
+            # Part families
+            [("450-0564", 3.0, 118482, "450-0564r3")],
+            # Older parts
+            [(602, "450-0564r1"), (62585, "450-0564r2")],
+            # model_types_parts_rel: one old-revision row (model_type 80 -> r1)
+            [(10, 80, 2.0)],  # id=10, model_type_id=80, quantity=2
+            # bom_powerunit_part_rel: no old-revision rows
+            [],
+        ]
+
+        # For model_types_parts_rel row id=10: check if latest rev exists for model_type 80
+        self.mock_cursor.fetchone.side_effect = [
+            None,  # No existing row for (model_type_id=80, part_id=118482) -> no conflict
+        ]
+
+        consolidate_bom_refs_to_latest_revisions(self.mock_conn)
+
+        # Verify the UPDATE was to change part_id to latest
+        update_calls = [
+            call
+            for call in self.mock_cursor.execute.call_args_list
+            if "UPDATE" in str(call) and "SET part_id" in str(call)
+        ]
+        self.assertEqual(len(update_calls), 1)
+        # Should update part_id to 118482 (latest) for id=10
+        self.assertEqual(update_calls[0][0][1], (118482, 10))
+
+        mock_logger.info.assert_any_call("References updated (no conflict): 1")
+        mock_logger.info.assert_any_call("References merged (quantity summed): 0")
+        self.mock_conn.commit.assert_called_once()
+
+    @patch("project.upload_bom_master_parts_to_db.logger")
+    def test_merge_with_conflict(self, mock_logger):
+        """Test merging when both old and new revision exist for the same parent"""
+        self.mock_cursor.fetchall.side_effect = [
+            # Part families
+            [("450-0564", 3.0, 118482, "450-0564r3")],
+            # Older parts
+            [(602, "450-0564r1")],
+            # model_types_parts_rel: old row referencing r1
+            [(10, 66, 1.0)],  # id=10, model_type_id=66, quantity=1
+            # bom_powerunit_part_rel: no old rows
+            [],
+        ]
+
+        # Check if latest rev already has a row for model_type_id=66
+        self.mock_cursor.fetchone.side_effect = [
+            (20, 1.0),  # Existing row id=20 with quantity=1 for (66, 118482)
+        ]
+
+        consolidate_bom_refs_to_latest_revisions(self.mock_conn)
+
+        # Verify merge: UPDATE existing row with summed qty, DELETE old row
+        update_calls = [
+            call
+            for call in self.mock_cursor.execute.call_args_list
+            if "UPDATE" in str(call) and "SET quantity" in str(call)
+        ]
+        self.assertEqual(len(update_calls), 1)
+        # merged_qty = 1.0 (existing) + 1.0 (old) = 2.0, targeting id=20
+        self.assertEqual(update_calls[0][0][1], (2.0, 20))
+
+        delete_calls = [
+            call
+            for call in self.mock_cursor.execute.call_args_list
+            if "DELETE" in str(call)
+        ]
+        self.assertEqual(len(delete_calls), 1)
+        # Delete old row id=10
+        self.assertEqual(delete_calls[0][0][1], (10,))
+
+        mock_logger.info.assert_any_call("References updated (no conflict): 0")
+        mock_logger.info.assert_any_call("References merged (quantity summed): 1")
+        self.mock_conn.commit.assert_called_once()
+
+    @patch("project.upload_bom_master_parts_to_db.logger")
+    def test_multiple_tables_consolidated(self, mock_logger):
+        """Test that both model_types_parts_rel and bom_powerunit_part_rel are processed"""
+        self.mock_cursor.fetchall.side_effect = [
+            # Part families
+            [("450-0564", 3.0, 118482, "450-0564r3")],
+            # Older parts
+            [(602, "450-0564r1")],
+            # model_types_parts_rel: one old row
+            [(10, 80, 2.0)],
+            # bom_powerunit_part_rel: one old row
+            [(50, 5, 1.0)],  # id=50, finished_good_id=5, quantity=1
+        ]
+
+        self.mock_cursor.fetchone.side_effect = [
+            None,  # No conflict in model_types_parts_rel
+            None,  # No conflict in bom_powerunit_part_rel
+        ]
+
+        consolidate_bom_refs_to_latest_revisions(self.mock_conn)
+
+        # Should have 2 updates (one per table)
+        update_calls = [
+            call
+            for call in self.mock_cursor.execute.call_args_list
+            if "UPDATE" in str(call) and "SET part_id" in str(call)
+        ]
+        self.assertEqual(len(update_calls), 2)
+
+        mock_logger.info.assert_any_call("References updated (no conflict): 2")
+        mock_logger.info.assert_any_call("Total references fixed: 2")
+        self.mock_conn.commit.assert_called_once()
+
+    @patch("project.upload_bom_master_parts_to_db.logger")
+    def test_multiple_part_families(self, mock_logger):
+        """Test consolidating multiple part families"""
+        self.mock_cursor.fetchall.side_effect = [
+            # Two part families with multiple revisions
+            [
+                ("450-0564", 3.0, 118482, "450-0564r3"),
+                ("450-0999", 1.0, 200, "450-0999r1"),
+            ],
+            # Older parts for 450-0564
+            [(602, "450-0564r1")],
+            # model_types_parts_rel for 450-0564: one old row
+            [(10, 80, 2.0)],
+            # bom_powerunit_part_rel for 450-0564: no old rows
+            [],
+            # Older parts for 450-0999
+            [(199, "450-0999r0")],
+            # model_types_parts_rel for 450-0999: one old row
+            [(30, 90, 3.0)],
+            # bom_powerunit_part_rel for 450-0999: no old rows
+            [],
+        ]
+
+        self.mock_cursor.fetchone.side_effect = [
+            None,  # No conflict for 450-0564
+            None,  # No conflict for 450-0999
+        ]
+
+        consolidate_bom_refs_to_latest_revisions(self.mock_conn)
+
+        mock_logger.info.assert_any_call("Total references fixed: 2")
+        self.mock_conn.commit.assert_called_once()
 
 
 if __name__ == "__main__":

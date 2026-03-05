@@ -1757,6 +1757,165 @@ def consolidate_inventory_to_latest_revisions(
     return None
 
 
+# Tables that have a part_id FK which needs to track latest revisions.
+# Each entry: (table_name, parent_column, part_id_column, quantity_column)
+_BOM_REF_TABLES = [
+    ("model_types_parts_rel", "model_type_id", "part_id", "quantity"),
+    ("bom_powerunit_part_rel", "finished_good_id", "part_id", "quantity"),
+]
+
+
+def consolidate_bom_refs_to_latest_revisions(
+    conn: psycopg2.extensions.connection,
+) -> None:
+    """
+    Update part_id references in BOM relationship tables to point to the latest revision.
+
+    When a part gets a new revision (e.g., 450-0564r1 -> r3), the BOM relationship tables
+    (model_types_parts_rel, bom_powerunit_part_rel) may still reference old revision part_ids.
+    This function updates those references to the latest revision.
+
+    If both old and new revision rows exist for the same parent (e.g., same model_type_id),
+    quantities are merged (summed) and the old row is deleted.
+    """
+    with conn.cursor() as cursor:
+        logger.info(
+            "\n=== Starting BOM reference consolidation to latest revisions ==="
+        )
+
+        # Identify part families with multiple active revisions
+        cursor.execute("""
+            WITH part_revision_counts AS (
+                SELECT
+                    part_name,
+                    COUNT(DISTINCT id) as revision_count,
+                    MAX(part_rev) as latest_rev
+                FROM public.parts
+                WHERE is_active = true
+                AND (flagged_for_deletion IS NULL OR flagged_for_deletion = false)
+                GROUP BY part_name
+                HAVING COUNT(DISTINCT id) > 1
+            )
+            SELECT
+                prc.part_name,
+                prc.latest_rev,
+                p_latest.id as latest_part_id,
+                p_latest.part_num as latest_part_num
+            FROM part_revision_counts prc
+            JOIN public.parts p_latest
+                ON p_latest.part_name = prc.part_name
+                AND p_latest.part_rev = prc.latest_rev
+                AND p_latest.is_active = true
+            ORDER BY prc.part_name
+        """)
+
+        parts_to_consolidate = cursor.fetchall()
+        logger.info(
+            f"Found {len(parts_to_consolidate)} part families with multiple revisions"
+        )
+
+        if not parts_to_consolidate:
+            logger.info("No parts need BOM reference consolidation")
+            return
+
+        total_updated = 0
+        total_merged = 0
+
+        for part_name, latest_rev, latest_part_id, latest_part_num in (
+            parts_to_consolidate
+        ):
+            # Get older revision part IDs
+            cursor.execute(
+                """
+                SELECT id, part_num
+                FROM public.parts
+                WHERE part_name = %s
+                AND id != %s
+                AND is_active = true
+                AND (flagged_for_deletion IS NULL OR flagged_for_deletion = false)
+                ORDER BY part_rev
+            """,
+                (part_name, latest_part_id),
+            )
+            older_parts = cursor.fetchall()
+            older_part_ids = [p[0] for p in older_parts]
+
+            if not older_part_ids:
+                continue
+
+            for table_name, parent_col, part_col, qty_col in _BOM_REF_TABLES:
+                # Find rows referencing old revisions
+                cursor.execute(
+                    f"""
+                    SELECT id, {parent_col}, {qty_col}
+                    FROM public.{table_name}
+                    WHERE {part_col} = ANY(%s::int[])
+                """,  # noqa: S608
+                    (older_part_ids,),
+                )
+                old_rows = cursor.fetchall()
+
+                if not old_rows:
+                    continue
+
+                for old_id, parent_id, old_qty in old_rows:
+                    # Check if latest revision already has a row for this parent
+                    cursor.execute(
+                        f"""
+                        SELECT id, {qty_col}
+                        FROM public.{table_name}
+                        WHERE {parent_col} = %s AND {part_col} = %s
+                    """,  # noqa: S608
+                        (parent_id, latest_part_id),
+                    )
+                    existing = cursor.fetchone()
+
+                    if existing:
+                        # Merge: add old quantity to existing row, delete old
+                        existing_id, existing_qty = existing
+                        merged_qty = (existing_qty or 0) + (old_qty or 0)
+                        cursor.execute(
+                            f"""
+                            UPDATE public.{table_name}
+                            SET {qty_col} = %s, timestamp_utc_updated = NOW()
+                            WHERE id = %s
+                        """,  # noqa: S608
+                            (merged_qty, existing_id),
+                        )
+                        cursor.execute(
+                            f"DELETE FROM public.{table_name} WHERE id = %s",  # noqa: S608
+                            (old_id,),
+                        )
+                        logger.info(
+                            f"  {table_name}: Merged {parent_col}={parent_id} "
+                            f"old qty={old_qty} into {latest_part_num} "
+                            f"(new total={merged_qty})"
+                        )
+                        total_merged += 1
+                    else:
+                        # No conflict: update part_id to latest revision
+                        cursor.execute(
+                            f"""
+                            UPDATE public.{table_name}
+                            SET {part_col} = %s, timestamp_utc_updated = NOW()
+                            WHERE id = %s
+                        """,  # noqa: S608
+                            (latest_part_id, old_id),
+                        )
+                        logger.info(
+                            f"  {table_name}: Updated {parent_col}={parent_id} "
+                            f"to {latest_part_num}"
+                        )
+                        total_updated += 1
+
+        conn.commit()
+
+        logger.info("\n=== BOM Reference Consolidation Summary ===")
+        logger.info(f"References updated (no conflict): {total_updated}")
+        logger.info(f"References merged (quantity summed): {total_merged}")
+        logger.info(f"Total references fixed: {total_updated + total_merged}")
+
+
 def initialize_parts_in_warehouses(conn: psycopg2.extensions.connection) -> None:
     """
     Initialize all active parts in all active warehouses with zero quantity.
@@ -2214,6 +2373,10 @@ def entrypoint(
         # Consolidate inventory to latest revisions before initializing new parts
         logger.info("\n\nConsolidating inventory to latest part revisions...")
         consolidate_inventory_to_latest_revisions(conn=conn)
+
+        # Consolidate BOM relationship references to latest revisions
+        logger.info("\n\nConsolidating BOM references to latest part revisions...")
+        consolidate_bom_refs_to_latest_revisions(conn=conn)
 
         # Initialize all active parts in all active warehouses
         logger.info("\n\nInitializing parts in all active warehouses...")
