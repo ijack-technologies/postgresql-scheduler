@@ -1783,30 +1783,42 @@ def consolidate_bom_refs_to_latest_revisions(
             "\n=== Starting BOM reference consolidation to latest revisions ==="
         )
 
-        # Identify part families with multiple active revisions
+        # Identify part families with multiple revisions.
+        # Include flagged-for-deletion parts in the count — they're the most
+        # likely to have stale BOM references that need consolidation.
+        # The latest revision must be active and non-flagged.
         cursor.execute("""
-            WITH part_revision_counts AS (
+            WITH latest_active AS (
                 SELECT
                     part_name,
-                    COUNT(DISTINCT id) as revision_count,
                     MAX(part_rev) as latest_rev
                 FROM public.parts
                 WHERE is_active = true
                 AND (flagged_for_deletion IS NULL OR flagged_for_deletion = false)
                 GROUP BY part_name
-                HAVING COUNT(DISTINCT id) > 1
+            ),
+            multi_rev_families AS (
+                SELECT
+                    p.part_name,
+                    COUNT(DISTINCT p.id) as revision_count
+                FROM public.parts p
+                JOIN latest_active la ON p.part_name = la.part_name
+                WHERE p.is_active = true
+                GROUP BY p.part_name
+                HAVING COUNT(DISTINCT p.id) > 1
             )
             SELECT
-                prc.part_name,
-                prc.latest_rev,
+                mrf.part_name,
+                la.latest_rev,
                 p_latest.id as latest_part_id,
                 p_latest.part_num as latest_part_num
-            FROM part_revision_counts prc
+            FROM multi_rev_families mrf
+            JOIN latest_active la ON la.part_name = mrf.part_name
             JOIN public.parts p_latest
-                ON p_latest.part_name = prc.part_name
-                AND p_latest.part_rev = prc.latest_rev
+                ON p_latest.part_name = mrf.part_name
+                AND p_latest.part_rev = la.latest_rev
                 AND p_latest.is_active = true
-            ORDER BY prc.part_name
+            ORDER BY mrf.part_name
         """)
 
         parts_to_consolidate = cursor.fetchall()
@@ -1824,7 +1836,8 @@ def consolidate_bom_refs_to_latest_revisions(
         for part_name, latest_rev, latest_part_id, latest_part_num in (
             parts_to_consolidate
         ):
-            # Get older revision part IDs
+            # Get older revision part IDs (include flagged-for-deletion
+            # since those are most likely to have stale BOM references)
             cursor.execute(
                 """
                 SELECT id, part_num
@@ -1832,7 +1845,6 @@ def consolidate_bom_refs_to_latest_revisions(
                 WHERE part_name = %s
                 AND id != %s
                 AND is_active = true
-                AND (flagged_for_deletion IS NULL OR flagged_for_deletion = false)
                 ORDER BY part_rev
             """,
                 (part_name, latest_part_id),
