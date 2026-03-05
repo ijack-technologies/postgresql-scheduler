@@ -1,0 +1,12 @@
+services:
+  dev:
+    image: ghcr.io/ijack-technologies/devpod-base:latest
+    command: sleep infinity
+    volumes:
+      - ../../:/workspaces/postgresql_scheduler:cached
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true
