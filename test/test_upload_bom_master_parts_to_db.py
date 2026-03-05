@@ -14,6 +14,7 @@ import psycopg2
 import pandas as pd
 
 from project.upload_bom_master_parts_to_db import (
+    _BOM_REF_TABLES,
     clean_part_number,
     initialize_parts_in_warehouses,
     consolidate_inventory_to_latest_revisions,
@@ -957,6 +958,19 @@ class TestConsolidateBomRefsToLatestRevisions(unittest.TestCase):
         )
         self.mock_conn.cursor.return_value.__exit__ = Mock(return_value=False)
 
+    def _bom_table_results(self, results_by_index=None):
+        """Return fetchall results for all BOM tables, defaulting to empty.
+
+        Args:
+            results_by_index: dict mapping table index to fetchall return value.
+                E.g., {0: [(10, 80, 2.0)]} puts a stale row in bom_structure_part_rel.
+        """
+        out = [[] for _ in range(len(_BOM_REF_TABLES))]
+        if results_by_index:
+            for idx, val in results_by_index.items():
+                out[idx] = val
+        return out
+
     @patch("project.upload_bom_master_parts_to_db.logger")
     def test_no_multi_revision_parts(self, mock_logger):
         """Test when no parts have multiple revisions"""
@@ -967,9 +981,7 @@ class TestConsolidateBomRefsToLatestRevisions(unittest.TestCase):
         mock_logger.info.assert_any_call(
             "Found 0 part families with multiple revisions"
         )
-        mock_logger.info.assert_any_call(
-            "No parts need BOM reference consolidation"
-        )
+        mock_logger.info.assert_any_call("No parts need BOM reference consolidation")
         self.mock_conn.commit.assert_not_called()
 
     @patch("project.upload_bom_master_parts_to_db.logger")
@@ -980,10 +992,8 @@ class TestConsolidateBomRefsToLatestRevisions(unittest.TestCase):
             [("450-0564", 3.0, 118482, "450-0564r3")],
             # Older parts for 450-0564
             [(602, "450-0564r1"), (62585, "450-0564r2")],
-            # model_types_parts_rel: no old-revision rows
-            [],
-            # bom_powerunit_part_rel: no old-revision rows
-            [],
+            # All BOM tables: no old-revision rows
+            *self._bom_table_results(),
         ]
 
         consolidate_bom_refs_to_latest_revisions(self.mock_conn)
@@ -999,15 +1009,13 @@ class TestConsolidateBomRefsToLatestRevisions(unittest.TestCase):
             [("450-0564", 3.0, 118482, "450-0564r3")],
             # Older parts
             [(602, "450-0564r1"), (62585, "450-0564r2")],
-            # model_types_parts_rel: one old-revision row (model_type 80 -> r1)
-            [(10, 80, 2.0)],  # id=10, model_type_id=80, quantity=2
-            # bom_powerunit_part_rel: no old-revision rows
-            [],
+            # Stale row only in bom_structure_part_rel (index 0)
+            *self._bom_table_results({0: [(10, 80, 2.0)]}),
         ]
 
-        # For model_types_parts_rel row id=10: check if latest rev exists for model_type 80
+        # For bom_structure_part_rel row id=10: check if latest rev exists for finished_good 80
         self.mock_cursor.fetchone.side_effect = [
-            None,  # No existing row for (model_type_id=80, part_id=118482) -> no conflict
+            None,  # No existing row -> no conflict, just update
         ]
 
         consolidate_bom_refs_to_latest_revisions(self.mock_conn)
@@ -1034,10 +1042,8 @@ class TestConsolidateBomRefsToLatestRevisions(unittest.TestCase):
             [("450-0564", 3.0, 118482, "450-0564r3")],
             # Older parts
             [(602, "450-0564r1")],
-            # model_types_parts_rel: old row referencing r1
-            [(10, 66, 1.0)],  # id=10, model_type_id=66, quantity=1
-            # bom_powerunit_part_rel: no old rows
-            [],
+            # Stale row only in model_types_parts_rel (index 5)
+            *self._bom_table_results({5: [(10, 66, 1.0)]}),
         ]
 
         # Check if latest rev already has a row for model_type_id=66
@@ -1072,26 +1078,29 @@ class TestConsolidateBomRefsToLatestRevisions(unittest.TestCase):
 
     @patch("project.upload_bom_master_parts_to_db.logger")
     def test_multiple_tables_consolidated(self, mock_logger):
-        """Test that both model_types_parts_rel and bom_powerunit_part_rel are processed"""
+        """Test that multiple BOM tables are processed"""
         self.mock_cursor.fetchall.side_effect = [
             # Part families
             [("450-0564", 3.0, 118482, "450-0564r3")],
             # Older parts
             [(602, "450-0564r1")],
-            # model_types_parts_rel: one old row
-            [(10, 80, 2.0)],
-            # bom_powerunit_part_rel: one old row
-            [(50, 5, 1.0)],  # id=50, finished_good_id=5, quantity=1
+            # Stale rows in bom_structure (0) and bom_powerunit (1)
+            *self._bom_table_results(
+                {
+                    0: [(10, 80, 2.0)],
+                    1: [(50, 5, 1.0)],
+                }
+            ),
         ]
 
         self.mock_cursor.fetchone.side_effect = [
-            None,  # No conflict in model_types_parts_rel
+            None,  # No conflict in bom_structure_part_rel
             None,  # No conflict in bom_powerunit_part_rel
         ]
 
         consolidate_bom_refs_to_latest_revisions(self.mock_conn)
 
-        # Should have 2 updates (one per table)
+        # Should have 2 updates (one per table with stale rows)
         update_calls = [
             call
             for call in self.mock_cursor.execute.call_args_list
@@ -1114,16 +1123,12 @@ class TestConsolidateBomRefsToLatestRevisions(unittest.TestCase):
             ],
             # Older parts for 450-0564
             [(602, "450-0564r1")],
-            # model_types_parts_rel for 450-0564: one old row
-            [(10, 80, 2.0)],
-            # bom_powerunit_part_rel for 450-0564: no old rows
-            [],
+            # Stale row in bom_structure (index 0) for 450-0564
+            *self._bom_table_results({0: [(10, 80, 2.0)]}),
             # Older parts for 450-0999
             [(199, "450-0999r0")],
-            # model_types_parts_rel for 450-0999: one old row
-            [(30, 90, 3.0)],
-            # bom_powerunit_part_rel for 450-0999: no old rows
-            [],
+            # Stale row in model_types_parts_rel (index 5) for 450-0999
+            *self._bom_table_results({5: [(30, 90, 3.0)]}),
         ]
 
         self.mock_cursor.fetchone.side_effect = [

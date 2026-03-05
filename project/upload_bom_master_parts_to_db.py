@@ -1759,9 +1759,21 @@ def consolidate_inventory_to_latest_revisions(
 
 # Tables that have a part_id FK which needs to track latest revisions.
 # Each entry: (table_name, parent_column, part_id_column, quantity_column)
+# Covers all 8 BOM paths documented in rcom/.claude/skills/structures-joins/reference/bom-paths.md
 _BOM_REF_TABLES = [
-    ("model_types_parts_rel", "model_type_id", "part_id", "quantity"),
+    ("bom_structure_part_rel", "finished_good_id", "part_id", "quantity"),
     ("bom_powerunit_part_rel", "finished_good_id", "part_id", "quantity"),
+    ("bom_base_powerunit_part_rel", "finished_good_id", "part_id", "quantity"),
+    ("bom_pump_top_part_rel", "finished_good_id", "part_id", "quantity"),
+    ("bom_dgas_part_rel", "finished_good_id", "part_id", "quantity"),
+    ("model_types_parts_rel", "model_type_id", "part_id", "quantity"),
+    ("power_unit_types_parts_rel", "power_unit_type_id", "part_id", "quantity"),
+    (
+        "power_unit_types_filters_rel",
+        "power_unit_type_id",
+        "part_filter_id",
+        "quantity",
+    ),
 ]
 
 
@@ -1772,8 +1784,8 @@ def consolidate_bom_refs_to_latest_revisions(
     Update part_id references in BOM relationship tables to point to the latest revision.
 
     When a part gets a new revision (e.g., 450-0564r1 -> r3), the BOM relationship tables
-    (model_types_parts_rel, bom_powerunit_part_rel) may still reference old revision part_ids.
-    This function updates those references to the latest revision.
+    may still reference old revision part_ids. This function updates those references to the
+    latest revision across all 8 BOM path tables.
 
     If both old and new revision rows exist for the same parent (e.g., same model_type_id),
     quantities are merged (summed) and the old row is deleted.
@@ -1833,9 +1845,12 @@ def consolidate_bom_refs_to_latest_revisions(
         total_updated = 0
         total_merged = 0
 
-        for part_name, latest_rev, latest_part_id, latest_part_num in (
-            parts_to_consolidate
-        ):
+        for (
+            part_name,
+            latest_rev,
+            latest_part_id,
+            latest_part_num,
+        ) in parts_to_consolidate:
             # Get older revision part IDs (include flagged-for-deletion
             # since those are most likely to have stale BOM references)
             cursor.execute(
