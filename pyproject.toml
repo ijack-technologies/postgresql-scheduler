@@ -3,7 +3,7 @@ name = "postgresql_scheduler"
 version = "0.2.0"
 description = "IJACK Scheduled Jobs, mostly for database updating/refreshing/inserting"
 authors = [{name = "Sean McCarthy", email = "smccarthy@myijack.com"}]
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "pandas>=2.2.2",
     "numpy>=2.1.0",

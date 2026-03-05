@@ -1,9 +1,7 @@
-ARG INSTALL_PYTHON_VERSION=${INSTALL_PYTHON_VERSION:-PYTHON_VERSION_NOT_SET}
-
 # ============================================================================
 # Builder Stage: Install dependencies and project
 # ============================================================================
-FROM python:${INSTALL_PYTHON_VERSION} AS builder
+FROM python:3.12-slim AS builder
 
 # Python environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,17 +10,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONHASHSEED=random \
     DEBIAN_FRONTEND=noninteractive
 
-# Install system packages FIRST (UV install script needs curl)
+# Install system packages
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install curl git && \
+    apt-get -y --no-install-recommends install git && \
     apt-get autoremove -y && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
 
-# Install UV using install script (now curl is available)
-ADD https://astral.sh/uv/install.sh /install.sh
-RUN sh /install.sh && rm /install.sh
-ENV PATH="/root/.local/bin:$PATH"
+# Install UV using multi-stage COPY pattern (faster, no curl|sh)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # UV optimization environment variables
 ENV UV_COMPILE_BYTECODE=1 \
@@ -60,7 +56,7 @@ RUN .venv/bin/python -c "from project.logger_config import logger; print('✓ Pr
 # ============================================================================
 # Production Stage: Minimal runtime image
 # ============================================================================
-FROM python:${INSTALL_PYTHON_VERSION} AS production
+FROM python:3.12-slim AS production
 
 # Non-root user configuration
 ARG USERNAME=user

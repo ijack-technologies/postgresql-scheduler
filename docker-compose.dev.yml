@@ -21,11 +21,7 @@ services:
       # - C:\Users\seanm\:/c_users_sean
       # [Optional] For reusing Git SSH keys.
       # - ~/.ssh:/root/.ssh-local:ro
-    build:
-      # context: where should docker compose look for the Dockerfile?
-      # i.e. either a path to a directory containing a Dockerfile, or a url to a git repository
-      context: .
-      dockerfile: Dockerfile.dev
+    image: ghcr.io/ijack-technologies/devpod-base:latest
     # this will signal that the connection is alive after 200 seconds,
     # which is less than the time it takes to drop the connection (300 seconds?), thus preventing it from being dropped.
     # https://stackoverflow.com/questions/56289874/postgres-closes-connection-during-query-after-a-few-hundred-seconds-when-using-p
