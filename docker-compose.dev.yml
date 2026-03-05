@@ -57,8 +57,13 @@ services:
     #   - container-2
     networks:
       - dev-services
+      # For ntfy-claude notifications (hosted by pgadmin repo)
+      - traefik-public
 
 
 networks:
   dev-services:
     driver: bridge
+  # Shared network for ntfy-claude notifications (hosted by pgadmin repo)
+  traefik-public:
+    external: true
