@@ -17,5 +17,5 @@
     "NTFY_URL": "http://ntfy-claude:80"
   },
   "remoteUser": "vscode",
-  "postCreateCommand": "bash -c 'cd /workspaces/postgresql_scheduler && uv sync --dev || true'"
+  "postCreateCommand": "fix-docker-socket.sh; bash -c 'cd /workspaces/postgresql_scheduler && uv sync --dev || true'"
 }
