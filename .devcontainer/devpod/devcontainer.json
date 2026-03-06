@@ -2,7 +2,7 @@
   "name": "PostgreSQL Scheduler DevPod",
   "dockerComposeFile": "docker-compose.yml",
   "service": "dev",
-  "workspaceFolder": "/workspaces/postgresql_scheduler",
+  "workspaceFolder": "/workspace",
   "initializeCommand": "mkdir -p ${localEnv:HOME}/.claude-docker ${localEnv:HOME}/.config-docker/gh ${localEnv:HOME}/.aws 2>/dev/null || true",
   "mounts": [
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude-docker,target=/home/vscode/.claude,type=bind",
@@ -20,5 +20,5 @@
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": { "moby": false }
   },
   "remoteUser": "vscode",
-  "postCreateCommand": "uv sync --dev --directory /workspaces/postgresql_scheduler || true"
+  "postCreateCommand": "uv sync --dev --directory /workspace || true"
 }
