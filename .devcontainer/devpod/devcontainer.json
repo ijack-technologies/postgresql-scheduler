@@ -16,6 +16,9 @@
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
     "NTFY_URL": "http://ntfy-claude:80"
   },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": { "moby": false }
+  },
   "remoteUser": "vscode",
-  "postCreateCommand": "fix-docker-socket.sh; bash -c 'cd /workspaces/postgresql_scheduler && uv sync --dev || true'"
+  "postCreateCommand": "uv sync --dev --directory /workspaces/postgresql_scheduler || true"
 }
