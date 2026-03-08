@@ -752,9 +752,9 @@ def update_parts_table(
 
     sql_update_existing_parts = """
         INSERT INTO public.parts
-            (worksheet, ws_row, part_num, description, msrp_mult_cad, transfer_mult_cad_dealer, msrp_mult_usd, transfer_mult_inc_to_corp, transfer_mult_usd_dealer, warehouse_mult, cost_cad, msrp_cad, dealer_cost_cad, cost_usd, msrp_usd, ijack_corp_cost, dealer_cost_usd, is_usd, cad_per_usd, is_soft_part, weight, harmonization_code, country_of_origin, lead_time, timestamp_utc_inserted, timestamp_utc_updated)
+            (worksheet, ws_row, part_num, description, msrp_mult_cad, transfer_mult_cad_dealer, msrp_mult_usd, transfer_mult_inc_to_corp, transfer_mult_usd_dealer, warehouse_mult, cost_cad, msrp_cad, dealer_cost_cad, cost_usd, msrp_usd, ijack_corp_cost, dealer_cost_usd, is_usd, cad_per_usd, is_soft_part, weight, harmonization_code, country_of_origin, lead_time, pricebook_price_cad, pricebook_price_usd, timestamp_utc_inserted, timestamp_utc_updated)
         VALUES
-            (%(worksheet)s, %(ws_row)s, %(part_num)s, %(description)s, %(msrp_mult_cad)s, %(transfer_mult_cad_dealer)s, %(msrp_mult_usd)s, %(transfer_mult_inc_to_corp)s, %(transfer_mult_usd_dealer)s, %(warehouse_mult)s, %(cost_cad)s, %(msrp_cad)s, %(dealer_cost_cad)s, %(cost_usd)s, %(msrp_usd)s, %(ijack_corp_cost)s, %(dealer_cost_usd)s, %(is_usd)s, %(cad_per_usd)s, %(is_soft_part)s, %(weight)s, %(harmonization_code)s, %(country_of_origin)s, %(lead_time)s, now(), now())
+            (%(worksheet)s, %(ws_row)s, %(part_num)s, %(description)s, %(msrp_mult_cad)s, %(transfer_mult_cad_dealer)s, %(msrp_mult_usd)s, %(transfer_mult_inc_to_corp)s, %(transfer_mult_usd_dealer)s, %(warehouse_mult)s, %(cost_cad)s, %(msrp_cad)s, %(dealer_cost_cad)s, %(cost_usd)s, %(msrp_usd)s, %(ijack_corp_cost)s, %(dealer_cost_usd)s, %(is_usd)s, %(cad_per_usd)s, %(is_soft_part)s, %(weight)s, %(harmonization_code)s, %(country_of_origin)s, %(lead_time)s, %(pricebook_price_cad)s, %(pricebook_price_usd)s, now(), now())
         ON CONFLICT (part_num) DO UPDATE
             SET
                 worksheet = %(worksheet)s,
@@ -780,6 +780,8 @@ def update_parts_table(
                 lead_time = %(lead_time)s,
                 harmonization_code = %(harmonization_code)s,
                 country_of_origin = %(country_of_origin)s,
+                pricebook_price_cad = COALESCE(parts.pricebook_price_cad, EXCLUDED.pricebook_price_cad),
+                pricebook_price_usd = COALESCE(parts.pricebook_price_usd, EXCLUDED.pricebook_price_usd),
                 timestamp_utc_updated = now()
     """
 
@@ -817,6 +819,10 @@ def update_parts_table(
         country_of_origin = (
             str(row.country_of_origin).replace("'", '"').replace("%", r"%%")
         )
+        # Pricebook prices are set once at part creation (1.1x MSRP) and never updated.
+        # COALESCE in the ON CONFLICT clause preserves existing values for existing parts.
+        pricebook_price_cad = round(msrp_cad * 1.1, 2)
+        pricebook_price_usd = round(msrp_usd * 1.1, 2)
 
         values = {
             "worksheet": worksheet,
@@ -843,6 +849,8 @@ def update_parts_table(
             "country_of_origin": country_of_origin,
             "weight": weight,
             "lead_time": lead_time,
+            "pricebook_price_cad": pricebook_price_cad,
+            "pricebook_price_usd": pricebook_price_usd,
         }
         last_values = values
 
