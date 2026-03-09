@@ -68,6 +68,9 @@ load_dotenv(env_file_location)
 # Whether to delete parts no longer found in the BoM Master spreadsheet, or in work orders, etc.
 DELETE_DEPRECATED_PARTS: bool = False
 
+# Pricebook price = MSRP * this multiplier, set once at part creation and never updated.
+PRICEBOOK_MARKUP_MULTIPLIER: float = 1.1
+
 if platform.system() == "Linux":
     ijack_folder = Path(r"/workspace/c_users_sean/IJACK")
 else:
@@ -819,10 +822,10 @@ def update_parts_table(
         country_of_origin = (
             str(row.country_of_origin).replace("'", '"').replace("%", r"%%")
         )
-        # Pricebook prices are set once at part creation (1.1x MSRP) and never updated.
+        # Pricebook prices are set once at part creation and never updated.
         # COALESCE in the ON CONFLICT clause preserves existing values for existing parts.
-        pricebook_price_cad = round(msrp_cad * 1.1, 2)
-        pricebook_price_usd = round(msrp_usd * 1.1, 2)
+        pricebook_price_cad = round(msrp_cad * PRICEBOOK_MARKUP_MULTIPLIER, 2)
+        pricebook_price_usd = round(msrp_usd * PRICEBOOK_MARKUP_MULTIPLIER, 2)
 
         values = {
             "worksheet": worksheet,

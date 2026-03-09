@@ -1,5 +1,5 @@
 -- Backfill pricebook_price_cad and pricebook_price_usd for parts that were inserted
--- before these columns were added. Pricebook price = 1.1x MSRP at time of creation.
+-- before these columns were added. Pricebook price = MSRP * PRICEBOOK_MARKUP_MULTIPLIER (1.1).
 -- This is a one-time backfill; the upload job now sets these on INSERT going forward.
 UPDATE public.parts
 SET
