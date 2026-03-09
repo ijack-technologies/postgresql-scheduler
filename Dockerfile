@@ -17,8 +17,8 @@ RUN apt-get update && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
 
-# Install UV using multi-stage COPY pattern (faster, no curl|sh)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install UV (pip install avoids GHCR auth/rate-limit issues with COPY --from)
+RUN pip install --no-cache-dir uv
 
 # UV optimization environment variables
 ENV UV_COMPILE_BYTECODE=1 \
