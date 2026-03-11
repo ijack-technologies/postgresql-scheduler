@@ -1,5 +1,6 @@
 services:
-  # Main service for running the PostgreSQL scheduler jobs
+  # DEPRECATED: All jobs migrated to RCOM monorepo (packages/scheduler/)
+  # See README.md for migration details.
   jobs:
     # Name and tag of image the Dockerfile creates
     image: mccarthysean/ijack:postgresql_scheduler_final
@@ -20,7 +21,7 @@ services:
       mode: replicated
       # For stateless applications using "replicated" mode,
       # the total number of replicas to create
-      replicas: 1
+      replicas: 0  # DEPRECATED — migrated to RCOM scheduler sidecar
       # Update configuration with automatic rollback on failure
       update_config:
         # Update one container at a time
@@ -93,7 +94,7 @@ services:
     #       nocopy: true
     command: ["/app/.venv/bin/python", "/app/project/scheduler_jobs.py"]
 
-  # Second service for globally monitoring the EC2 instances' disk space
+  # DEPRECATED: Monitor migrated to RCOM monorepo (packages/scheduler/jobs/monitor_disk_space.py)
   monitor:
     # Name and tag of image the Dockerfile creates
     image: mccarthysean/ijack:postgresql_scheduler_final
@@ -111,7 +112,8 @@ services:
     deploy:
       # Either global (exactly one container per physical node) or
       # replicated (a specified number of containers). The default is replicated
-      mode: global
+      mode: replicated
+      replicas: 0  # DEPRECATED — migrated to RCOM scheduler sidecar
       # For stateless applications using "replicated" mode,
       # the total number of replicas to create
       # replicas: 1
