@@ -133,8 +133,9 @@ sheets_w_part_nums = {
         "weight_col": "EB",
         "lead_time_col": "EC",
         "is_usd_col": "ED",
-        # Starts with 823E in column D, and ends with 2270M4 in column AK
-        # NOTE: the below cols need to be updated EVERY time this is run, since the cols change!!!
+        # The Pricing sheet contains price/cost data only — it does NOT have powerunit
+        # association columns (unlike Base Powerunit, EGAS 819/823/828, etc.).
+        # Empty list is intentional: no B&P quantity columns to read here.
         "n_parts_cols": [],
     },
     "Base Powerunit": {
