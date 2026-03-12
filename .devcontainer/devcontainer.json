@@ -10,6 +10,7 @@
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude/scripts,target=/home/vscode/.claude/scripts,type=bind,readonly",
     "source=${localEnv:HOME}/.config-docker/gh,target=/home/vscode/.config/gh,type=bind",
     "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,readonly",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,readonly",
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude/statusline.sh,target=/home/vscode/.claude/statusline.sh,type=bind,readonly"
   ],
   "containerEnv": {
