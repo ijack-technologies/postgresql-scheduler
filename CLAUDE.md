@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+> **DEPRECATED:** This repository has been migrated into the RCOM monorepo at `rcom/scheduler/`.
+> See https://github.com/ijack-technologies/rcom/tree/main/scheduler for the active codebase.
+> Do not make changes here — all development happens in RCOM now.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## ALWAYS do these things
